@@ -39,8 +39,8 @@ async function bootstrap() {
   }));
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Mini Trello API')
-    .setDescription('OpenAPI documentation for the Mini Trello backend')
+    .setTitle('Questflow API')
+    .setDescription('OpenAPI documentation for the Questflow backend')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
@@ -55,7 +55,13 @@ async function bootstrap() {
     },
   });
 
-  await app.startAllMicroservices();
+  try {
+    await app.startAllMicroservices();
+  } catch (e) {
+    // Allow HTTP API to work even if Redis is down in local dev.
+    // eslint-disable-next-line no-console
+    console.warn('[bootstrap] Redis microservice failed to start. Continuing without it.', e);
+  }
   await app.listen(3000);
 }
 

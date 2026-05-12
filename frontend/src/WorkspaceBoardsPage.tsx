@@ -8,6 +8,7 @@ import {
   handleSpaTileClick,
 } from './lib/navigation';
 import { canManageWorkspace } from './lib/roles';
+import { ProfileToolbarAnchor } from './profileToolbarOutlet';
 
 export type BoardRow = {
   id: number;
@@ -183,11 +184,11 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
   return (
     <div className="trello-app-shell">
       <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left trello-topbar-stripe-left--boards-nav">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
               <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">mini trello</span>
+              <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
             <SpaLink
               className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn"
@@ -197,7 +198,9 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
             </SpaLink>
           </div>
           <h1 className="trello-topbar-stripe-center">{workspaceTitle || '…'}</h1>
-          <div className="trello-topbar-stripe-spacer" aria-hidden />
+          <div className="trello-topbar-stripe-spacer trello-topbar-stripe-spacer--toolbar">
+            {accessToken ? <ProfileToolbarAnchor /> : null}
+          </div>
         </header>
 
         {!accessToken && (

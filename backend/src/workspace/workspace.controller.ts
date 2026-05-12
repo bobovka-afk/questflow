@@ -35,7 +35,7 @@ import type {
   WorkspaceSummary,
   WorkspaceUpdated,
 } from './interface';
-import { Request } from 'express';
+import type { AuthedRequest } from '../common/type';
 
 @ApiTags('workspace')
 @ApiBearerAuth()
@@ -51,7 +51,7 @@ export class WorkspaceController {
   @ApiResponse({ status: 400, description: 'Invalid workspace creation payload.' })
   @ApiResponse({ status: 401, description: 'Authentication is required.' })
   async createWorkspace(
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
     @Body() dto: CreateWorkspaceDto,
   ): Promise<WorkspaceCreated> {
       return this.workspaceService.createWorkspace(dto, req.user.id);
@@ -64,7 +64,7 @@ export class WorkspaceController {
   @ApiResponse({ status: 200, description: 'User workspaces returned successfully.' })
   @ApiResponse({ status: 401, description: 'Authentication is required.' })
   async getUserWorkspaces(
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
     @Query() paginationDto: PaginationDto,
   ): Promise<UserWorkspaceRow[]> {
     return this.workspaceService.getUserWorkspaces(req.user.id, paginationDto);
@@ -80,7 +80,7 @@ export class WorkspaceController {
   @ApiResponse({ status: 404, description: 'Workspace not found.' })
   async getWorkspaceSummary(
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
   ): Promise<WorkspaceSummary> {
     return this.workspaceService.getWorkspaceSummary(
       workspaceId,
@@ -102,7 +102,7 @@ export class WorkspaceController {
   async updateWorkspace(
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
     @Body() dto: UpdateWorkspaceDto,
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
   ): Promise<WorkspaceUpdated> {
     return this.workspaceService.updateWorkspace(
       workspaceId,

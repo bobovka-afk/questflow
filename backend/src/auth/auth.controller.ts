@@ -12,6 +12,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { HttpCode } from '@nestjs/common';
 import { Request, type Response } from 'express';
+import type { AuthedRequest } from '../common/type';
 import { Res } from '@nestjs/common';
 import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -187,7 +188,7 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid password change payload.' })
   @ApiResponse({ status: 401, description: 'Authentication is required or current password is invalid.' })
   changePassword(
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
     @Body() dto: ChangePasswordDto,
   ): Promise<{ ok: boolean }> {
     return this.authService.changePassword(

@@ -173,7 +173,7 @@ export function InvitesPage({ accessToken }: Props) {
         <header className="jira-topbar">
           <SpaLink className="trello-top-left-brand" to="/workspaces">
             <span className="trello-logo" aria-hidden />
-            <span className="trello-top-left-brand-text">mini trello</span>
+            <span className="trello-top-left-brand-text">Questflow</span>
           </SpaLink>
           <div>
             <h1 className="jira-page-title">Мои приглашения</h1>

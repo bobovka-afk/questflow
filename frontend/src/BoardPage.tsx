@@ -18,6 +18,7 @@ import {
 import { AlertModal } from './AlertModal'
 import { api, API_URL, formatApiError, isRateLimitMessage } from './lib/api'
 import { SpaLink } from './lib/navigation'
+import { ProfileToolbarAnchor } from './profileToolbarOutlet'
 import type { BoardRow } from './WorkspaceBoardsPage'
 import { canManageWorkspace } from './lib/roles'
 import { LIST_COLOR_PRESET_KEYS, listHeaderColor } from './lib/trelloColors'
@@ -1355,12 +1356,12 @@ export function BoardPage({
 
 	return (
 		<div className='trello-board-viewport'>
-			<header className='trello-board-topbar trello-topbar-stripe-3col'>
+			<header className='trello-board-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky'>
 				<div className='trello-topbar-stripe-left trello-topbar-stripe-left--boards-nav'>
 					<SpaLink className='trello-top-left-brand trello-top-left-brand--stripe' to='/workspaces'>
 						<span className='trello-logo' aria-hidden />
 						<span className='trello-top-left-brand-text'>
-							mini trello
+							Questflow
 						</span>
 					</SpaLink>
 					<SpaLink
@@ -1373,7 +1374,9 @@ export function BoardPage({
 				<h1 className='trello-topbar-stripe-center'>
 					{loading ? '…' : (board?.name ?? 'Доска')}
 				</h1>
-				<div className='trello-topbar-stripe-spacer' aria-hidden />
+				<div className='trello-topbar-stripe-spacer trello-topbar-stripe-spacer--toolbar'>
+					{accessToken ? <ProfileToolbarAnchor /> : null}
+				</div>
 			</header>
 
 			{!accessToken && (

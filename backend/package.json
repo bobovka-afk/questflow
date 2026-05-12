@@ -1,7 +1,7 @@
 {
-  "name": "mini-trello-backend",
+  "name": "questflow-backend",
   "version": "0.0.1",
-  "description": "Mini Trello backend",
+  "description": "Questflow backend",
   "author": "",
   "private": true,
   "license": "UNLICENSED",

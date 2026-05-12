@@ -7,6 +7,7 @@ import {
 } from './lib/api';
 import { SpaLink, navigate } from './lib/navigation';
 import { formatWorkspaceRole } from './lib/roles';
+import { ProfileToolbarAnchor } from './profileToolbarOutlet';
 
 type Props = {
   accessToken: string | null;
@@ -361,11 +362,11 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
   return (
     <div className="trello-app-shell">
       <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
               <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">mini trello</span>
+              <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
             <SpaLink className="trello-btn trello-btn-sm trello-btn-topbar-nav" to="/workspaces">
               ← Рабочие пространства
@@ -405,6 +406,7 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
                 Отправить приглашение
               </button>
             )}
+            {accessToken ? <ProfileToolbarAnchor /> : null}
           </div>
         </header>
 

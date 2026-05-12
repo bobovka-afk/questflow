@@ -24,7 +24,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { WorkspaceMemberWithUser } from './interface';
-import { Request } from 'express';
+import type { AuthedRequest } from '../common/type';
 
 @ApiTags('workspace-members')
 @ApiBearerAuth()
@@ -68,7 +68,7 @@ export class WorkspaceMemberController {
   @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
   @ApiResponse({ status: 404, description: 'Workspace member not found.' })
   async deleteWorkspaceMember(
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
     @Param('memberId', ParseIntPipe) memberId: number,
   ): Promise<{ ok: boolean }> {
@@ -88,7 +88,7 @@ export class WorkspaceMemberController {
   @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
   @ApiResponse({ status: 404, description: 'Workspace not found.' })
   async leaveWorkspace(
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
   ): Promise<{ ok: boolean }> {
     return this.workspaceMemberService.leaveWorkspace(req.user.id, workspaceId);

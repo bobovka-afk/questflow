@@ -51,6 +51,32 @@ enum WorkspaceActivityType {
   MEMBER_LEFT
 }
 
+enum GenderCharacter {
+  MALE
+  FEMALE
+}
+
+enum CharacterAvatarPreset {
+  DRUID_MAN
+  HUNTER_MAN
+  MAGE_MAN
+  PALADIN_MAN
+  ROGUE_MAN
+  WARRIOR_MAN
+  DRUID_WOMAN
+  HUNTER_WOMAN
+  MAGE_WOMAN
+  PALADIN_WOMAN
+  ROGUE_WOMAN
+  WARRIOR_WOMAN
+}
+
+enum XpEventType {
+  TASK_COMPLETED
+  DAILY_CHECKIN
+  CHECKIN_STREAK
+}
+
 model User {
   id              Int       @id @default(autoincrement())
   email           String    @unique
@@ -67,6 +93,8 @@ model User {
   workspaceActivities  WorkspaceActivity[]
   assignedCards        Card[]
   comments             Comment[]
+  character            Character?
+  xpEvents             XpEvent[]
 }
 
 model AuthToken {
@@ -135,7 +163,6 @@ model WorkspaceActivity {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   actor     User      @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
 
-  @@index([workspaceId, createdAt(sort: Desc)])
 }
 
 model Board {
@@ -181,6 +208,7 @@ model Card {
   list     List      @relation(fields: [listId], references: [id], onDelete: Cascade)
   assignee User?     @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
   comments Comment[]
+  xpEvents XpEvent[]
 }
 
 model Comment {
@@ -194,6 +222,36 @@ model Comment {
   card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([cardId])
-  @@index([userId])
+}
+
+model Character {
+  id           Int                     @id @default(autoincrement())
+  userId       Int                     @unique @map("user_id")
+  name         String
+  gender       GenderCharacter
+  avatarPreset CharacterAvatarPreset   @map("avatar_preset")
+
+  currentXp Int @default(0) @map("current_xp")
+  level   Int @default(1)
+  health Int @default(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model XpEvent {
+  id        Int         @id @default(autoincrement())
+  userId    Int         @map("user_id")
+  type      XpEventType
+  cardId    Int?        @map("card_id")
+  dayKey    DateTime?   @map("day_key") @db.Date
+  xpAmount  Int         @map("xp_amount")
+  createdAt DateTime    @default(now()) @map("created_at")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card Card? @relation(fields: [cardId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, type, cardId])
+  @@unique([userId, type, dayKey])
 }

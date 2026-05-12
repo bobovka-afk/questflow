@@ -27,7 +27,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { CommentWithUser } from './interface';
-import { Request } from 'express';
+import type { AuthedRequest, WorkspaceAuthedRequest } from '../common/type';
 
 @ApiTags('comment')
 @ApiBearerAuth()
@@ -62,7 +62,7 @@ export class CommentController {
   async createComment(
     @Param('cardId', ParseIntPipe) cardId: number,
     @Body() dto: CreateCommentDto,
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
   ): Promise<CommentWithUser> {
     return this.commentService.createComment(cardId, req.user.id, dto);
   }
@@ -80,7 +80,7 @@ export class CommentController {
   async updateComment(
     @Param('commentId', ParseIntPipe) commentId: number,
     @Body() dto: UpdateCommentDto,
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
   ): Promise<CommentWithUser> {
     return this.commentService.updateComment(commentId, req.user.id, dto);
   }
@@ -95,7 +95,7 @@ export class CommentController {
   @ApiResponse({ status: 404, description: 'Comment not found.' })
   async deleteComment(
     @Param('commentId', ParseIntPipe) commentId: number,
-    @Req() req: Request & { user: { id: number }; workspaceId: number },
+    @Req() req: WorkspaceAuthedRequest,
   ): Promise<{ ok: boolean }> {
     return this.commentService.deleteComment(
       commentId,

@@ -35,6 +35,11 @@ const API_ERROR_CODE_RU: Record<string, string> = {
   INVITE_MAIL_FAILED:
     'Не удалось отправить письмо с приглашением. Проверьте настройки почты и попробуйте снова.',
   RATE_LIMIT_EXCEEDED: `${RATE_LIMIT_MESSAGE_PREFIX} Подождите немного и повторите действие.`,
+  CHARACTER_NOT_FOUND: 'Персонаж ещё не создан. Создайте его, чтобы продолжить.',
+  CHARACTER_ALREADY_EXISTS: 'Персонаж для этого аккаунта уже создан.',
+  CHARACTER_AVATAR_GENDER_MISMATCH:
+    'Выберите аватар, который соответствует полу персонажа (мужские / женские варианты).',
+  CHARACTER_UPDATE_FIELDS_REQUIRED: 'Укажите хотя бы одно поле для изменения.',
 };
 
 function translateCommonEnglishError(message: string): string | null {

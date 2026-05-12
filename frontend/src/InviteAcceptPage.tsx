@@ -6,6 +6,7 @@ import {
   storeInviteTokenFromUrl,
 } from './lib/invitePending';
 import { navigate, SpaLink } from './lib/navigation';
+import { ProfileToolbarAnchor } from './profileToolbarOutlet';
 
 function formatError(e: unknown) {
   return formatApiError(e);
@@ -57,11 +58,11 @@ export function InviteAcceptPage({ accessToken }: Props) {
   return (
     <div className="trello-app-shell">
       <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/">
               <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">mini trello</span>
+              <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
           </div>
           <h1 className="trello-topbar-stripe-center">Приглашение</h1>
@@ -69,6 +70,7 @@ export function InviteAcceptPage({ accessToken }: Props) {
             <SpaLink className="trello-btn trello-btn-ghost" to={accessToken ? '/workspaces' : '/'}>
               {accessToken ? 'К пространствам' : 'На главную'}
             </SpaLink>
+            {accessToken ? <ProfileToolbarAnchor /> : null}
           </div>
         </header>
 

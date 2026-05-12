@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, formatApiError, isRateLimitMessage } from './lib/api';
 import { SpaLink } from './lib/navigation';
+import { ProfileToolbarAnchor } from './profileToolbarOutlet';
 import { formatWorkspaceRole } from './lib/roles';
 
 type Props = {
@@ -149,11 +150,11 @@ export function WorkspaceActivityPage({ accessToken, workspaceId }: Props) {
   return (
     <div className="trello-app-shell">
       <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
               <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">mini trello</span>
+              <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
             <SpaLink
               className="trello-btn trello-btn-sm trello-btn-topbar-nav"
@@ -163,7 +164,9 @@ export function WorkspaceActivityPage({ accessToken, workspaceId }: Props) {
             </SpaLink>
           </div>
           <h1 className="trello-topbar-stripe-center">Журнал активности</h1>
-          <div className="trello-topbar-actions" />
+          <div className="trello-topbar-actions">
+            {accessToken ? <ProfileToolbarAnchor /> : null}
+          </div>
         </header>
 
         {!accessToken && (

@@ -7,6 +7,7 @@ import {
   handleSpaTileClick,
 } from './lib/navigation';
 import { canManageWorkspace, formatWorkspaceRole } from './lib/roles';
+import { ProfileToolbarAnchor } from './profileToolbarOutlet';
 
 type WorkspaceMemberRow = {
   id: number;
@@ -231,11 +232,11 @@ export function WorkspacesPage({ accessToken }: Props) {
   return (
     <div className="trello-app-shell trello-page-workspaces">
       <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
               <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">mini trello</span>
+              <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
           </div>
           <h1 className="trello-topbar-stripe-center" aria-hidden />
@@ -252,6 +253,7 @@ export function WorkspacesPage({ accessToken }: Props) {
                 Создать рабочее пространство
               </button>
             )}
+            {accessToken ? <ProfileToolbarAnchor /> : null}
           </div>
         </header>
 

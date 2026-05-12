@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
-import { api, API_URL, formatApiError, isRateLimitMessage } from './lib/api';
+import { api, API_URL, formatApiError, isRateLimitMessage, type ApiError } from './lib/api';
+import { routeNeedsCharacterGate, type CharacterDto } from './lib/character';
+import { CharacterSetupPage } from './CharacterSetupPage';
+import { ProfileCharacterPage } from './ProfileCharacterPage';
 import {
   getPendingInviteToken,
   tryAcceptPendingInvite,
@@ -14,6 +17,7 @@ import { ProfileInvitesSection } from './ProfileInvitesSection';
 import { InviteAcceptPage } from './InviteAcceptPage';
 import { AlertModal } from './AlertModal';
 import { navigate, openSpaInNewTab, SpaLink } from './lib/navigation';
+import { ProfileToolbarAnchor, ProfileToolbarOutletProvider, useProfileToolbarOutlet } from './profileToolbarOutlet';
 import './index.css';
 
 type UserSafe = {
@@ -27,7 +31,35 @@ type UserSafe = {
 
 type AuthResponse = { user: UserSafe; accessToken: string };
 
-const ACCESS_TOKEN_KEY = 'mini_trello_access_token';
+const ACCESS_TOKEN_KEY = 'questflow_access_token';
+const ACCESS_TOKEN_KEY_LEGACY = 'mini_trello_access_token';
+
+function migrateLegacyAccessTokenKey() {
+  try {
+    if (!localStorage.getItem(ACCESS_TOKEN_KEY) && localStorage.getItem(ACCESS_TOKEN_KEY_LEGACY)) {
+      localStorage.setItem(ACCESS_TOKEN_KEY, localStorage.getItem(ACCESS_TOKEN_KEY_LEGACY)!);
+      localStorage.removeItem(ACCESS_TOKEN_KEY_LEGACY);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+migrateLegacyAccessTokenKey();
+
+const THEME_KEY = 'questflow_theme';
+const THEME_KEY_LEGACY = 'mini_trello_theme';
+
+function migrateLegacyThemeKey() {
+  try {
+    if (!localStorage.getItem(THEME_KEY) && localStorage.getItem(THEME_KEY_LEGACY)) {
+      localStorage.setItem(THEME_KEY, localStorage.getItem(THEME_KEY_LEGACY)!);
+      localStorage.removeItem(THEME_KEY_LEGACY);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+migrateLegacyThemeKey();
 
 function useRoute() {
   const [path, setPath] = useState(() => window.location.pathname);
@@ -86,11 +118,11 @@ function EmailVerificationRequestPage() {
   return (
     <div className="trello-app-shell">
       <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/">
               <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">mini trello</span>
+              <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
           </div>
           <h1 className="trello-topbar-stripe-center">Подтверждение email</h1>
@@ -158,11 +190,11 @@ function EmailVerifiedStatusPage() {
   return (
     <div className="trello-app-shell">
       <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/">
               <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">mini trello</span>
+              <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
           </div>
           <h1 className="trello-topbar-stripe-center">Подтверждение email</h1>
@@ -217,11 +249,11 @@ function PasswordResetRequestPage() {
   return (
     <div className="trello-app-shell">
       <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/">
               <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">mini trello</span>
+              <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
           </div>
           <h1 className="trello-topbar-stripe-center">Сброс пароля</h1>
@@ -308,11 +340,11 @@ function PasswordResetConfirmPage() {
   return (
     <div className="trello-app-shell">
       <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/">
               <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">mini trello</span>
+              <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
           </div>
           <h1 className="trello-topbar-stripe-center">Сброс пароля</h1>
@@ -440,7 +472,7 @@ function Home(props: { onAuthed: (token: string) => void; hasSession: boolean })
       <header className="trello-home-header">
         <SpaLink className="trello-home-brand" to={props.hasSession ? '/workspaces' : '/'}>
           <span className="trello-logo" aria-hidden />
-          Mini Trello
+          Questflow
         </SpaLink>
       </header>
 
@@ -822,18 +854,22 @@ function ProfileMePage(props: {
   return (
     <div className="trello-app-shell">
       <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
               <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">mini trello</span>
+              <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
           </div>
           <h1 className="trello-topbar-stripe-center">Профиль</h1>
           <div className="trello-topbar-actions">
+            <SpaLink className="trello-btn trello-btn-ghost" to="/profile/character">
+              Персонаж
+            </SpaLink>
             <SpaLink className="trello-btn trello-btn-ghost" to="/workspaces">
               Назад
             </SpaLink>
+            <ProfileToolbarAnchor />
           </div>
         </header>
 
@@ -1098,11 +1134,11 @@ function MyInvitesPage(props: {
   return (
     <div className="trello-app-shell">
       <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
               <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">mini trello</span>
+              <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
           </div>
           <h1 className="trello-topbar-stripe-center">Приглашения</h1>
@@ -1110,6 +1146,7 @@ function MyInvitesPage(props: {
             <SpaLink className="trello-btn trello-btn-ghost" to="/workspaces">
               Назад
             </SpaLink>
+            {props.accessToken ? <ProfileToolbarAnchor /> : null}
           </div>
         </header>
         <ProfileInvitesSection accessToken={props.accessToken} onRowsCountChange={props.onInvitesCountChange} />
@@ -1118,7 +1155,8 @@ function MyInvitesPage(props: {
   );
 }
 
-function App() {
+function AppContent() {
+  const { outletEl } = useProfileToolbarOutlet();
   const route = useRoute();
   const [accessToken, setAccessToken] = useState<string | null>(() => {
     const stored = getAccessTokenFromStorage();
@@ -1128,7 +1166,6 @@ function App() {
   });
 
   type Theme = 'light' | 'dark';
-  const THEME_KEY = 'mini_trello_theme';
   const getInitialTheme = (): Theme => {
     const fromStorage = localStorage.getItem(THEME_KEY);
     if (fromStorage === 'light' || fromStorage === 'dark') return fromStorage;
@@ -1145,6 +1182,9 @@ function App() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const [characterLoadState, setCharacterLoadState] = useState<
+    'idle' | 'loading' | 'missing' | 'ok'
+  >('idle');
 
   const setToken = (t: string | null) => {
     setAccessTokenToStorage(t);
@@ -1199,6 +1239,31 @@ function App() {
   }, [accessToken, route]);
 
   useEffect(() => {
+    if (!accessToken) {
+      setCharacterLoadState('idle');
+      return;
+    }
+    let cancelled = false;
+    setCharacterLoadState('loading');
+    void (async () => {
+      try {
+        await api<CharacterDto>('/character/me', { method: 'GET', accessToken });
+        if (!cancelled) setCharacterLoadState('ok');
+      } catch (e) {
+        const err = e as ApiError;
+        if (err.status === 404 && err.code === 'CHARACTER_NOT_FOUND') {
+          if (!cancelled) setCharacterLoadState('missing');
+        } else if (!cancelled) {
+          setCharacterLoadState('ok');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken]);
+
+  useEffect(() => {
     setToolbarAvatarBroken(false);
   }, [toolbarUser?.avatarPath]);
 
@@ -1223,9 +1288,33 @@ function App() {
       route === '/workspaces' ||
       route.startsWith('/workspaces/') ||
       route.startsWith('/profile') ||
-      route.startsWith('/invites');
+      route.startsWith('/invites') ||
+      route.startsWith('/character/setup');
     if (!accessToken && protectedPath) {
       navigate('/');
+    }
+  }, [route, accessToken]);
+
+  useLayoutEffect(() => {
+    if (!accessToken) return;
+    if (characterLoadState !== 'missing') return;
+    if (route.startsWith('/character/setup') || route.startsWith('/invite')) return;
+    if (routeNeedsCharacterGate(route)) {
+      navigate('/character/setup');
+    }
+  }, [accessToken, characterLoadState, route]);
+
+  useLayoutEffect(() => {
+    if (!accessToken) return;
+    if (characterLoadState !== 'ok') return;
+    if (route.startsWith('/character/setup')) {
+      navigate('/workspaces');
+    }
+  }, [accessToken, characterLoadState, route]);
+
+  useLayoutEffect(() => {
+    if (route === '/' && accessToken) {
+      navigate('/workspaces');
     }
   }, [route, accessToken]);
 
@@ -1292,11 +1381,32 @@ function App() {
   const boardsListMatch = route.match(/^\/workspaces\/(\d+)\/boards\/?$/);
   const activityRouteMatch = route.match(/^\/workspaces\/(\d+)\/activity\/?$/);
   const memberRouteMatch = route.match(/^\/workspaces\/(\d+)\/members$/);
+  const characterGateLoading =
+    Boolean(accessToken) &&
+    characterLoadState === 'loading' &&
+    routeNeedsCharacterGate(route);
+
   let page: ReactElement;
   if (route === '/invite' || route.startsWith('/invite/')) {
     page = <InviteAcceptPage accessToken={accessToken} />;
   } else if (route.startsWith('/invites')) {
     page = <MyInvitesPage accessToken={accessToken} onInvitesCountChange={setPendingInvitesCount} />;
+  } else if (characterGateLoading) {
+    page = (
+      <div className="trello-app-shell">
+        <div className="trello-boards-main trello-character-gate-loading">Загрузка профиля персонажа…</div>
+      </div>
+    );
+  } else if (route.startsWith('/character/setup')) {
+    page =
+      !accessToken ? (
+        <Home onAuthed={(t) => setToken(t)} hasSession={false} />
+      ) : (
+        <CharacterSetupPage
+          accessToken={accessToken}
+          onCharacterCreated={() => setCharacterLoadState('ok')}
+        />
+      );
   } else if (boardDetailMatch) {
     page = (
       <BoardPage
@@ -1328,6 +1438,8 @@ function App() {
     page =
       !accessToken ? (
         <Home onAuthed={(t) => setToken(t)} hasSession={false} />
+      ) : route === '/profile/character' || route.startsWith('/profile/character/') ? (
+        <ProfileCharacterPage accessToken={accessToken} />
       ) : (
         <ProfileMePage accessToken={accessToken} onUserUpdated={(u) => setToolbarUser(u)} />
       );
@@ -1339,6 +1451,8 @@ function App() {
     page = <PasswordResetRequestPage />;
   } else if (route.startsWith('/reset-password')) {
     page = <PasswordResetConfirmPage />;
+  } else if (route === '/' && accessToken) {
+    page = <WorkspacesPage accessToken={accessToken} />;
   } else {
     page = <Home onAuthed={(t) => setToken(t)} hasSession={!!accessToken} />;
   }
@@ -1364,8 +1478,14 @@ function App() {
     </label>
   );
 
+  const toolbarAnchored = !!(accessToken && outletEl);
+  const toolbarPortalTarget = toolbarAnchored && outletEl ? outletEl : document.body;
+
   const toolbarNode = (
-    <div className={`trello-fixed-toolbar ${toolbarLayoutClass}`} aria-label="Параметры приложения">
+    <div
+      className={`trello-fixed-toolbar ${toolbarLayoutClass}${toolbarAnchored ? ' trello-fixed-toolbar--in-header' : ''}`}
+      aria-label="Параметры приложения"
+    >
       {!accessToken && (
         <div className="theme-toggle trello-theme-toggle-inline" aria-label="Theme switch">
           <span className="theme-toggle-icon" aria-hidden>
@@ -1425,6 +1545,14 @@ function App() {
                 Профиль
               </SpaLink>
               <SpaLink
+                className="trello-profile-menu-item"
+                role="menuitem"
+                to="/profile/character"
+                onClick={() => setProfileMenuOpen(false)}
+              >
+                Персонаж
+              </SpaLink>
+              <SpaLink
                 className="trello-profile-menu-item trello-profile-menu-item-with-badge"
                 role="menuitem"
                 to="/invites"
@@ -1474,10 +1602,16 @@ function App() {
 
   return (
     <>
-      {createPortal(toolbarNode, document.body)}
+      {createPortal(toolbarNode, toolbarPortalTarget)}
       {page}
     </>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <ProfileToolbarOutletProvider>
+      <AppContent />
+    </ProfileToolbarOutletProvider>
+  );
+}

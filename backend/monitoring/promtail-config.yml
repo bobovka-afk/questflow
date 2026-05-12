@@ -1,5 +1,5 @@
 # Collects container logs via Docker API and pushes to Loki.
-# Expects compose project name `mini-trello` (see root `name:` in docker-compose.yml).
+# Expects compose project name `questflow` (see root `name:` in docker-compose.yml).
 
 server:
   http_listen_port: 9080
@@ -18,7 +18,7 @@ scrape_configs:
         refresh_interval: 10s
         filters:
           - name: label
-            values: ["com.docker.compose.project=mini-trello"]
+            values: ["com.docker.compose.project=questflow"]
     relabel_configs:
       - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
         target_label: service

@@ -1,4 +1,4 @@
-# Mini Trello — fullstack-приложение
+# Questflow — fullstack-приложение
 
 Fullstack‑проект в духе **Trello** с планом **геймификации** поверх командных досок и карточек.
 

@@ -14,6 +14,7 @@ import { HealthModule } from './health/health.module';
 import { RedisModule } from './redis/redis.module';
 import { LoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'node:crypto';
+import { CharacterModule } from './character/character.module';
 
 
 @Module({
@@ -86,6 +87,7 @@ import { randomUUID } from 'node:crypto';
     WorkspaceMemberModule,
     HealthModule,
     RedisModule,
+    CharacterModule,
   ],
   controllers: [],
   providers: [ ],

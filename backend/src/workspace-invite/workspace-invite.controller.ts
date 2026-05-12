@@ -33,7 +33,7 @@ import type {
   WorkspaceInviteCreated,
   WorkspaceInviteListItem,
 } from './interface';
-import { Request } from 'express';
+import type { AuthedRequest } from '../common/type';
 
 @ApiTags('workspace-invite')
 @ApiBearerAuth()
@@ -49,7 +49,7 @@ export class WorkspaceInviteController {
   @ApiResponse({ status: 200, description: 'Current user invites returned successfully.' })
   @ApiResponse({ status: 401, description: 'Authentication is required.' })
   async getMyInvites(
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
     @Query() paginationDto: PaginationDto,
   ): Promise<MyWorkspaceInviteRow[]> {
       return this.workspaceInviteService.getMyInvites(req.user.id, paginationDto)
@@ -88,7 +88,7 @@ export class WorkspaceInviteController {
   @ApiResponse({ status: 409, description: 'Invite conflicts with the current workspace state.' })
   async sendInvite(
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
     @Body() dto: SendInviteDto,
   ): Promise<WorkspaceInviteCreated> {
       return this.workspaceInviteService.sendInvite(dto, req.user.id, workspaceId);
@@ -103,7 +103,7 @@ export class WorkspaceInviteController {
   @ApiResponse({ status: 401, description: 'Authentication is required.' })
   @ApiResponse({ status: 404, description: 'Invite token not found or expired.' })
   async acceptInviteByToken(
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
     @Body() dto: AcceptInviteTokenDto,
   ): Promise<{ ok: boolean }> {
     return this.workspaceInviteService.acceptInviteByToken(
@@ -121,7 +121,7 @@ export class WorkspaceInviteController {
   @ApiResponse({ status: 409, description: 'Invite conflicts with the current workspace state.' })
   async acceptInvite(
     @Param('inviteId', ParseIntPipe) inviteId: number,
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
   ): Promise<{ ok: boolean }> {
     return this.workspaceInviteService.acceptInvite(inviteId, req.user.id);
   }
@@ -135,7 +135,7 @@ export class WorkspaceInviteController {
   @ApiResponse({ status: 409, description: 'Invite conflicts with the current workspace state.' })
   async declineInvite(
     @Param('inviteId', ParseIntPipe) inviteId: number,
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
   ): Promise<{ ok: boolean }> {
     return this.workspaceInviteService.declineInvite(inviteId, req.user.id);
   }
@@ -151,7 +151,7 @@ export class WorkspaceInviteController {
   @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
   @ApiResponse({ status: 404, description: 'Invite not found.' })
   async deleteInvite(
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
     @Param('inviteId', ParseIntPipe) inviteId: number,
   ): Promise<{ ok: boolean }> {

@@ -11,7 +11,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import type { UserPublic } from './interface';
-import { Request } from 'express';
+import type { AuthedRequest } from '../common/type';
 import type { File as MulterFile } from 'multer';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/auth.guard';
@@ -43,7 +43,7 @@ export class UserController {
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({ status: 200, description: 'Current user profile returned successfully.' })
   @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  async getProfile(@Req() req): Promise<UserPublic | null> {
+  async getProfile(@Req() req: AuthedRequest): Promise<UserPublic | null> {
     return this.userService.getById(String(req.user.id));
   }
 
@@ -54,7 +54,7 @@ export class UserController {
   @ApiResponse({ status: 400, description: 'Invalid user profile update payload.' })
   @ApiResponse({ status: 401, description: 'Authentication is required.' })
   async updateProfile(
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
     @Body() body: UpdateUserDto,
   ): Promise<UserPublic> {
     return this.userService.updateName(req.user.id, body.name);
@@ -112,7 +112,7 @@ export class UserController {
   @ApiResponse({ status: 400, description: 'Invalid avatar upload request.' })
   @ApiResponse({ status: 401, description: 'Authentication is required.' })
   async updateAvatar(
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
     @UploadedFile() file?: MulterFile,
   ): Promise<UserPublic> {
     if (!file) {
@@ -133,7 +133,7 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'User avatar removed successfully.' })
   @ApiResponse({ status: 401, description: 'Authentication is required.' })
   async removeAvatar(
-    @Req() req: Request & { user: { id: number } },
+    @Req() req: AuthedRequest,
   ): Promise<UserPublic> {
     return this.userService.removeAvatar(req.user.id);
   }

@@ -1,4 +1,4 @@
-name: mini-trello
+name: questflow
 
 services:
   postgres:
