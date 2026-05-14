@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { api, formatApiError } from './lib/api';
+import { api, formatApiError, type ApiError } from './lib/api';
 import {
   CHARACTER_ROLES,
   type CharacterDto,
@@ -11,6 +11,10 @@ import {
   ROLE_LABEL_RU,
 } from './lib/character';
 import { getCharacterXpTowardNext } from './lib/level-curve';
+import {
+	DAILY_TASK_XP_COMPLETIONS_MAX,
+	XP_PER_TASK_COMPLETED,
+} from './lib/xpRewards';
 import { SpaLink } from './lib/navigation';
 import { ProfileToolbarAnchor } from './profileToolbarOutlet';
 
@@ -28,6 +32,9 @@ function roleFromPreset(preset: string): CharacterRole {
 
 export function ProfileCharacterPage(props: Props) {
   const [character, setCharacter] = useState<CharacterDto | null>(null);
+  const [loadPhase, setLoadPhase] = useState<'loading' | 'ready' | 'missing' | 'error'>(
+    'loading',
+  );
   const [loadError, setLoadError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [gender, setGender] = useState<GenderCharacter>('MALE');
@@ -38,9 +45,12 @@ export function ProfileCharacterPage(props: Props) {
   const [editOpen, setEditOpen] = useState(false);
   const [saveCheckVisible, setSaveCheckVisible] = useState(false);
 
+  const [loadKey, setLoadKey] = useState(0);
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
+      setLoadPhase('loading');
       setLoadError(null);
       try {
         const c = await api<CharacterDto>('/character/me', {
@@ -52,14 +62,26 @@ export function ProfileCharacterPage(props: Props) {
         setName(c.name);
         setGender(c.gender);
         setRole(roleFromPreset(c.avatarPreset));
+        setLoadPhase('ready');
       } catch (e) {
-        if (!cancelled) setLoadError(formatApiError(e));
+        if (cancelled) return;
+        const err = e as ApiError;
+        if (
+          err.status === 404 &&
+          (!err.code || err.code === 'CHARACTER_NOT_FOUND')
+        ) {
+          setCharacter(null);
+          setLoadPhase('missing');
+          return;
+        }
+        setLoadPhase('error');
+        setLoadError(formatApiError(e));
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [props.accessToken]);
+  }, [props.accessToken, loadKey]);
 
   useEffect(() => {
     if (!saveCheckVisible) return;
@@ -140,7 +162,39 @@ export function ProfileCharacterPage(props: Props) {
     }
   }
 
-  if (loadError) {
+  if (loadPhase === 'missing') {
+    return (
+      <div className="trello-app-shell">
+        <div className="trello-boards-main">
+          <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
+            <div className="trello-topbar-stripe-left">
+              <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
+                <span className="trello-logo" aria-hidden />
+                <span className="trello-top-left-brand-text">Questflow</span>
+              </SpaLink>
+            </div>
+            <h1 className="trello-topbar-stripe-center">Персонаж</h1>
+            <div className="trello-topbar-actions">
+              <SpaLink className="trello-btn trello-btn-ghost" to="/profile/me">
+                Профиль
+              </SpaLink>
+              <ProfileToolbarAnchor />
+            </div>
+          </header>
+          <section className="trello-panel" style={{ maxWidth: 480, margin: '24px auto' }}>
+            <p className="trello-boards-sub" style={{ marginTop: 0 }}>
+              У этого аккаунта ещё нет персонажа — создайте его, чтобы участвовать в прогрессии и наградах.
+            </p>
+            <SpaLink className="trello-btn trello-btn-primary" to="/character/setup" style={{ marginTop: 16, display: 'inline-block' }}>
+              Создать персонажа
+            </SpaLink>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadPhase === 'error' && loadError) {
     return (
       <div className="trello-app-shell">
         <div className="trello-boards-main">
@@ -160,12 +214,21 @@ export function ProfileCharacterPage(props: Props) {
             </div>
           </header>
           <div className="trello-banner trello-banner-error">{loadError}</div>
+          <div className="trello-panel" style={{ maxWidth: 480, margin: '16px auto 0' }}>
+            <button
+              type="button"
+              className="trello-btn trello-btn-primary"
+              onClick={() => setLoadKey((k) => k + 1)}
+            >
+              Повторить
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (!character) {
+  if (loadPhase === 'loading' || !character) {
     return (
       <div className="trello-app-shell">
         <div className="trello-boards-main trello-character-loading">Загрузка персонажа…</div>
@@ -213,40 +276,62 @@ export function ProfileCharacterPage(props: Props) {
               <div className="trello-character-stat-row">
                 <div className="trello-character-stat-pill trello-character-stat-pill--level">
                   <span className="trello-character-stat-label">Уровень</span>
-                  <span className="trello-character-stat-value">{character.level}</span>
-                  <div className="trello-character-stat-bar" aria-hidden>
-                    <div className="trello-character-stat-bar-fill trello-character-stat-bar-fill--level" style={{ width: '100%' }} />
+                  <div
+                    className="trello-character-stat-meter"
+                    role="img"
+                    aria-label={`Уровень ${character.level}`}
+                  >
+                    <div
+                      className="trello-character-stat-bar-fill trello-character-stat-bar-fill--level"
+                      style={{ width: '100%' }}
+                      aria-hidden
+                    />
+                    <span className="trello-character-stat-meter-value">{character.level}</span>
                   </div>
                 </div>
                 <div className="trello-character-stat-pill trello-character-stat-pill--xp">
                   <span className="trello-character-stat-label">Опыт</span>
-                  <span className="trello-character-stat-value trello-character-stat-value--xp">
-                    {xpToward.atMaxLevel ? (
-                      <>Макс. уровень</>
-                    ) : (
-                      <>
-                        {xpToward.into} / {xpToward.needed}
-                      </>
-                    )}
-                  </span>
-                  <div className="trello-character-stat-bar" aria-hidden>
+                  <div
+                    className="trello-character-stat-meter"
+                    role="img"
+                    aria-label={
+                      xpToward.atMaxLevel
+                        ? 'Опыт: максимальный уровень'
+                        : `Опыт ${xpToward.into} из ${xpToward.needed}`
+                    }
+                  >
                     <div
                       className="trello-character-stat-bar-fill trello-character-stat-bar-fill--xp"
                       style={{ width: `${xpToward.pct}%` }}
+                      aria-hidden
                     />
+                    <span className="trello-character-stat-meter-value trello-character-stat-meter-value--xp">
+                      {xpToward.atMaxLevel ? (
+                        <>Макс. уровень</>
+                      ) : (
+                        <>
+                          {xpToward.into} / {xpToward.needed}
+                        </>
+                      )}
+                    </span>
                   </div>
                 </div>
                 <div className="trello-character-stat-pill trello-character-stat-pill--health">
                   <span className="trello-character-stat-label">Здоровье</span>
-                  <span className="trello-character-stat-value">{character.health}</span>
-                  <div className="trello-character-stat-bar" aria-hidden>
-                    <div className="trello-character-stat-bar-fill trello-character-stat-bar-fill--health" style={{ width: '100%' }} />
+                  <div
+                    className="trello-character-stat-meter"
+                    role="img"
+                    aria-label={`Здоровье ${character.health}`}
+                  >
+                    <div
+                      className="trello-character-stat-bar-fill trello-character-stat-bar-fill--health"
+                      style={{ width: '100%' }}
+                      aria-hidden
+                    />
+                    <span className="trello-character-stat-meter-value">{character.health}</span>
                   </div>
                 </div>
               </div>
-              <p className="trello-character-stat-note">
-                Прогрессия (XP, уровни, задания) появится в следующих итерациях — цифры уже приходят с сервера.
-              </p>
             </div>
           </div>
 
@@ -262,13 +347,22 @@ export function ProfileCharacterPage(props: Props) {
             <div className="trello-character-guide">
               <ul>
                 <li>
+                  <strong>Опыт за карточки.</strong> За первое закрытие карточки (перевод в «выполнено»){' '}
+                  <strong>+{XP_PER_TASK_COMPLETED} XP</strong> получает персонаж исполнителя; если исполнитель не
+                  назначен — персонаж того, кто закрыл карточку. Повторное закрытие той же карточки опыт не даёт.
+                </li>
+                <li>
+                  <strong>Лимит в день.</strong> Опыт за закрытие карточек начисляется не более{' '}
+                  <strong>{DAILY_TASK_XP_COMPLETIONS_MAX}</strong> раз в сутки на одного персонажа; после лимита
+                  карточки по-прежнему закрываются, без XP.
+                </li>
+                <li>
                   <strong>Опыт.</strong> Счётчик <strong>текущий / нужно</strong> — сколько опыта уже набрано на
                   текущем уровне и сколько нужно до следующего; полоска совпадает с этой долей (кривая как на
                   сервере).
                 </li>
                 <li>
-                  <strong>Уровень.</strong> Будет расти при накоплении опыта по правилам игры (кривая уровней на
-                  бэкенде).
+                  <strong>Уровень.</strong> Растёт при накоплении опыта по правилам игры (кривая уровней на бэкенде).
                 </li>
                 <li>
                   <strong>Смена облика.</strong> Кнопка «Редактировать» под портретом — имя, пол и один из шести

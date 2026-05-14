@@ -1,18 +1,25 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CharacterService } from '../character/character.service';
 import { CreateCardDto } from './dto/create-card.dto';
 import { MoveCardDto } from './dto/move-card.dto';
 import { SetCardCompletionDto } from './dto/set-card-completion.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import type { Card } from '../generated/prisma/client';
+import { XpEventType } from '../generated/prisma/enums';
+import { XP_PER_TASK_COMPLETED } from '../character/config/level-curve';
 
 @Injectable()
 export class CardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly characterService: CharacterService,
+  ) {}
 
   async getCards(listId: number): Promise<Card[]> {
     return this.prisma.card.findMany({
@@ -70,11 +77,36 @@ export class CardService {
   async setCardCompletion(
     cardId: number,
     dto: SetCardCompletionDto,
+    actorUserId: number,
   ): Promise<{ ok: boolean }> {
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      select: { assigneeId: true, isCompleted: true },
+    });
+    if (!card) {
+      throw new NotFoundException({
+        code: 'CARD_NOT_FOUND',
+        message: 'Card not found',
+      });
+    }
+
     await this.prisma.card.update({
       where: { id: cardId },
       data: { isCompleted: dto.isCompleted },
     });
+
+    if (dto.isCompleted && !card.isCompleted) {
+      const xpUserId = card.assigneeId ?? actorUserId; 
+        await this.characterService.addExperience(
+          xpUserId,
+          XP_PER_TASK_COMPLETED,
+          XpEventType.TASK_COMPLETED,
+          cardId,
+        );
+    }
+  
+  
+
     return { ok: true };
   }
 

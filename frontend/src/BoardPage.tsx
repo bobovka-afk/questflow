@@ -16,7 +16,16 @@ import {
 	type DropResult
 } from '@hello-pangea/dnd'
 import { AlertModal } from './AlertModal'
-import { api, API_URL, formatApiError, isRateLimitMessage } from './lib/api'
+import {
+	api,
+	API_URL,
+	formatApiError,
+	isRateLimitMessage,
+	isXpGrantErrorCode,
+	isXpTaskSoftNoticeCode,
+	type ApiError
+} from './lib/api'
+import { XP_PER_TASK_COMPLETED } from './lib/xpRewards'
 import { SpaLink } from './lib/navigation'
 import { ProfileToolbarAnchor } from './profileToolbarOutlet'
 import type { BoardRow } from './WorkspaceBoardsPage'
@@ -378,6 +387,30 @@ export function BoardPage({
 	const [completionBusyId, setCompletionBusyId] = useState<number | null>(
 		null
 	)
+	const [xpToast, setXpToast] = useState<{
+		amount: number
+		id: number
+	} | null>(null)
+	const xpToastTimerRef = useRef<number>(0)
+	const [xpErrorAlertCode, setXpErrorAlertCode] = useState<string | null>(
+		null
+	)
+	const [xpBottomNotice, setXpBottomNotice] = useState<{
+		id: number
+		text: string
+	} | null>(null)
+	const xpBottomNoticeTimerRef = useRef(0)
+
+	useEffect(() => {
+		if (!alertOpen) setXpErrorAlertCode(null)
+	}, [alertOpen])
+
+	useEffect(() => {
+		return () => {
+			window.clearTimeout(xpToastTimerRef.current)
+			window.clearTimeout(xpBottomNoticeTimerRef.current)
+		}
+	}, [])
 
 	const [cardTitleEditing, setCardTitleEditing] = useState(false)
 	const cardTitleInputRef = useRef<HTMLInputElement>(null)
@@ -890,23 +923,63 @@ export function BoardPage({
 						json: { isCompleted: next }
 					}
 				)
+				const xpRecipientId =
+					card.assigneeId ?? currentUserId
+				if (
+					next &&
+					xpRecipientId != null &&
+					xpRecipientId === currentUserId
+				) {
+					window.clearTimeout(xpToastTimerRef.current)
+					const id = Date.now()
+					setXpToast({ amount: XP_PER_TASK_COMPLETED, id })
+					xpToastTimerRef.current = window.setTimeout(() => {
+						setXpToast(null)
+					}, 3000)
+				}
 			} catch (err) {
-				setCardsByListId(prev => {
-					const listCards = prev[card.listId] ?? []
-					return {
-						...prev,
-						[card.listId]: listCards.map(c =>
-							c.id === card.id ? { ...c, isCompleted: !next } : c
-						)
-					}
-				})
-				setAlertText(formatError(err))
-				setAlertOpen(true)
+				const code = (err as ApiError).code
+				const completionSavedButXpFailed =
+					next && isXpGrantErrorCode(code)
+				if (!completionSavedButXpFailed) {
+					setCardsByListId(prev => {
+						const listCards = prev[card.listId] ?? []
+						return {
+							...prev,
+							[card.listId]: listCards.map(c =>
+								c.id === card.id
+									? { ...c, isCompleted: !next }
+									: c
+							)
+						}
+					})
+				}
+				if (
+					completionSavedButXpFailed &&
+					isXpTaskSoftNoticeCode(code)
+				) {
+					window.clearTimeout(xpBottomNoticeTimerRef.current)
+					const id = Date.now()
+					setXpBottomNotice({ id, text: formatError(err) })
+					xpBottomNoticeTimerRef.current = window.setTimeout(
+						() => setXpBottomNotice(null),
+						4500
+					)
+				} else {
+					setXpErrorAlertCode(
+						completionSavedButXpFailed &&
+							code === 'CHARACTER_NOT_FOUND'
+							? (code as string)
+							: null
+					)
+					setAlertText(formatError(err))
+					setAlertOpen(true)
+				}
 			} finally {
 				setCompletionBusyId(null)
 			}
 		},
-		[accessToken, completionBusyId, workspaceId]
+		[accessToken, completionBusyId, currentUserId, workspaceId]
 	)
 
 	async function submitEditCard() {
@@ -1357,24 +1430,24 @@ export function BoardPage({
 	return (
 		<div className='trello-board-viewport'>
 			<header className='trello-board-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky'>
-				<div className='trello-topbar-stripe-left trello-topbar-stripe-left--boards-nav'>
+				<div className='trello-topbar-stripe-left'>
 					<SpaLink className='trello-top-left-brand trello-top-left-brand--stripe' to='/workspaces'>
 						<span className='trello-logo' aria-hidden />
 						<span className='trello-top-left-brand-text'>
 							Questflow
 						</span>
 					</SpaLink>
+				</div>
+				<h1 className='trello-topbar-stripe-center'>
+					{loading ? '…' : (board?.name ?? 'Доска')}
+				</h1>
+				<div className='trello-topbar-actions'>
 					<SpaLink
 						className='trello-btn trello-btn-topbar-nav trello-topbar-back-btn'
 						to={`/workspaces/${workspaceId}/boards`}
 					>
 						← Доски
 					</SpaLink>
-				</div>
-				<h1 className='trello-topbar-stripe-center'>
-					{loading ? '…' : (board?.name ?? 'Доска')}
-				</h1>
-				<div className='trello-topbar-stripe-spacer trello-topbar-stripe-spacer--toolbar'>
 					{accessToken ? <ProfileToolbarAnchor /> : null}
 				</div>
 			</header>
@@ -2116,9 +2189,8 @@ export function BoardPage({
 
 			{deleteCommentTarget && (
 				<div
-					className='trello-modal-backdrop'
+					className='trello-modal-backdrop trello-alert-modal-backdrop'
 					role='presentation'
-					style={{ zIndex: 1100 }}
 					onClick={() =>
 						!deleteCommentBusy && setDeleteCommentTarget(null)
 					}
@@ -2175,11 +2247,35 @@ export function BoardPage({
 				</div>
 			)}
 
+			{xpToast ? (
+				<div className='trello-xp-toast-root' aria-live='polite'>
+					<div key={xpToast.id} className='trello-xp-toast'>
+						<span className='trello-xp-toast-glyph' aria-hidden>
+							+
+						</span>
+						<span className='trello-xp-toast-value'>{xpToast.amount}</span>
+						<span className='trello-xp-toast-label'>XP</span>
+					</div>
+				</div>
+			) : null}
+
+			{xpBottomNotice ? (
+				<div className='trello-xp-snackbar-root' aria-live='polite'>
+					<div key={xpBottomNotice.id} className='trello-xp-snackbar'>
+						{xpBottomNotice.text}
+					</div>
+				</div>
+			) : null}
+
 			<AlertModal
 				open={alertOpen}
 				message={alertText}
 				title={
-					isRateLimitMessage(alertText) ? 'Лимит запросов' : undefined
+					isRateLimitMessage(alertText)
+						? 'Лимит запросов'
+						: xpErrorAlertCode === 'CHARACTER_NOT_FOUND'
+							? 'Опыт'
+							: undefined
 				}
 				onClose={() => setAlertOpen(false)}
 			/>

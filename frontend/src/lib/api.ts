@@ -40,6 +40,8 @@ const API_ERROR_CODE_RU: Record<string, string> = {
   CHARACTER_AVATAR_GENDER_MISMATCH:
     'Выберите аватар, который соответствует полу персонажа (мужские / женские варианты).',
   CHARACTER_UPDATE_FIELDS_REQUIRED: 'Укажите хотя бы одно поле для изменения.',
+  XP_EVENT_ALREADY_RECORDED: 'За эту карточку опыт уже был.',
+  DAILY_TASK_XP_LIMIT: 'Сегодня лимит опыта за карточки исчерпан.',
 };
 
 function translateCommonEnglishError(message: string): string | null {
@@ -121,9 +123,36 @@ async function readErrorPayload(res: Response): Promise<{ raw: unknown; message:
   }
 }
 
+let sessionExpiredHandler: (() => void) | null = null;
+
+/** When set, invoked on HTTP 401 if the request sent `accessToken` (session invalid/expired). */
+export function setSessionExpiredHandler(handler: (() => void) | null): void {
+  sessionExpiredHandler = handler;
+}
+
 export function isRateLimitError(e: unknown): boolean {
   const err = e as Partial<ApiError>;
   return Boolean(err?.isRateLimit || err?.status === 429 || err?.code === 'RATE_LIMIT_EXCEEDED');
+}
+
+/**
+ * Коды ошибок из `addExperience` при закрытии карточки: на сервере `isCompleted`
+ * уже сохранён, откатывать галочку в UI не нужно.
+ */
+export function isXpGrantErrorCode(code?: string): boolean {
+  return (
+    code === 'CHARACTER_NOT_FOUND' ||
+    code === 'XP_EVENT_ALREADY_RECORDED' ||
+    code === 'DAILY_TASK_XP_LIMIT'
+  );
+}
+
+/** Не модальное «ошибка», а мягкое оповещение (карточка на сервере уже закрыта). */
+export function isXpTaskSoftNoticeCode(code?: string): boolean {
+  return (
+    code === 'XP_EVENT_ALREADY_RECORDED' ||
+    code === 'DAILY_TASK_XP_LIMIT'
+  );
 }
 
 export function formatApiError(e: unknown): string {
@@ -166,6 +195,13 @@ export async function api<T>(
 
   if (!res.ok) {
     const payload = await readErrorPayload(res);
+    if (res.status === 401 && opts.accessToken) {
+      try {
+        sessionExpiredHandler?.();
+      } catch {
+        /* ignore */
+      }
+    }
     const err: ApiError = {
       status: res.status,
       raw: payload.raw,

@@ -161,7 +161,9 @@ export class AuthController {
 	@ApiOperation({ summary: 'Send password reset email' })
 	@ApiBody({ type: ForgotPasswordDto, description: 'Password reset request payload' })
 	@ApiResponse({ status: 200, description: 'Password reset request processed successfully.' })
-	requestPasswordReset(@Body() dto): Promise<{ ok: boolean }> {
+	requestPasswordReset(
+		@Body() dto: ForgotPasswordDto,
+	): Promise<{ ok: boolean }> {
 		return this.authService.requestPasswordReset(dto.email);
 	}
 

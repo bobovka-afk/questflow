@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { CardService } from './card.service';
@@ -25,6 +26,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import type { AuthedRequest } from '../common/type';
 import type { Card } from '../generated/prisma/client';
 
 @ApiTags('card')
@@ -90,10 +92,15 @@ export class CardController {
   @ApiResponse({ status: 401, description: 'Authentication is required.' })
   @ApiResponse({ status: 404, description: 'Card not found.' })
   async setCardCompletion(
+    @Req() req: AuthedRequest,
     @Param('cardId', ParseIntPipe) cardId: number,
     @Body() dto: SetCardCompletionDto,
   ): Promise<{ ok: boolean }> {
-    return this.cardService.setCardCompletion(cardId, dto);
+    return this.cardService.setCardCompletion(
+      cardId,
+      dto,
+      req.user.id,
+    );
   }
 
   @Patch('cards/:cardId')
@@ -107,7 +114,7 @@ export class CardController {
   @ApiResponse({ status: 404, description: 'Card not found.' })
   async updateCard(
     @Param('cardId', ParseIntPipe) cardId,
-    @Body() dto,
+    @Body() dto: UpdateCardDto,
   ): Promise<Card> {
     return this.cardService.updateCard(cardId, dto);
   }

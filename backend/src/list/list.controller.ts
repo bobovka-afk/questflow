@@ -82,7 +82,7 @@ export class ListController {
     @ApiResponse({ status: 404, description: 'List not found.' })
     async moveList(
         @Param('listId', ParseIntPipe) listId,
-        @Body() dto,
+        @Body() dto: MoveListDto,
     ): Promise<List | null> {
         return this.listService.moveList(listId, dto);
     }

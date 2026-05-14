@@ -185,20 +185,20 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
     <div className="trello-app-shell">
       <div className="trello-boards-main">
         <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
-          <div className="trello-topbar-stripe-left trello-topbar-stripe-left--boards-nav">
+          <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
               <span className="trello-logo" aria-hidden />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
+          </div>
+          <h1 className="trello-topbar-stripe-center">{workspaceTitle || '…'}</h1>
+          <div className="trello-topbar-actions">
             <SpaLink
               className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn"
               to="/workspaces"
             >
               ← Рабочие пространства
             </SpaLink>
-          </div>
-          <h1 className="trello-topbar-stripe-center">{workspaceTitle || '…'}</h1>
-          <div className="trello-topbar-stripe-spacer trello-topbar-stripe-spacer--toolbar">
             {accessToken ? <ProfileToolbarAnchor /> : null}
           </div>
         </header>

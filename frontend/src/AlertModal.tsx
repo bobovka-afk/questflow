@@ -9,7 +9,7 @@ export function AlertModal({ open, message, onClose, title }: Props) {
   if (!open) return null;
   return (
     <div
-      className="trello-modal-backdrop"
+      className="trello-modal-backdrop trello-alert-modal-backdrop"
       role="presentation"
       onClick={onClose}
     >

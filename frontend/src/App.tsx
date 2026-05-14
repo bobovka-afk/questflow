@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
-import { api, API_URL, formatApiError, isRateLimitMessage, type ApiError } from './lib/api';
+import { api, API_URL, formatApiError, isRateLimitMessage, setSessionExpiredHandler, type ApiError } from './lib/api';
 import { routeNeedsCharacterGate, type CharacterDto } from './lib/character';
 import { CharacterSetupPage } from './CharacterSetupPage';
 import { ProfileCharacterPage } from './ProfileCharacterPage';
@@ -437,9 +437,6 @@ function Home(props: { onAuthed: (token: string) => void; hasSession: boolean })
           method: 'POST',
           json: { email, password, name },
         });
-        setMsg('Регистрация ок. Теперь залогинься.');
-        setMode('login');
-        return;
       }
 
       const res = await api<AuthResponse>('/auth/login', {
@@ -1251,10 +1248,13 @@ function AppContent() {
         if (!cancelled) setCharacterLoadState('ok');
       } catch (e) {
         const err = e as ApiError;
-        if (err.status === 404 && err.code === 'CHARACTER_NOT_FOUND') {
+        if (
+          err.status === 404 &&
+          (!err.code || err.code === 'CHARACTER_NOT_FOUND')
+        ) {
           if (!cancelled) setCharacterLoadState('missing');
         } else if (!cancelled) {
-          setCharacterLoadState('ok');
+          setCharacterLoadState('idle');
         }
       }
     })();
@@ -1284,12 +1284,21 @@ function AppContent() {
   }, [profileMenuOpen]);
 
   useEffect(() => {
+    setSessionExpiredHandler(() => {
+      setToken(null);
+      navigate('/');
+    });
+    return () => setSessionExpiredHandler(null);
+  }, []);
+
+  useEffect(() => {
     const protectedPath =
       route === '/workspaces' ||
       route.startsWith('/workspaces/') ||
       route.startsWith('/profile') ||
       route.startsWith('/invites') ||
-      route.startsWith('/character/setup');
+      route.startsWith('/character/setup') ||
+      route.startsWith('/dashboard');
     if (!accessToken && protectedPath) {
       navigate('/');
     }

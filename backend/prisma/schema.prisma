@@ -234,6 +234,7 @@ model Character {
   currentXp Int @default(0) @map("current_xp")
   level   Int @default(1)
   health Int @default(100)
+  dailyTaskXpCount Int @default(0) @map("daily_task_xp_count")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
