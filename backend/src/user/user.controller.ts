@@ -82,7 +82,7 @@ export class UserController {
     FileInterceptor('file', {
       storage: diskStorage({
         destination: (_req, _file, cb) => {
-          const dir = path.join(process.cwd(), 'uploads', 'avatars');
+          const dir = path.join(process.cwd(), 'uploads', 'user-avatars');
           fs.mkdirSync(dir, { recursive: true });
           cb(null, dir);
         },
@@ -123,7 +123,7 @@ export class UserController {
     }
 
     const baseUrl = process.env.SERVER_URL ?? 'http://localhost:3000';
-    const avatarUrl = `${baseUrl}/uploads/avatars/${file.filename}`;
+    const avatarUrl = `${baseUrl}/uploads/user-avatars/${file.filename}`;
 
     return this.userService.updateAvatar(req.user.id, avatarUrl);
   }

@@ -62,5 +62,6 @@ backend/src/generated/prisma
 # Local / optional docs (not versioned)
 GAMIFICATION_ROADMAP.md
 
-# Runtime user uploads (avatars); recreated on first upload / Docker bind mount
-backend/uploads/
+# User profile avatar uploads (runtime); presets live in uploads/character-avatars/
+backend/uploads/user-avatars/*
+!backend/uploads/user-avatars/.gitkeep

@@ -15,7 +15,7 @@ export type CharacterDto = {
   updatedAt: string;
 };
 
-/** Archetype keys shared with uploads/avatars/Male|Female/{role}-man|woman.png */
+/** Archetype keys shared with uploads/character-avatars/Male|Female/{role}-man|woman.png */
 export const CHARACTER_ROLES = [
   'DRUID',
   'HUNTER',
@@ -43,13 +43,13 @@ export function presetForRole(
   return gender === 'MALE' ? `${role}_MAN` : `${role}_WOMAN`;
 }
 
-/** Static portrait under /uploads/avatars/… */
+/** Static portrait under /uploads/character-avatars/… */
 export function characterPortraitUrl(avatarPreset: string): string {
   const role = avatarPreset.replace(/_MAN$|_WOMAN$/i, '').toLowerCase();
   if (avatarPreset.endsWith('_MAN')) {
-    return `${API_URL}/uploads/avatars/Male/${role}-man.png`;
+    return `${API_URL}/uploads/character-avatars/Male/${role}-man.png`;
   }
-  return `${API_URL}/uploads/avatars/Female/${role}-woman.png`;
+  return `${API_URL}/uploads/character-avatars/Female/${role}-woman.png`;
 }
 
 export function routeNeedsCharacterGate(route: string): boolean {
