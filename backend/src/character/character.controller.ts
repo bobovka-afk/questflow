@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  ParseIntPipe,
   Patch,
   Post,
   Req,
@@ -36,6 +38,18 @@ export class CharacterController {
   async getCharacter(@Req() req: AuthedRequest): Promise<Character> {
     return this.characterService.getCharacter(req.user.id);
   }
+
+  @Get('user/:userId')
+  @ApiOperation({ summary: 'Get character by user id (any authenticated user)' })
+  @ApiResponse({ status: 200, description: 'Character returned.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 404, description: "code: 'CHARACTER_NOT_FOUND'" })
+  async getCharacterByUserId(
+    @Param('userId', ParseIntPipe) userId: number,
+  ): Promise<Character> {
+    return this.characterService.getCharacter(userId);
+  }
+
 
   @Post()
   @ApiOperation({ summary: 'Create character (one per user)' })

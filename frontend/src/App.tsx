@@ -4,6 +4,8 @@ import { api, API_URL, formatApiError, isRateLimitMessage, setSessionExpiredHand
 import { routeNeedsCharacterGate, type CharacterDto } from './lib/character';
 import { CharacterSetupPage } from './CharacterSetupPage';
 import { ProfileCharacterPage } from './ProfileCharacterPage';
+import { UserProfilePage } from './UserProfilePage';
+import { UserCharacterPage } from './UserCharacterPage';
 import {
   getPendingInviteToken,
   tryAcceptPendingInvite,
@@ -1390,6 +1392,8 @@ function AppContent() {
   const boardsListMatch = route.match(/^\/workspaces\/(\d+)\/boards\/?$/);
   const activityRouteMatch = route.match(/^\/workspaces\/(\d+)\/activity\/?$/);
   const memberRouteMatch = route.match(/^\/workspaces\/(\d+)\/members$/);
+  const profileUserCharacterMatch = route.match(/^\/profile\/user\/(\d+)\/character\/?$/);
+  const profileUserMatch = route.match(/^\/profile\/user\/(\d+)$/);
   const characterGateLoading =
     Boolean(accessToken) &&
     characterLoadState === 'loading' &&
@@ -1449,6 +1453,20 @@ function AppContent() {
         <Home onAuthed={(t) => setToken(t)} hasSession={false} />
       ) : route === '/profile/character' || route.startsWith('/profile/character/') ? (
         <ProfileCharacterPage accessToken={accessToken} />
+      ) : profileUserCharacterMatch ? (
+        <UserCharacterPage
+          accessToken={accessToken}
+          userId={Number(profileUserCharacterMatch[1])}
+          currentUserId={toolbarUser?.id ?? null}
+        />
+      ) : profileUserMatch ? (
+        <UserProfilePage
+          accessToken={accessToken}
+          userId={Number(profileUserMatch[1])}
+          currentUserId={toolbarUser?.id ?? null}
+        />
+      ) : route === '/profile/me' || route.startsWith('/profile/me/') ? (
+        <ProfileMePage accessToken={accessToken} onUserUpdated={(u) => setToolbarUser(u)} />
       ) : (
         <ProfileMePage accessToken={accessToken} onUserUpdated={(u) => setToolbarUser(u)} />
       );

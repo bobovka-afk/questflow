@@ -29,6 +29,20 @@ export class CharacterService {
     return character;
   }
 
+  async getCharacterForViewer(targetCharacterId: number): Promise<Character> {
+    const targetCharacter = await this.prisma.character.findUnique({
+      where: { id: targetCharacterId },
+    });
+    if (!targetCharacter) {
+      throw new NotFoundException({
+        code: 'CHARACTER_NOT_FOUND',
+        message: 'Character not found',
+      });
+    }
+
+    return targetCharacter;
+  }
+
   async createCharacter(userId: number, dto: CreateCharacterDto): Promise<Character> {
     const existingCharacter = await this.prisma.character.findUnique({
       where: { userId },

@@ -35,9 +35,10 @@ export class WorkspaceActivityController {
   @ApiOperation({ summary: 'List workspace activity (owner/admin)' })
   @ApiParam({ name: 'workspaceId', example: 1 })
   @ApiResponse({ status: 200, description: 'Activity rows (newest first)' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  @ApiResponse({ status: 404, description: 'Workspace not found' })
+  @ApiResponse({ status: 400, description: "code: 'WORKSPACE_ID_REQUIRED'" })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN'" })
+  @ApiResponse({ status: 404, description: "code: 'WORKSPACE_NOT_FOUND'" })
   async listWorkspaceActivity(
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
     @Query() paginationDto: PaginationDto,

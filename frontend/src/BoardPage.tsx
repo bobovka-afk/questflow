@@ -18,7 +18,6 @@ import {
 import { AlertModal } from './AlertModal'
 import {
 	api,
-	API_URL,
 	formatApiError,
 	isRateLimitMessage,
 	isXpGrantErrorCode,
@@ -26,7 +25,8 @@ import {
 	type ApiError
 } from './lib/api'
 import { XP_PER_TASK_COMPLETED } from './lib/xpRewards'
-import { SpaLink } from './lib/navigation'
+import { avatarInitials, avatarSrcFromPath, userProfilePath } from './lib/avatar'
+import { handleSpaTileAuxClick, handleSpaTileClick, SpaLink } from './lib/navigation'
 import { ProfileToolbarAnchor } from './profileToolbarOutlet'
 import type { BoardRow } from './WorkspaceBoardsPage'
 import { canManageWorkspace } from './lib/roles'
@@ -242,20 +242,6 @@ function formatCardLogWhen(iso: string): string {
 	}
 }
 
-function avatarSrcFromPath(p: string | null | undefined): string {
-	if (!p) return ''
-	const normalized = p.replace(/\\/g, '/')
-	if (normalized.startsWith('data:')) return normalized
-	if (normalized.startsWith('http://') || normalized.startsWith('https://'))
-		return normalized
-	if (normalized.startsWith('//')) {
-		const proto = API_URL.startsWith('https://') ? 'https:' : 'http:'
-		return `${proto}${normalized}`
-	}
-	if (normalized.startsWith('/')) return `${API_URL}${normalized}`
-	return `${API_URL}/${normalized}`
-}
-
 /** Относительное время для комментариев (Intl, ru). */
 function formatCommentRelativeAgo(iso: string, nowMs: number): string {
 	const then = new Date(iso).getTime()
@@ -277,25 +263,25 @@ function formatCommentRelativeAgo(iso: string, nowMs: number): string {
 	return rtf.format(-years, 'year')
 }
 
-function avatarInitials(name: string): string {
-	const parts = name.trim().split(/\s+/).filter(Boolean)
-	if (parts.length >= 2)
-		return `${parts[0]![0]!}${parts[1]![0]!}`.toUpperCase()
-	const n = name.trim()
-	return n.slice(0, 2).toUpperCase() || '?'
-}
-
 function CommentAvatarBubble({
 	name,
-	avatarPath
+	avatarPath,
+	profileTo
 }: {
 	name: string
 	avatarPath?: string | null
+	profileTo: string
 }) {
 	const [broken, setBroken] = useState(false)
 	const src = avatarSrcFromPath(avatarPath)
 	return (
-		<div className='trello-card-comment-avatar'>
+		<button
+			type='button'
+			className='trello-card-comment-avatar trello-card-comment-avatar-btn'
+			aria-label={`Профиль: ${name}`}
+			onClick={e => handleSpaTileClick(e, profileTo)}
+			onAuxClick={e => handleSpaTileAuxClick(e, profileTo)}
+		>
 			{src && !broken ? (
 				<img
 					src={src}
@@ -311,7 +297,7 @@ function CommentAvatarBubble({
 					{avatarInitials(name)}
 				</span>
 			)}
-		</div>
+		</button>
 	)
 }
 
@@ -1932,6 +1918,10 @@ export function BoardPage({
 													isAuthor ||
 													canManageWorkspace(myRole)
 												const showEdit = isAuthor
+												const authorProfileTo =
+													isAuthor
+														? '/profile/me'
+														: userProfilePath(c.userId)
 												return (
 													<li
 														key={c.id}
@@ -1944,23 +1934,24 @@ export function BoardPage({
 													>
 														<div className='trello-card-comment-row'>
 															<CommentAvatarBubble
-																name={
-																	c.user.name
-																}
-																avatarPath={
-																	c.user
-																		.avatarPath
-																}
+																name={c.user.name}
+																avatarPath={c.user.avatarPath}
+																profileTo={authorProfileTo}
 															/>
 															<div className='trello-card-comment-main'>
 																<div className='trello-card-comment-head'>
-																	<span className='trello-card-comment-author'>
-																		{
-																			c
-																				.user
-																				.name
+																	<button
+																		type='button'
+																		className='trello-card-comment-author trello-card-comment-author-link'
+																		onClick={e =>
+																			handleSpaTileClick(e, authorProfileTo)
 																		}
-																	</span>
+																		onAuxClick={e =>
+																			handleSpaTileAuxClick(e, authorProfileTo)
+																		}
+																	>
+																		{c.user.name}
+																	</button>
 																	<time
 																		className='trello-card-comment-when'
 																		dateTime={

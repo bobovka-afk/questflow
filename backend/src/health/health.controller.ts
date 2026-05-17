@@ -18,7 +18,7 @@ export class HealthController {
   @Get('ready')
   @ApiOperation({ summary: 'Check if application dependencies are ready' })
   @ApiResponse({ status: 200, description: 'Application dependencies are ready.' })
-  @ApiResponse({ status: 503, description: 'Application dependencies are not ready.' })
+  @ApiResponse({ status: 503, description: "code: 'SERVICE_NOT_READY'" })
   async ready(): Promise<HealthReadiness> {
     const readiness = await this.healthService.getReadiness();
 

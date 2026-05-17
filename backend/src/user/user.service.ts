@@ -1,9 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { User } from '../generated/prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from '../auth/dto/register.dto';
-import type { UserPublic } from './interface';
+import type { UserProfileView, UserPublic } from './interface';
 import type { UserPublicRow } from './type';
 
 @Injectable()
@@ -34,6 +38,48 @@ export class UserService {
     return this.prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
+  }
+
+  async getProfileForViewer(
+    targetUserId: number,
+    viewerUserId: number,
+  ): Promise<UserProfileView> {
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: {
+        id: true,
+        name: true,
+        avatarPath: true,
+        email: true,
+        createdAt: true,
+      },
+    });
+    if (!targetUser) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+
+    const shared = await this.prisma.workspaceMember.findFirst({
+      where: {
+        userId: viewerUserId,
+        workspace: {
+          members: { some: { userId: targetUserId } },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!shared) {
+      throw new ForbiddenException({
+        code: 'ACCESS_DENIED',
+        message: 'You are not allowed to access this profile',
+      });
+    }
+
+    return targetUser;
   }
 
   async create(dto: RegisterDto): Promise<UserPublic> {

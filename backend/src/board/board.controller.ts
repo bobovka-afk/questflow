@@ -34,9 +34,9 @@ export class BoardController {
   @ApiBody({ type: CreateBoardDto, description: 'Board creation payload' })
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiResponse({ status: 201, description: 'Board created successfully.' })
-  @ApiResponse({ status: 400, description: 'Invalid board creation payload.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
+  @ApiResponse({ status: 400, description: "code: 'WORKSPACE_ID_REQUIRED'" })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
   async createBoard(
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
     @Body() dto: CreateBoardDto,
@@ -49,9 +49,10 @@ export class BoardController {
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiParam({ name: 'boardId', example: 7, description: 'Board id' })
   @ApiResponse({ status: 200, description: 'Board details returned successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-  @ApiResponse({ status: 404, description: 'Board not found.' })
+  @ApiResponse({ status: 400, description: "code: 'BOARD_ID_REQUIRED' | code: 'WORKSPACE_ID_REQUIRED'" })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
+  @ApiResponse({ status: 404, description: "code: 'BOARD_NOT_FOUND' | code: 'WORKSPACE_NOT_FOUND'" })
   async getBoard(
     @Param('boardId', ParseIntPipe) boardId,
   ): Promise<Board> {
@@ -62,8 +63,8 @@ export class BoardController {
   @ApiOperation({ summary: 'Get workspace boards' })
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiResponse({ status: 200, description: 'Workspace boards returned successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
   async getBoards(
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
   ): Promise<Board[]> {
@@ -78,10 +79,10 @@ export class BoardController {
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiParam({ name: 'boardId', example: 7, description: 'Board id' })
   @ApiResponse({ status: 200, description: 'Board updated successfully.' })
-  @ApiResponse({ status: 400, description: 'Invalid board update payload.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-  @ApiResponse({ status: 404, description: 'Board not found.' })
+  @ApiResponse({ status: 400, description: "code: 'BOARD_UPDATE_FIELDS_REQUIRED' | code: 'BOARD_ID_REQUIRED' | code: 'WORKSPACE_ID_REQUIRED'" })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
+  @ApiResponse({ status: 404, description: "code: 'BOARD_NOT_FOUND'" })
   async updateBoard(
     @Param('boardId', ParseIntPipe) boardId: number,
     @Body() dto: UpdateBoardDto,
@@ -99,9 +100,9 @@ export class BoardController {
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiParam({ name: 'boardId', example: 7, description: 'Board id' })
   @ApiResponse({ status: 200, description: 'Board deleted successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-  @ApiResponse({ status: 404, description: 'Board not found.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
+  @ApiResponse({ status: 404, description: "code: 'BOARD_NOT_FOUND'" })
   async deleteBoard(
     @Param('boardId', ParseIntPipe) boardId: number,
   ): Promise<{ ok: boolean }> {

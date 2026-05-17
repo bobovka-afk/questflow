@@ -47,7 +47,7 @@ export class WorkspaceInviteController {
   @ApiQuery({ name: 'limit', required: false, example: 10, description: 'Maximum number of records to return' })
   @ApiQuery({ name: 'offset', required: false, example: 0, description: 'Number of records to skip' })
   @ApiResponse({ status: 200, description: 'Current user invites returned successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
   async getMyInvites(
     @Req() req: AuthedRequest,
     @Query() paginationDto: PaginationDto,
@@ -63,9 +63,9 @@ export class WorkspaceInviteController {
   @ApiQuery({ name: 'limit', required: false, example: 10, description: 'Maximum number of records to return' })
   @ApiQuery({ name: 'offset', required: false, example: 0, description: 'Number of records to skip' })
   @ApiResponse({ status: 200, description: 'Workspace invites returned successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-  @ApiResponse({ status: 404, description: 'Workspace not found.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
+  @ApiResponse({ status: 404, description: "code: 'WORKSPACE_NOT_FOUND'" })
   async getWorkspaceInvites(
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
     @Query() paginationDto: PaginationDto,
@@ -82,10 +82,11 @@ export class WorkspaceInviteController {
   @ApiBody({ type: SendInviteDto, description: 'Workspace invite creation payload' })
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiResponse({ status: 201, description: 'Workspace invite created successfully.' })
-  @ApiResponse({ status: 400, description: 'Invalid workspace invite payload.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-  @ApiResponse({ status: 409, description: 'Invite conflicts with the current workspace state.' })
+  @ApiResponse({ status: 400, description: "code: 'INVITE_MAIL_FAILED' | code: 'WORKSPACE_ID_REQUIRED'" })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN'" })
+  @ApiResponse({ status: 409, description: "code: 'USER_ALREADY_MEMBER' | code: 'INVITE_ALREADY_SENT'" })
+  @ApiResponse({ status: 429, description: "code: 'RATE_LIMIT_EXCEEDED'" })
   async sendInvite(
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
     @Req() req: AuthedRequest,
@@ -100,8 +101,12 @@ export class WorkspaceInviteController {
   @ApiOperation({ summary: 'Accept workspace invite by token' })
   @ApiBody({ type: AcceptInviteTokenDto, description: 'Workspace invite token payload' })
   @ApiResponse({ status: 201, description: 'Workspace invite accepted successfully by token.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 404, description: 'Invite token not found or expired.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 400, description: "code: 'INVITE_EXPIRED'" })
+  @ApiResponse({ status: 403, description: "code: 'INVITE_ACCESS_DENIED'" })
+  @ApiResponse({ status: 404, description: "code: 'INVITE_NOT_FOUND' | code: 'USER_NOT_FOUND'" })
+  @ApiResponse({ status: 409, description: "code: 'INVITE_ALREADY_PROCESSED' | code: 'USER_ALREADY_MEMBER'" })
+  @ApiResponse({ status: 429, description: "code: 'RATE_LIMIT_EXCEEDED'" })
   async acceptInviteByToken(
     @Req() req: AuthedRequest,
     @Body() dto: AcceptInviteTokenDto,
@@ -116,9 +121,11 @@ export class WorkspaceInviteController {
   @ApiOperation({ summary: 'Accept workspace invite by id' })
   @ApiParam({ name: 'inviteId', example: 15, description: 'Invite id' })
   @ApiResponse({ status: 201, description: 'Workspace invite accepted successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 404, description: 'Invite not found.' })
-  @ApiResponse({ status: 409, description: 'Invite conflicts with the current workspace state.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 404, description: "code: 'INVITE_NOT_FOUND'" })
+  @ApiResponse({ status: 400, description: "code: 'INVITE_EXPIRED'" })
+  @ApiResponse({ status: 403, description: "code: 'INVITE_ACCESS_DENIED'" })
+  @ApiResponse({ status: 409, description: "code: 'INVITE_ALREADY_PROCESSED' | code: 'USER_ALREADY_MEMBER'" })
   async acceptInvite(
     @Param('inviteId', ParseIntPipe) inviteId: number,
     @Req() req: AuthedRequest,
@@ -130,9 +137,10 @@ export class WorkspaceInviteController {
   @ApiOperation({ summary: 'Decline workspace invite by id' })
   @ApiParam({ name: 'inviteId', example: 15, description: 'Invite id' })
   @ApiResponse({ status: 201, description: 'Workspace invite declined successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 404, description: 'Invite not found.' })
-  @ApiResponse({ status: 409, description: 'Invite conflicts with the current workspace state.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 404, description: "code: 'INVITE_NOT_FOUND'" })
+  @ApiResponse({ status: 403, description: "code: 'INVITE_ACCESS_DENIED'" })
+  @ApiResponse({ status: 409, description: "code: 'INVITE_ALREADY_PROCESSED'" })
   async declineInvite(
     @Param('inviteId', ParseIntPipe) inviteId: number,
     @Req() req: AuthedRequest,
@@ -147,9 +155,9 @@ export class WorkspaceInviteController {
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiParam({ name: 'inviteId', example: 15, description: 'Invite id' })
   @ApiResponse({ status: 200, description: 'Workspace invite deleted successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-  @ApiResponse({ status: 404, description: 'Invite not found.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
+  @ApiResponse({ status: 404, description: "code: 'INVITE_NOT_FOUND'" })
   async deleteInvite(
     @Req() req: AuthedRequest,
     @Param('workspaceId', ParseIntPipe) workspaceId: number,

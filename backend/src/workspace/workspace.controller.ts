@@ -48,8 +48,7 @@ export class WorkspaceController {
   @ApiOperation({ summary: 'Create a workspace' })
   @ApiBody({ type: CreateWorkspaceDto, description: 'Workspace creation payload' })
   @ApiResponse({ status: 201, description: 'Workspace created successfully.' })
-  @ApiResponse({ status: 400, description: 'Invalid workspace creation payload.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
   async createWorkspace(
     @Req() req: AuthedRequest,
     @Body() dto: CreateWorkspaceDto,
@@ -62,7 +61,7 @@ export class WorkspaceController {
   @ApiQuery({ name: 'limit', required: false, example: 10, description: 'Maximum number of records to return' })
   @ApiQuery({ name: 'offset', required: false, example: 0, description: 'Number of records to skip' })
   @ApiResponse({ status: 200, description: 'User workspaces returned successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
   async getUserWorkspaces(
     @Req() req: AuthedRequest,
     @Query() paginationDto: PaginationDto,
@@ -75,9 +74,10 @@ export class WorkspaceController {
   @ApiOperation({ summary: 'Get workspace summary' })
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiResponse({ status: 200, description: 'Workspace summary returned successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-  @ApiResponse({ status: 404, description: 'Workspace not found.' })
+  @ApiResponse({ status: 400, description: "code: 'WORKSPACE_ID_REQUIRED'" })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED'" })
+  @ApiResponse({ status: 404, description: "code: 'WORKSPACE_NOT_FOUND'" })
   async getWorkspaceSummary(
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
     @Req() req: AuthedRequest,
@@ -95,10 +95,10 @@ export class WorkspaceController {
   @ApiBody({ type: UpdateWorkspaceDto, description: 'Workspace update payload' })
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiResponse({ status: 200, description: 'Workspace updated successfully.' })
-  @ApiResponse({ status: 400, description: 'Invalid workspace update payload.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-  @ApiResponse({ status: 404, description: 'Workspace not found.' })
+  @ApiResponse({ status: 400, description: "code: 'WORKSPACE_UPDATE_FIELDS_REQUIRED' | code: 'WORKSPACE_ID_REQUIRED'" })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN'" })
+  @ApiResponse({ status: 404, description: "code: 'WORKSPACE_NOT_FOUND'" })
   async updateWorkspace(
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
     @Body() dto: UpdateWorkspaceDto,
@@ -117,9 +117,10 @@ export class WorkspaceController {
   @ApiOperation({ summary: 'Delete workspace' })
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiResponse({ status: 200, description: 'Workspace deleted successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-  @ApiResponse({ status: 404, description: 'Workspace not found.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 400, description: "code: 'WORKSPACE_ID_REQUIRED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN'" })
+  @ApiResponse({ status: 404, description: "code: 'WORKSPACE_NOT_FOUND'" })
   async deleteWorkspace(
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
   ): Promise<{ ok: boolean }> {

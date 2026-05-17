@@ -41,8 +41,8 @@ export class ListController {
     @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
     @ApiParam({ name: 'boardId', example: 7, description: 'Board id' })
     @ApiResponse({ status: 200, description: 'Board lists returned successfully.' })
-    @ApiResponse({ status: 401, description: 'Authentication is required.' })
-    @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
+    @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+    @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
     async getLists(
         @Param('boardId', ParseIntPipe) boardId: number,
     ): Promise<List[]> {
@@ -57,9 +57,9 @@ export class ListController {
     @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
     @ApiParam({ name: 'boardId', example: 7, description: 'Board id' })
     @ApiResponse({ status: 201, description: 'List created successfully.' })
-    @ApiResponse({ status: 400, description: 'Invalid list creation payload.' })
-    @ApiResponse({ status: 401, description: 'Authentication is required.' })
-    @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
+    @ApiResponse({ status: 400, description: "code: 'BOARD_ID_REQUIRED' | code: 'WORKSPACE_ID_REQUIRED'" })
+    @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+    @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
     async createList(
         @Param('boardId', ParseIntPipe) boardId: number,
         @Body() dto: CreateListDto,
@@ -76,10 +76,10 @@ export class ListController {
     @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
     @ApiParam({ name: 'listId', example: 11, description: 'List id' })
     @ApiResponse({ status: 200, description: 'List order updated successfully.' })
-    @ApiResponse({ status: 400, description: 'Invalid move payload.' })
-    @ApiResponse({ status: 401, description: 'Authentication is required.' })
-    @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-    @ApiResponse({ status: 404, description: 'List not found.' })
+    @ApiResponse({ status: 400, description: "code: 'LIST_ID_REQUIRED' | code: 'WORKSPACE_ID_REQUIRED'" })
+    @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+    @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
+    @ApiResponse({ status: 404, description: "code: 'LIST_NOT_FOUND'" })
     async moveList(
         @Param('listId', ParseIntPipe) listId,
         @Body() dto: MoveListDto,
@@ -95,10 +95,10 @@ export class ListController {
     @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
     @ApiParam({ name: 'listId', example: 11, description: 'List id' })
     @ApiResponse({ status: 200, description: 'List updated successfully.' })
-    @ApiResponse({ status: 400, description: 'Invalid list update payload.' })
-    @ApiResponse({ status: 401, description: 'Authentication is required.' })
-    @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-    @ApiResponse({ status: 404, description: 'List not found.' })
+    @ApiResponse({ status: 400, description: "code: 'LIST_UPDATE_FIELDS_REQUIRED' | code: 'LIST_ID_REQUIRED'" })
+    @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+    @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
+    @ApiResponse({ status: 404, description: "code: 'LIST_NOT_FOUND'" })
     async updateList(
         @Param('listId', ParseIntPipe) listId: number,
         @Body() dto: UpdateListDto,
@@ -116,9 +116,9 @@ export class ListController {
     @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
     @ApiParam({ name: 'listId', example: 11, description: 'List id' })
     @ApiResponse({ status: 200, description: 'List deleted successfully.' })
-    @ApiResponse({ status: 401, description: 'Authentication is required.' })
-    @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-    @ApiResponse({ status: 404, description: 'List not found.' })
+    @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+    @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
+    @ApiResponse({ status: 404, description: "code: 'LIST_NOT_FOUND'" })
     async deleteList(
         @Param('listId', ParseIntPipe) listId: number,
     ): Promise<{ ok: boolean }> {

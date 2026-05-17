@@ -51,7 +51,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Register a new user' })
   @ApiBody({ type: RegisterDto, description: 'Registration payload' })
   @ApiResponse({ status: 200, description: 'User registered successfully.' })
-  @ApiResponse({ status: 400, description: 'Invalid registration payload.' })
+  @ApiResponse({ status: 400, description: "code: 'EMAIL_ALREADY_EXISTS'" })
+  @ApiResponse({ status: 429, description: "code: 'RATE_LIMIT_EXCEEDED'" })
   register(@Body() registerDto: RegisterDto): Promise<RegisterResult> {
     return this.authService.register(registerDto);
   }
@@ -63,7 +64,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Authenticate user with email and password' })
   @ApiBody({ type: LoginDto, description: 'Login credentials payload' })
   @ApiResponse({ status: 200, description: 'User authenticated successfully.' })
-  @ApiResponse({ status: 401, description: 'Invalid email or password.' })
+  @ApiResponse({ status: 401, description: "code: 'INVALID_CREDENTIALS'" })
+  @ApiResponse({ status: 429, description: "code: 'RATE_LIMIT_EXCEEDED'" })
   async login(
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) res: Response,
@@ -77,7 +79,7 @@ export class AuthController {
 	@Post('login/access-token')
 	@ApiOperation({ summary: 'Issue new tokens using refresh cookie' })
 	@ApiResponse({ status: 200, description: 'New access and refresh tokens issued successfully.' })
-	@ApiResponse({ status: 401, description: 'Refresh token is missing, invalid, or expired.' })
+	@ApiResponse({ status: 401, description: "code: 'REFRESH_TOKEN_REQUIRED' | code: 'INVALID_REFRESH_TOKEN' | code: 'USER_NOT_FOUND'" })
 	async getNewTokens(
 		@Req() req: Request,
 		@Res({ passthrough: true }) res: Response,
@@ -174,7 +176,8 @@ export class AuthController {
 	@ApiOperation({ summary: 'Confirm password reset token' })
 	@ApiBody({ type: ConfirmPasswordResetDto, description: 'Password reset confirmation payload' })
 	@ApiResponse({ status: 200, description: 'Password reset completed successfully.' })
-	@ApiResponse({ status: 400, description: 'Invalid password reset token or payload.' })
+	@ApiResponse({ status: 400, description: "code: 'TOKEN_REQUIRED' | code: 'PASSWORD_REQUIRED' | code: 'TOKEN_INVALID_OR_EXPIRED'" })
+	@ApiResponse({ status: 429, description: "code: 'RATE_LIMIT_EXCEEDED'" })
 	confirmPasswordReset(@Body() dto: ConfirmPasswordResetDto): Promise<{ ok: boolean }> {
 		return this.authService.confirmPasswordReset(dto.token, dto.newPassword);
 	}
@@ -187,8 +190,9 @@ export class AuthController {
   @ApiOperation({ summary: 'Change password for authenticated user' })
   @ApiBody({ type: ChangePasswordDto, description: 'Password change payload' })
   @ApiResponse({ status: 200, description: 'Password changed successfully.' })
-  @ApiResponse({ status: 400, description: 'Invalid password change payload.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required or current password is invalid.' })
+  @ApiResponse({ status: 400, description: "code: 'NEW_PASSWORD_REQUIRED' | code: 'PASSWORD_SHOULD_DIFFER' | code: 'CURRENT_PASSWORD_REQUIRED'" })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED' | code: 'USER_NOT_FOUND' | code: 'INVALID_CURRENT_PASSWORD'" })
+  @ApiResponse({ status: 429, description: "code: 'RATE_LIMIT_EXCEEDED'" })
   changePassword(
     @Req() req: AuthedRequest,
     @Body() dto: ChangePasswordDto,

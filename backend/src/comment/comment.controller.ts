@@ -41,8 +41,8 @@ export class CommentController {
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiParam({ name: 'cardId', example: 35, description: 'Card id' })
   @ApiResponse({ status: 200, description: 'Comments returned successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
   async getComments(
     @Param('cardId', ParseIntPipe) cardId: number,
   ): Promise<CommentWithUser[]> {
@@ -57,8 +57,9 @@ export class CommentController {
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiParam({ name: 'cardId', example: 35, description: 'Card id' })
   @ApiResponse({ status: 201, description: 'Comment created successfully.' })
-  @ApiResponse({ status: 400, description: 'Invalid comment creation payload.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
+  @ApiResponse({ status: 400, description: "code: 'CARD_ID_REQUIRED' | code: 'WORKSPACE_ID_REQUIRED'" })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 429, description: "code: 'RATE_LIMIT_EXCEEDED'" })
   async createComment(
     @Param('cardId', ParseIntPipe) cardId: number,
     @Body() dto: CreateCommentDto,
@@ -73,10 +74,9 @@ export class CommentController {
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiParam({ name: 'commentId', example: 52, description: 'Comment id' })
   @ApiResponse({ status: 200, description: 'Comment updated successfully.' })
-  @ApiResponse({ status: 400, description: 'Invalid comment update payload.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'You do not have permission to update this comment.' })
-  @ApiResponse({ status: 404, description: 'Comment not found.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'COMMENT_EDIT_FORBIDDEN' | code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
+  @ApiResponse({ status: 404, description: "code: 'COMMENT_NOT_FOUND'" })
   async updateComment(
     @Param('commentId', ParseIntPipe) commentId: number,
     @Body() dto: UpdateCommentDto,
@@ -90,9 +90,9 @@ export class CommentController {
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiParam({ name: 'commentId', example: 52, description: 'Comment id' })
   @ApiResponse({ status: 200, description: 'Comment deleted successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'You do not have permission to delete this comment.' })
-  @ApiResponse({ status: 404, description: 'Comment not found.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'COMMENT_DELETE_FORBIDDEN' | code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN'" })
+  @ApiResponse({ status: 404, description: "code: 'COMMENT_NOT_FOUND'" })
   async deleteComment(
     @Param('commentId', ParseIntPipe) commentId: number,
     @Req() req: WorkspaceAuthedRequest,

@@ -40,9 +40,9 @@ export class WorkspaceMemberController {
   @ApiQuery({ name: 'limit', required: false, example: 10, description: 'Maximum number of records to return' })
   @ApiQuery({ name: 'offset', required: false, example: 0, description: 'Number of records to skip' })
   @ApiResponse({ status: 200, description: 'Workspace members returned successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-  @ApiResponse({ status: 404, description: 'Workspace not found.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
+  @ApiResponse({ status: 404, description: "code: 'WORKSPACE_NOT_FOUND'" })
   async getMembersWorkspace(
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
     @Query() paginationDto: PaginationDto,
@@ -64,9 +64,9 @@ export class WorkspaceMemberController {
     description: 'User id of the member to remove (User.id, not WorkspaceMember.id)',
   })
   @ApiResponse({ status: 200, description: 'Workspace member removed successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-  @ApiResponse({ status: 404, description: 'Workspace member not found.' })
+  @ApiResponse({ status: 400, description: "code: 'WORKSPACE_ID_REQUIRED'" })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'WORKSPACE_OWNER_CANNOT_BE_REMOVED'" })
   async deleteWorkspaceMember(
     @Req() req: AuthedRequest,
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
@@ -84,9 +84,9 @@ export class WorkspaceMemberController {
   @ApiOperation({ summary: 'Leave workspace' })
   @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
   @ApiResponse({ status: 200, description: 'User left the workspace successfully.' })
-  @ApiResponse({ status: 401, description: 'Authentication is required.' })
-  @ApiResponse({ status: 403, description: 'Access to this workspace is denied.' })
-  @ApiResponse({ status: 404, description: 'Workspace not found.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
+  @ApiResponse({ status: 404, description: "code: 'WORKSPACE_NOT_FOUND'" })
   async leaveWorkspace(
     @Req() req: AuthedRequest,
     @Param('workspaceId', ParseIntPipe) workspaceId: number,

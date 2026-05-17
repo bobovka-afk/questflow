@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   api,
-  API_URL,
   formatApiError,
   isRateLimitMessage,
 } from './lib/api';
-import { SpaLink, navigate } from './lib/navigation';
+import { avatarSrcFromPath, userProfilePath } from './lib/avatar';
+import {
+  handleSpaTileAuxClick,
+  handleSpaTileClick,
+  SpaLink,
+  navigate,
+} from './lib/navigation';
 import { formatWorkspaceRole } from './lib/roles';
 import { ProfileToolbarAnchor } from './profileToolbarOutlet';
 
@@ -39,21 +44,6 @@ type WorkspaceInviteRow = {
   createdAt: string;
   invitedBy: { id: number; email: string };
 };
-
-function avatarSrcFromPath(p: string | null | undefined): string {
-  if (!p) return '';
-  const normalized = p.replace(/\\/g, '/');
-  if (normalized.startsWith('data:')) return normalized;
-  if (normalized.startsWith('http://') || normalized.startsWith('https://')) return normalized;
-  // Protocol-relative URLs sometimes come as `//host/path`.
-  // Preserve API protocol to avoid mixed-content / wrong protocol issues.
-  if (normalized.startsWith('//')) {
-    const proto = API_URL.startsWith('https://') ? 'https:' : 'http:';
-    return `${proto}${normalized}`;
-  }
-  if (normalized.startsWith('/')) return `${API_URL}${normalized}`;
-  return `${API_URL}/${normalized}`;
-}
 
 function formatError(e: unknown) {
   return formatApiError(e);
@@ -443,7 +433,22 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
                       <tr key={member.id}>
                         <td>
                           <div className="trello-cell-title">
-                            <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
+                            <button
+                              type="button"
+                              className="trello-member-user-link"
+                              onClick={(e) =>
+                                handleSpaTileClick(
+                                  e,
+                                  isMe ? '/profile/me' : userProfilePath(member.userId),
+                                )
+                              }
+                              onAuxClick={(e) =>
+                                handleSpaTileAuxClick(
+                                  e,
+                                  isMe ? '/profile/me' : userProfilePath(member.userId),
+                                )
+                              }
+                            >
                               {member.user.avatarPath && !brokenAvatarUserIds[member.user.id] ? (
                                 <img
                                   src={avatarSrcFromPath(member.user.avatarPath)}
@@ -453,12 +458,7 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
                                   crossOrigin="anonymous"
                                   width={28}
                                   height={28}
-                                  style={{
-                                    borderRadius: 8,
-                                    border: '1px solid #dfe1e6',
-                                    objectFit: 'cover',
-                                    display: 'block',
-                                  }}
+                                  className="trello-member-user-link-avatar"
                                   onError={() =>
                                     setBrokenAvatarUserIds((prev) => ({
                                       ...prev,
@@ -467,20 +467,16 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
                                   }
                                 />
                               ) : (
-                                <div
-                                  style={{
-                                    width: 28,
-                                    height: 28,
-                                    borderRadius: 8,
-                                    border: '1px solid #dfe1e6',
-                                    background: '#f1f2f4',
-                                    flexShrink: 0,
-                                  }}
+                                <span
+                                  className="trello-member-user-link-avatar trello-member-user-link-avatar--fallback"
+                                  aria-hidden
                                 />
                               )}
-                              {member.user.name}
-                              {isMe ? ' (вы)' : ''}
-                            </span>
+                              <span>
+                                {member.user.name}
+                                {isMe ? ' (вы)' : ''}
+                              </span>
+                            </button>
                           </div>
                         </td>
                         <td>
