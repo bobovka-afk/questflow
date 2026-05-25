@@ -1,5 +1,7 @@
 # Questflow — дорожная карта геймификации
 
+docker compose up -d --build postgres redis app frontend
+
 Документ для продукта и разработки: что уже сделано, куда движемся, обязательные принципы и черновые числа баланса. Сервер — источник истины; все начисления должны быть идемпотентны и аудируемы в PostgreSQL.
 
 **Связанные файлы:** [README.md](../README.md), [gamification-agent-context.md](gamification-agent-context.md) (контекст для AI), [backend/prisma/schema.prisma](../backend/prisma/schema.prisma), [backend/src/character/](../backend/src/character/), [frontend/src/ProfileCharacterPage.tsx](../frontend/src/ProfileCharacterPage.tsx).
@@ -74,8 +76,8 @@ flowchart LR
 | Проблема | Влияние | Планируемое исправление |
 |----------|---------|------------------------|
 | ~~`dailyTaskXpCount` не сбрасывается~~ | ~~После 5 закрытий XP за карточки больше не начисляется никогда~~ | **Fixed (0.5a):** cron `GamificationCronService.resetDailyTaskXpCounts` в 00:00 `GAME_DAY_TZ` |
-| Нет HP decay | HP только растёт при XP | Cron: −10 за вчера без активности |
-| Нет чекинов | Enum есть, эндпоинтов нет | `POST /character/checkin` |
+| ~~Нет HP decay~~ | ~~HP только растёт при XP~~ | **Fixed (1b):** midnight cron + `HealthEvent` |
+| ~~Нет чекинов~~ | ~~Enum есть, эндпоинтов нет~~ | **Fixed (1a):** `POST /character/checkin` |
 | ~~Нет `@nestjs/schedule`~~ | ~~Нет фоновых джоб~~ | **Fixed (0.5a):** `ScheduleModule` + `GamificationCronService` (сброс XP-лимита; HP decay — Phase 1) |
 | HP bar в UI | Всегда 100% ширина полосы | Привязать width к `health` |
 
@@ -114,7 +116,7 @@ flowchart LR
 | Событие | XP | Лимит | Статус |
 |---------|-----|-------|--------|
 | Первое закрытие карточки | 100 | 5 раз / игровые сутки | **Реализовано** |
-| Дневной чекин | 50 | 1 / сутки | Planned |
+| Дневной чекин | 100 | 1 / сутки | **Реализовано (1a)** — `POST /character/checkin` |
 | Недельный чекин | 200 | 1 / неделя (periodKey) | Planned |
 | Streak 7 / 14 / 30 дней | 100 / 200 / 500 | Раз за milestone | Planned (`CHECKIN_STREAK`) |
 
@@ -125,8 +127,8 @@ flowchart LR
 | Правило | Значение | Статус |
 |---------|----------|--------|
 | Максимум | 100 | Реализовано |
-| За любое XP-событие с начислением | +5 | Реализовано |
-| Штраф за вчера без активности | −10 | Planned (cron) |
+| За любое XP-событие с начислением | +5 | **Реализовано (1b)** в `addExperience` |
+| Штраф за вчера без активности | −5 | **Реализовано (1b)** — cron `applyInactivityHpPenalty` |
 | HP = 0 | Статус «истощён», доски не блокируются | Planned (UI) |
 
 ### Активность (для HP decay) — черновое правило
@@ -136,9 +138,9 @@ flowchart LR
 1. Есть запись в `XpEvent` для `userId` за этот `dayKey`, **или**
 2. Пользователь **первый раз** перевёл карточку в `isCompleted=true` в этот день (как assignee или как actor при закрытии — уточнить в Phase 1; рекомендация: засчитывать оба случая через audit поле `completedByUserId` на карточке или отдельную таблицу событий).
 
-Если не активен → cron снимает 10 HP (идемпотентно: не штрафовать дважды за один `dayKey`).
+Если не активен → cron снимает 5 HP (идемпотентно: не штрафовать дважды за один `dayKey`).
 
-**Grace period:** новый персонаж / аккаунт — без HP-штрафа первые 48 часов.
+**Grace period:** новый персонаж / аккаунт — без HP-штрафа первые 24 часа.
 
 ---
 
@@ -156,7 +158,7 @@ flowchart TB
   end
   subgraph night [Midnight cron]
     ResetLimit[Reset dailyTaskXpCount]
-    HpDecay[HP -10 if yesterday inactive]
+    HpDecay[HP -5 if yesterday inactive]
     ResetLimit --> NextDay[Next game day]
     HpDecay --> NextDay
   end
@@ -191,10 +193,11 @@ flowchart TB
 
 **Логика:**
 
-- `addExperience(userId, 50, DAILY_CHECKIN, null)` с `dayKey`.
+- `addExperience(userId, 100, DAILY_CHECKIN, null)` с `dayKey` (кнопка или авто при первом XP за сутки, напр. карточка).
+- Авто-чекин: первое XP-действие за день → +100 чекин **без HP**; карточка → +100 XP и +5 HP.
 - При конфликте unique → `409 CHECKIN_ALREADY_DONE`.
 - Streak: поля `checkinStreak`, `lastCheckinDay` на `Character` **или** вычисление из `XpEvent` (в MD рекомендуем поля на Character для быстрого UI).
-- Milestone streak → `CHECKIN_STREAK` с отдельным `dayKey` (дата достижения).
+- Milestone streak → `CHECKIN_STREAK` с синтетическим `dayKey` (идемпотентность по порогу 7/14/30): `gamification/config/checkin-streak-milestones.ts`, `checkin-streak-milestones.ts`.
 
 **UI:** кнопка «Отметиться», индикатор серии, текст в гайде.
 
@@ -206,7 +209,7 @@ flowchart TB
 
 1. Выбрать персонажей с `health > 0`, не в grace period.
 2. Для `yesterday` проверить активность (см. выше).
-3. Если неактивен и нет `HealthEvent` за `(userId, dayKey)` → `health -= 10`, запись audit.
+3. Если неактивен и нет `HealthEvent` за `(userId, dayKey)` → `health -= 5`, запись audit.
 4. Идемпотентность: unique `(userId, dayKey)` на `HealthEvent`.
 
 **Модель audit (концепт):**
@@ -226,10 +229,12 @@ model HealthEvent {
 
 ### Phase 1 — чеклист разработки
 
-- [ ] Миграция: `checkinStreak`, `lastCheckinDay` (если нужны).
-- [ ] `HealthEvent` + миграция.
-- [ ] Check-in controller + Swagger.
-- [ ] Cron + env `GAME_DAY_TZ`.
+- [x] Миграция: `checkinStreak`, `lastCheckinDayKey`.
+- [x] Пороги серии 7 / 14 / 30 → `CHECKIN_STREAK` (+200 / +400 / +800 XP), `streakMilestonesReached` в `rewards`.
+- [x] `HealthEvent` + миграция `20260525103000_health_event`.
+- [x] Check-in controller + Swagger (`POST /character/checkin`, 1a).
+- [x] Cron HP penalty + `GAME_DAY_TZ` (в одном midnight job с reset XP).
+- [x] HP +5 в `addExperience` (1b).
 - [ ] Frontend: чекин, streak, HP bar по `health`, гайд.
 - [ ] E2E: двойной чекин, штраф только раз, grace period.
 
@@ -364,7 +369,7 @@ model InventoryItem {
 | Пыль (dust) | Дубликаты косметики → валюта на выбор из loot table |
 | Achievements | One-time из агрегатов `XpEvent` |
 | Battle pass | 4-недельный сезон с треком наград |
-| Уведомления | Email / in-app: «завтра −10 HP», «сундук готов» |
+| Уведомления | Email / in-app: «завтра −5 HP», «сундук готов» |
 | Лидерборд workspace | Топ по XP за неделю в WS (opt-in) |
 | Командные weekly goals | Общий прогресс WS — отдельная фаза |
 
@@ -412,7 +417,7 @@ model InventoryItem {
 |---|--------|----------|--------------|
 | 1 | TZ суток | UTC / `Europe/Moscow` / per-user | Один `GAME_DAY_TZ` в env, документировать в UI |
 | 2 | Активность для HP | Только `XpEvent` / любое закрытие карточки / логин | XP или закрытие карточки (ближе к «работе») |
-| 3 | Предупреждение HP | Тихий штраф / баннер «завтра −10» | Баннер в профиле если вчера уже неактивен сегодня |
+| 3 | Предупреждение HP | Тихий штраф / баннер «завтра −5» | Баннер в профиле если вчера уже неактивен сегодня |
 | 4 | Weekly check-in | Отдельная кнопка / только weekly quests | Объединить с weekly quest bundle |
 | 5 | Кто закрыл карточку | Только assignee XP / actor при отсутствии assignee | Текущее поведение сохранить |
 | 6 | Недельный periodKey | ISO week / скользящие 7 дней | ISO week в `GAME_DAY_TZ` |

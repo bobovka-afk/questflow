@@ -11,6 +11,7 @@ export type CharacterDto = {
   currentXp: number;
   level: number;
   health: number;
+  checkinStreak: number;
   createdAt: string;
   updatedAt: string;
 };

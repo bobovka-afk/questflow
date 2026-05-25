@@ -2,6 +2,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElemen
 import { createPortal } from 'react-dom';
 import { api, API_URL, formatApiError, isRateLimitMessage, setSessionExpiredHandler, type ApiError } from './lib/api';
 import { routeNeedsCharacterGate, type CharacterDto } from './lib/character';
+import { GamificationIntroModal } from './GamificationIntroModal';
+import {
+  dismissGamificationIntroPending,
+  isGamificationIntroPending,
+  markGamificationIntroPending,
+} from './lib/gamificationIntro';
 import { CharacterSetupPage } from './CharacterSetupPage';
 import { ProfileCharacterPage } from './ProfileCharacterPage';
 import { UserProfilePage } from './UserProfilePage';
@@ -422,7 +428,9 @@ function avatarSrcForToolbar(p: string | null | undefined): string {
   return `${API_URL}/${normalized}`;
 }
 
-function Home(props: { onAuthed: (token: string) => void; hasSession: boolean }) {
+type AuthedOptions = { gamificationIntro?: boolean };
+
+function Home(props: { onAuthed: (token: string, options?: AuthedOptions) => void; hasSession: boolean }) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -434,7 +442,8 @@ function Home(props: { onAuthed: (token: string) => void; hasSession: boolean })
     setMsg(null);
     setBusy(true);
     try {
-      if (mode === 'register') {
+      const fromRegister = mode === 'register';
+      if (fromRegister) {
         await api<UserSafe>('/auth/register', {
           method: 'POST',
           json: { email, password, name },
@@ -445,7 +454,7 @@ function Home(props: { onAuthed: (token: string) => void; hasSession: boolean })
         method: 'POST',
         json: { email, password },
       });
-      props.onAuthed(res.accessToken);
+      props.onAuthed(res.accessToken, { gamificationIntro: fromRegister });
       const inviteResult = await tryAcceptPendingInvite(res.accessToken);
       if (inviteResult === 'ok') {
         navigate('/profile/me');
@@ -1184,11 +1193,25 @@ function AppContent() {
   const [characterLoadState, setCharacterLoadState] = useState<
     'idle' | 'loading' | 'missing' | 'ok'
   >('idle');
+  const [gamificationIntroOpen, setGamificationIntroOpen] = useState(false);
 
   const setToken = (t: string | null) => {
     setAccessTokenToStorage(t);
     setAccessToken(t);
   };
+
+  function handleAuthed(token: string, options?: AuthedOptions) {
+    setToken(token);
+    if (options?.gamificationIntro) {
+      markGamificationIntroPending();
+      setGamificationIntroOpen(true);
+    }
+  }
+
+  function closeGamificationIntro() {
+    setGamificationIntroOpen(false);
+    dismissGamificationIntroPending();
+  }
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -1266,6 +1289,16 @@ function AppContent() {
   }, [accessToken]);
 
   useEffect(() => {
+    if (!accessToken) {
+      setGamificationIntroOpen(false);
+      return;
+    }
+    if (isGamificationIntroPending()) {
+      setGamificationIntroOpen(true);
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
     setToolbarAvatarBroken(false);
   }, [toolbarUser?.avatarPath]);
 
@@ -1305,15 +1338,6 @@ function AppContent() {
       navigate('/');
     }
   }, [route, accessToken]);
-
-  useLayoutEffect(() => {
-    if (!accessToken) return;
-    if (characterLoadState !== 'missing') return;
-    if (route.startsWith('/character/setup') || route.startsWith('/invite')) return;
-    if (routeNeedsCharacterGate(route)) {
-      navigate('/character/setup');
-    }
-  }, [accessToken, characterLoadState, route]);
 
   useLayoutEffect(() => {
     if (!accessToken) return;
@@ -1413,7 +1437,7 @@ function AppContent() {
   } else if (route.startsWith('/character/setup')) {
     page =
       !accessToken ? (
-        <Home onAuthed={(t) => setToken(t)} hasSession={false} />
+        <Home onAuthed={handleAuthed} hasSession={false} />
       ) : (
         <CharacterSetupPage
           accessToken={accessToken}
@@ -1450,9 +1474,12 @@ function AppContent() {
   } else if (route.startsWith('/profile')) {
     page =
       !accessToken ? (
-        <Home onAuthed={(t) => setToken(t)} hasSession={false} />
+        <Home onAuthed={handleAuthed} hasSession={false} />
       ) : route === '/profile/character' || route.startsWith('/profile/character/') ? (
-        <ProfileCharacterPage accessToken={accessToken} />
+        <ProfileCharacterPage
+          accessToken={accessToken}
+          onCharacterUpdated={() => setCharacterLoadState('ok')}
+        />
       ) : profileUserCharacterMatch ? (
         <UserCharacterPage
           accessToken={accessToken}
@@ -1481,7 +1508,7 @@ function AppContent() {
   } else if (route === '/' && accessToken) {
     page = <WorkspacesPage accessToken={accessToken} />;
   } else {
-    page = <Home onAuthed={(t) => setToken(t)} hasSession={!!accessToken} />;
+    page = <Home onAuthed={handleAuthed} hasSession={!!accessToken} />;
   }
 
   const toolbarLayoutClass =
@@ -1631,6 +1658,14 @@ function AppContent() {
     <>
       {createPortal(toolbarNode, toolbarPortalTarget)}
       {page}
+      {accessToken &&
+        createPortal(
+          <GamificationIntroModal
+            open={gamificationIntroOpen}
+            onClose={closeGamificationIntro}
+          />,
+          document.body,
+        )}
     </>
   );
 }

@@ -1,6 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
+import { Prisma } from '../generated/prisma/client';
+import { HealthEventReason } from '../generated/prisma/enums';
 import {
   DEFAULT_GAME_DAY_TZ,
   GamificationCronService,
@@ -9,6 +11,7 @@ import {
 } from './gamification-cron.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { createPrismaMock } from '../testing/prisma-mock';
+import { HP_INACTIVITY_PENALTY } from './config/rewards';
 
 jest.mock('cron', () => ({
   CronJob: jest.fn().mockImplementation(() => ({
@@ -16,11 +19,18 @@ jest.mock('cron', () => ({
   })),
 }));
 
+jest.mock('./inactivity', () => ({
+  wasUserActiveOnGameDay: jest.fn(),
+}));
+
+import { wasUserActiveOnGameDay } from './inactivity';
+
 describe('GamificationCronService', () => {
   let service: GamificationCronService;
   let prisma: ReturnType<typeof createPrismaMock>;
   let configService: { get: jest.Mock };
   let schedulerRegistry: { addCronJob: jest.Mock };
+  const wasUserActiveOnGameDayMock = wasUserActiveOnGameDay as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -68,10 +78,11 @@ describe('GamificationCronService', () => {
       );
     });
 
-    it('cron callback invokes resetDailyTaskXpCounts', async () => {
+    it('cron callback invokes midnight gamification jobs', async () => {
       configService.get.mockReturnValue('UTC');
       prisma.character!.updateMany!.mockResolvedValue({ count: 0 });
-      const resetSpy = jest.spyOn(service, 'resetDailyTaskXpCounts');
+      prisma.character!.findMany!.mockResolvedValue([]);
+      const midnightSpy = jest.spyOn(service, 'runMidnightGamificationJobs');
 
       service.onModuleInit();
 
@@ -80,7 +91,7 @@ describe('GamificationCronService', () => {
       ).mock.calls[0][1] as () => void;
       await cronCallback();
 
-      expect(resetSpy).toHaveBeenCalled();
+      expect(midnightSpy).toHaveBeenCalled();
     });
   });
 
@@ -103,6 +114,92 @@ describe('GamificationCronService', () => {
 
       await expect(service.resetDailyTaskXpCounts()).resolves.toEqual({
         count: 0,
+      });
+    });
+  });
+
+  describe('applyInactivityHpPenalty', () => {
+    const graceOld = new Date('2020-01-01T00:00:00.000Z');
+
+    beforeEach(() => {
+      configService.get.mockReturnValue('UTC');
+    });
+
+    it('skips characters in grace period', async () => {
+      prisma.character!.findMany!.mockResolvedValue([
+        {
+          id: 1,
+          userId: 10,
+          health: 50,
+          createdAt: new Date(),
+        },
+      ]);
+
+      await expect(service.applyInactivityHpPenalty()).resolves.toEqual({
+        penalized: 0,
+        skippedActive: 0,
+        skippedGrace: 1,
+      });
+
+      expect(wasUserActiveOnGameDayMock).not.toHaveBeenCalled();
+    });
+
+    it('skips active users without penalty', async () => {
+      prisma.character!.findMany!.mockResolvedValue([
+        { id: 1, userId: 10, health: 50, createdAt: graceOld },
+      ]);
+      wasUserActiveOnGameDayMock.mockResolvedValue(true);
+
+      await expect(service.applyInactivityHpPenalty()).resolves.toEqual({
+        penalized: 0,
+        skippedActive: 1,
+        skippedGrace: 0,
+      });
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('applies penalty for inactive user', async () => {
+      prisma.character!.findMany!.mockResolvedValue([
+        { id: 1, userId: 10, health: 50, createdAt: graceOld },
+      ]);
+      wasUserActiveOnGameDayMock.mockResolvedValue(false);
+      prisma.$transaction!.mockImplementation(async (fn) => fn(prisma));
+
+      await expect(service.applyInactivityHpPenalty()).resolves.toEqual({
+        penalized: 1,
+        skippedActive: 0,
+        skippedGrace: 0,
+      });
+
+      expect(prisma.healthEvent!.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 10,
+          delta: -HP_INACTIVITY_PENALTY,
+          reason: HealthEventReason.INACTIVITY_PENALTY,
+        }),
+      });
+      expect(prisma.character!.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { health: 45 },
+      });
+    });
+
+    it('does not double-penalize when HealthEvent already exists', async () => {
+      prisma.character!.findMany!.mockResolvedValue([
+        { id: 1, userId: 10, health: 50, createdAt: graceOld },
+      ]);
+      wasUserActiveOnGameDayMock.mockResolvedValue(false);
+      const dup = new Prisma.PrismaClientKnownRequestError('dup', {
+        code: 'P2002',
+        clientVersion: 'test',
+      });
+      prisma.$transaction!.mockRejectedValue(dup);
+
+      await expect(service.applyInactivityHpPenalty()).resolves.toEqual({
+        penalized: 0,
+        skippedActive: 0,
+        skippedGrace: 0,
       });
     });
   });

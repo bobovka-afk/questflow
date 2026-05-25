@@ -40,8 +40,10 @@ const API_ERROR_CODE_RU: Record<string, string> = {
   CHARACTER_AVATAR_GENDER_MISMATCH:
     'Выберите аватар, который соответствует полу персонажа (мужские / женские варианты).',
   CHARACTER_UPDATE_FIELDS_REQUIRED: 'Укажите хотя бы одно поле для изменения.',
-  XP_EVENT_ALREADY_RECORDED: 'За эту карточку опыт уже был.',
+  XP_EVENT_ALREADY_RECORDED: 'Вы уже получали опыт за эту карточку.',
   DAILY_TASK_XP_LIMIT: 'Сегодня лимит опыта за карточки исчерпан.',
+  CHECKIN_ALREADY_DONE: 'Сегодня серия за этот день уже засчитана.',
+  XP_EVENT_DAY_KEY_REQUIRED: 'Для этого действия требуется игровой день.',
 };
 
 function translateCommonEnglishError(message: string): string | null {

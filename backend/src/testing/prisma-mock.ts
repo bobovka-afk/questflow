@@ -13,11 +13,16 @@ export function createPrismaMock(): any {
     },
     character: {
       findUnique: mockFn(),
+      findMany: mockFn(),
       create: mockFn(),
       update: mockFn(),
       updateMany: mockFn(),
     },
     xpEvent: {
+      create: mockFn(),
+      findFirst: mockFn(),
+    },
+    healthEvent: {
       create: mockFn(),
     },
     card: {

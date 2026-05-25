@@ -5440,3 +5440,302 @@ button.trello-card-comment-author-link:hover {
   }
 }
 
+/* Геймификация: intro после регистрации */
+.trello-gamification-intro-modal {
+  position: relative;
+  max-width: 600px;
+  width: min(600px, calc(100vw - 32px));
+}
+
+.trello-gamification-intro-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+}
+
+.trello-gamification-intro-body {
+  padding: 44px 20px 20px;
+}
+
+.trello-gamification-intro-block {
+  margin: 0;
+}
+
+.trello-gamification-intro-block + .trello-gamification-intro-block {
+  margin-top: 18px;
+}
+
+.trello-gamification-intro-block--gamification {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--trello-primary, #0c66e4) 8%, var(--trello-surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--trello-primary, #0c66e4) 18%, var(--trello-border, #e2e8f0));
+}
+
+.trello-gamification-intro-subtitle {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--trello-primary, #0c66e4);
+}
+
+.trello-gamification-intro-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--trello-text, #0f172a);
+}
+
+.trello-gamification-intro-text strong {
+  font-weight: 700;
+  color: inherit;
+}
+
+.trello-gamification-intro-list {
+  margin: 12px 0 0;
+  padding-left: 1.2rem;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--trello-text, #0f172a);
+}
+
+.trello-gamification-intro-list li + li {
+  margin-top: 8px;
+}
+
+.trello-gamification-intro-foot {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.theme-dark .trello-gamification-intro-text,
+.theme-dark .trello-gamification-intro-list {
+  color: var(--trello-text, #f1f5f9);
+}
+
+.theme-dark .trello-gamification-intro-block--gamification {
+  background: color-mix(in srgb, var(--trello-primary, #579dff) 14%, rgba(255, 255, 255, 0.06));
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.theme-dark .trello-gamification-intro-subtitle {
+  color: var(--trello-primary, #579dff);
+}
+
+/* Счётчик серии дней (Duolingo-style) */
+.trello-character-streak-block {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.trello-checkin-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px 10px 14px;
+  border-radius: 999px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, #f97316 18%, var(--trello-surface, #fff)) 0%,
+    color-mix(in srgb, #ef4444 12%, var(--trello-surface, #fff)) 100%
+  );
+  border: 1px solid color-mix(in srgb, #f97316 35%, var(--trello-border, #e2e8f0));
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.15);
+}
+
+.trello-checkin-streak--toast {
+  padding: 6px 12px 6px 10px;
+  gap: 6px;
+}
+
+.trello-checkin-streak-flame {
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.trello-checkin-streak--toast .trello-checkin-streak-flame {
+  font-size: 1.35rem;
+}
+
+.trello-checkin-streak-value-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75ch;
+  vertical-align: middle;
+}
+
+.trello-checkin-streak-value {
+  display: block;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: #ea580c;
+}
+
+/* Профиль: чуть крупнее цифры уровня (14px в stat-meter) */
+.trello-checkin-streak--profile .trello-checkin-streak-value-wrap {
+  font-size: 17px;
+  min-height: 1.25em;
+}
+
+.trello-checkin-streak--profile .trello-checkin-streak-value {
+  font-size: 1em;
+}
+
+.trello-checkin-streak--profile.trello-checkin-streak--rolling .trello-checkin-streak-value-wrap {
+  overflow: hidden;
+  height: 1.25em;
+}
+
+.trello-checkin-streak--toast .trello-checkin-streak-value-wrap {
+  font-size: 15px;
+  min-height: 1.2em;
+}
+
+.trello-checkin-streak--toast .trello-checkin-streak-value {
+  font-size: 1em;
+}
+
+.trello-checkin-streak--toast.trello-checkin-streak--rolling .trello-checkin-streak-value-wrap {
+  overflow: hidden;
+  height: 1.2em;
+}
+
+.trello-checkin-streak--rolling .trello-checkin-streak-value {
+  animation: trello-checkin-streak-roll 0.48s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes trello-checkin-streak-roll {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  45% {
+    transform: translateY(-110%);
+    opacity: 0.35;
+  }
+  55% {
+    transform: translateY(110%);
+    opacity: 0.35;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.trello-checkin-streak-caption {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--trello-text-muted, #64748b);
+}
+
+.theme-dark .trello-checkin-streak {
+  background: linear-gradient(
+    135deg,
+    rgba(249, 115, 22, 0.22) 0%,
+    rgba(239, 68, 68, 0.14) 100%
+  );
+  border-color: rgba(249, 115, 22, 0.35);
+}
+
+.theme-dark .trello-checkin-streak-value {
+  color: #fb923c;
+}
+
+/* Тост наград за карточку (очередь: сначала день, потом задача) */
+.trello-reward-toast {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 24px 18px;
+  border-radius: 20px;
+  font-weight: 600;
+  color: var(--trello-primary-contrast, #f8fafc);
+  box-shadow:
+    0 8px 32px rgba(15, 23, 42, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset;
+  animation: trello-xp-toast-bottom 2.8s ease forwards;
+}
+
+.trello-reward-toast--checkin {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, #f97316 65%, #ea580c) 0%,
+    color-mix(in srgb, #ef4444 40%, #ea580c) 100%
+  );
+  border: 1px solid color-mix(in srgb, #fb923c 55%, white);
+}
+
+.trello-reward-toast--task {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--trello-primary) 70%, #fbbf24) 0%,
+    var(--trello-primary) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--trello-primary) 55%, white);
+}
+
+.trello-reward-toast-tagline {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  opacity: 0.95;
+}
+
+.trello-reward-toast-extra {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  opacity: 0.92;
+}
+
+.trello-reward-toast-extra strong {
+  font-weight: 700;
+}
+
+.trello-reward-toast-xp {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.trello-reward-toast-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
+  opacity: 0.95;
+}
+
+.trello-reward-toast-streak .trello-checkin-streak {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: none;
+}
+
+.trello-reward-toast-streak .trello-checkin-streak-value {
+  color: #fff7ed;
+}
+
+.trello-reward-toast-streak .trello-checkin-streak-caption {
+  color: rgba(255, 255, 255, 0.85);
+}
+

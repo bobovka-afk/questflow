@@ -11,10 +11,16 @@ import {
   ROLE_LABEL_RU,
 } from './lib/character';
 import { getCharacterXpTowardNext } from './lib/level-curve';
+import { CheckinStreakCounter } from './CheckinStreakCounter';
+import { CHECKIN_STREAK_MILESTONES } from './lib/checkinStreakMilestones';
+import { STREAK_LABEL } from './lib/gamificationCopy';
 import {
+	CHARACTER_HEALTH_MAX,
 	DAILY_TASK_XP_COMPLETIONS_MAX,
+	XP_DAILY_CHECKIN,
 	XP_PER_TASK_COMPLETED,
 } from './lib/xpRewards';
+import { CharacterCreateForm } from './CharacterCreateForm';
 import { SpaLink } from './lib/navigation';
 import { ProfileToolbarAnchor } from './profileToolbarOutlet';
 
@@ -162,6 +168,15 @@ export function ProfileCharacterPage(props: Props) {
     }
   }
 
+  function handleCharacterCreated(c: CharacterDto) {
+    setCharacter(c);
+    setName(c.name);
+    setGender(c.gender);
+    setRole(roleFromPreset(c.avatarPreset));
+    setLoadPhase('ready');
+    props.onCharacterUpdated?.(c);
+  }
+
   if (loadPhase === 'missing') {
     return (
       <div className="trello-app-shell">
@@ -173,22 +188,22 @@ export function ProfileCharacterPage(props: Props) {
                 <span className="trello-top-left-brand-text">Questflow</span>
               </SpaLink>
             </div>
-            <h1 className="trello-topbar-stripe-center">Персонаж</h1>
+            <h1 className="trello-topbar-stripe-center">Создайте своего персонажа</h1>
             <div className="trello-topbar-actions">
+              <SpaLink className="trello-btn trello-btn-ghost" to="/workspaces">
+                Назад
+              </SpaLink>
               <SpaLink className="trello-btn trello-btn-ghost" to="/profile/me">
                 Профиль
               </SpaLink>
               <ProfileToolbarAnchor />
             </div>
           </header>
-          <section className="trello-panel" style={{ maxWidth: 480, margin: '24px auto' }}>
-            <p className="trello-boards-sub" style={{ marginTop: 0 }}>
-              У этого аккаунта ещё нет персонажа — создайте его, чтобы участвовать в прогрессии и наградах.
-            </p>
-            <SpaLink className="trello-btn trello-btn-primary" to="/character/setup" style={{ marginTop: 16, display: 'inline-block' }}>
-              Создать персонажа
-            </SpaLink>
-          </section>
+          <CharacterCreateForm
+            accessToken={props.accessToken}
+            onCreated={handleCharacterCreated}
+            submitLabel="Создать персонажа"
+          />
         </div>
       </div>
     );
@@ -273,6 +288,9 @@ export function ProfileCharacterPage(props: Props) {
               </button>
             </div>
             <div className="trello-character-profile-info-col">
+              <div className="trello-character-streak-block">
+                <CheckinStreakCounter streak={character.checkinStreak ?? 0} size="profile" />
+              </div>
               <div className="trello-character-stat-row">
                 <div className="trello-character-stat-pill trello-character-stat-pill--level">
                   <span className="trello-character-stat-label">Уровень</span>
@@ -325,7 +343,9 @@ export function ProfileCharacterPage(props: Props) {
                   >
                     <div
                       className="trello-character-stat-bar-fill trello-character-stat-bar-fill--health"
-                      style={{ width: '100%' }}
+                      style={{
+                        width: `${Math.min(100, Math.round((character.health / CHARACTER_HEALTH_MAX) * 100))}%`,
+                      }}
                       aria-hidden
                     />
                     <span className="trello-character-stat-meter-value">{character.health}</span>
@@ -350,6 +370,18 @@ export function ProfileCharacterPage(props: Props) {
                   <strong>Опыт за карточки.</strong> За первое закрытие карточки (перевод в «выполнено»){' '}
                   <strong>+{XP_PER_TASK_COMPLETED} XP</strong> получает персонаж исполнителя; если исполнитель не
                   назначен — персонаж того, кто закрыл карточку. Повторное закрытие той же карточки опыт не даёт.
+                </li>
+                <li>
+                  <strong>{STREAK_LABEL} за день.</strong> При первом начислении опыта за игровой день (обычно
+                  первая закрытая карточка) автоматически засчитывается <strong>{STREAK_LABEL}</strong>{' '}
+                  <strong>+{XP_DAILY_CHECKIN} XP</strong> и растёт счётчик 🔥. Отдельная кнопка «отметиться» не
+                  нужна.
+                </li>
+                <li>
+                  <strong>Пороги {STREAK_LABEL.toLowerCase()}.</strong> При{' '}
+                  {CHECKIN_STREAK_MILESTONES.map((m) => m.days).join(', ')} днях подряд — бонус XP (
+                  {CHECKIN_STREAK_MILESTONES.map((m) => `+${m.xp}`).join(', ')}); позже привяжем к ачивкам и
+                  квестам.
                 </li>
                 <li>
                   <strong>Лимит в день.</strong> Опыт за закрытие карточек начисляется не более{' '}

@@ -77,4 +77,17 @@ export class CharacterController {
   ): Promise<Character> {
     return this.characterService.updateCharacter(req.user.id, dto);
   }
+
+  @Post('checkin')
+  @ApiOperation({ summary: 'Daily check-in (+100 XP, once per game day)' })
+  @ApiResponse({ status: 200, description: 'Check-in completed, character updated.' })
+  @ApiResponse({ status: 401, description: 'Authentication required.' })
+  @ApiResponse({ status: 404, description: "code: 'CHARACTER_NOT_FOUND'" })
+  @ApiResponse({
+    status: 409,
+    description: "code: 'CHECKIN_ALREADY_DONE' — already checked in today",
+  })
+  async dailyCheckin(@Req() req: AuthedRequest) {
+    return this.characterService.dailyCheckin(req.user.id);
+  }
 }

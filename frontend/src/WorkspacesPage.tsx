@@ -64,7 +64,6 @@ export function WorkspacesPage({ accessToken }: Props) {
 
   const [deleteRow, setDeleteRow] = useState<WorkspaceMemberRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
-
   const load = useCallback(async () => {
     if (!accessToken) {
       setLoading(false);

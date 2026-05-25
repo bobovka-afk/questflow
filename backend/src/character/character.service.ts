@@ -4,18 +4,43 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma, type Character } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { UpdateCharacterDto } from './dto/update-character.dto';
 import { getRequiredXpForLevel } from './config/level-curve';
-import { DAILY_TASK_XP_COMPLETIONS_MAX } from '../gamification/config/rewards';
+import { computeCheckinStreakAfterGrant } from '../gamification/checkin-streak';
+import {
+  getNewlyReachedStreakMilestones,
+  streakMilestoneDayKey,
+} from '../gamification/checkin-streak-milestones';
+import {
+  CHARACTER_HEALTH_MAX,
+  DAILY_TASK_XP_COMPLETIONS_MAX,
+  HP_GAIN_PER_XP_EVENT,
+  XP_DAILY_CHECKIN,
+} from '../gamification/config/rewards';
 import { XpEventType } from '../generated/prisma/enums';
-
+import {
+  DEFAULT_GAME_DAY_TZ,
+  XP_EVENT_TYPES_REQUIRING_DAY_KEY,
+} from '../gamification/constants';
+import { getTodayGameDayKey } from '../gamification/game-day';
+import type {
+  CharacterXpStats,
+  XpGrantEventInput,
+  XpGrantResult,
+  XpGrantRewards,
+  XpGrantTransaction,
+} from '../gamification/interface';
 
 @Injectable()
 export class CharacterService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private configService: ConfigService,
+  ) {}
 
   async getCharacter(userId: number): Promise<Character> {
     const character = await this.prisma.character.findUnique({
@@ -97,19 +122,42 @@ export class CharacterService {
     });
   }
 
+  async dailyCheckin(userId: number): Promise<XpGrantResult> {
+    const timeZone =
+      this.configService.get<string>('GAME_DAY_TZ') ?? DEFAULT_GAME_DAY_TZ;
+    const dayKey = getTodayGameDayKey(timeZone);
+    return this.addExperience(
+      userId,
+      XP_DAILY_CHECKIN,
+      XpEventType.DAILY_CHECKIN,
+      null,
+      dayKey,
+    );
+  }
+
   async addExperience(
     userId: number,
     xpAmount: number,
     eventType: XpEventType,
     cardId?: number | null,
-  ): Promise<Character> {
+    dayKey?: Date | null,
+  ): Promise<XpGrantResult> {
+    if (XP_EVENT_TYPES_REQUIRING_DAY_KEY.includes(eventType) && !dayKey) {
+      this.throwXpEventDayKeyRequired();
+    }
+
+    const timeZone = this.getGameDayTimeZone();
+
     return this.prisma.$transaction(async (tx) => {
       const userStats = await tx.character.findUnique({
         where: { userId },
         select: {
           currentXp: true,
           level: true,
-          dailyTaskXpCount: true
+          dailyTaskXpCount: true,
+          health: true,
+          checkinStreak: true,
+          lastCheckinDayKey: true,
         },
       });
       if (!userStats) {
@@ -123,54 +171,297 @@ export class CharacterService {
         eventType === XpEventType.TASK_COMPLETED &&
         userStats.dailyTaskXpCount >= DAILY_TASK_XP_COMPLETIONS_MAX
       ) {
-        throw new ConflictException({
-          code: 'DAILY_TASK_XP_LIMIT',
-          message: 'Daily limit of task experience rewards reached',
-        });
+        this.throwDailyTaskXpLimit();
       }
 
-      try {
-        await tx.xpEvent.create({
-          data: {
-            userId,
-            type: eventType,
-            cardId: cardId ?? null,
-            xpAmount,
-          },
-        });
-      } catch (error) {
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2002'
-        ) {
-          throw new ConflictException({
-            code: 'XP_EVENT_ALREADY_RECORDED',
-            message: 'Experience for this action was already granted',
-          });
-        }
-        throw error;
-      }
+      const rewards: XpGrantRewards = {
+        taskXp: 0,
+        checkinXp: 0,
+        hpGained: 0,
+        checkinStreak: userStats.checkinStreak,
+        previousCheckinStreak: userStats.checkinStreak,
+        streakIncreased: false,
+        streakMilestoneXp: 0,
+        streakMilestonesReached: [],
+      };
 
-      let level = userStats.level;
-      let currentXp = userStats.currentXp;
+      const grantHp = eventType === XpEventType.TASK_COMPLETED;
+      const healthBefore = userStats.health;
+      let stats: CharacterXpStats = { ...userStats };
 
-      const requiredXp = getRequiredXpForLevel(userStats.level);
-      if (xpAmount + currentXp >= requiredXp) {
-        level += 1;
-        currentXp = xpAmount + currentXp - requiredXp;
-      } else {
-        currentXp += xpAmount;
-      }
+      stats = await this.recordXpEventAndApply(
+        tx,
+        userId,
+        {
+          type: eventType,
+          xpAmount,
+          cardId: cardId ?? null,
+          dayKey: dayKey ?? null,
+        },
+        stats,
+        grantHp,
+      );
 
-      const data = { currentXp, level };
       if (eventType === XpEventType.TASK_COMPLETED) {
-        Object.assign(data, { dailyTaskXpCount: { increment: 1 } });
+        rewards.taskXp = xpAmount;
+      } else if (eventType === XpEventType.DAILY_CHECKIN) {
+        rewards.checkinXp = xpAmount;
+        stats = await this.applyCheckinStreakAndMilestones(
+          tx,
+          userId,
+          stats,
+          timeZone,
+          rewards,
+          dayKey ?? undefined,
+        );
       }
 
-      return tx.character.update({
+      if (grantHp) {
+        rewards.hpGained = stats.health - healthBefore;
+      }
+
+      if (eventType !== XpEventType.DAILY_CHECKIN) {
+        const autoResult = await this.grantAutoDailyCheckinIfNeeded(
+          tx,
+          userId,
+          stats,
+          timeZone,
+          rewards,
+        );
+        stats = autoResult.stats;
+        Object.assign(rewards, autoResult.rewards);
+      }
+
+      const data: Prisma.CharacterUpdateInput = {
+        currentXp: stats.currentXp,
+        level: stats.level,
+        health: stats.health,
+        checkinStreak: stats.checkinStreak,
+        lastCheckinDayKey: stats.lastCheckinDayKey,
+      };
+      if (eventType === XpEventType.TASK_COMPLETED) {
+        data.dailyTaskXpCount = { increment: 1 };
+      }
+
+      const character = await tx.character.update({
         where: { userId },
         data,
       });
+
+      rewards.checkinStreak = character.checkinStreak;
+
+      return { character, rewards };
+    });
+  }
+
+  private applyXpToStats(
+    stats: CharacterXpStats,
+    xpAmount: number,
+    grantHp: boolean,
+  ): CharacterXpStats {
+    let { level, currentXp, health } = stats;
+    const requiredXp = getRequiredXpForLevel(level);
+    if (xpAmount + currentXp >= requiredXp) {
+      level += 1;
+      currentXp = xpAmount + currentXp - requiredXp;
+    } else {
+      currentXp += xpAmount;
+    }
+    if (grantHp) {
+      health = Math.min(CHARACTER_HEALTH_MAX, health + HP_GAIN_PER_XP_EVENT);
+    }
+    return { ...stats, level, currentXp, health };
+  }
+
+  private async applyCheckinStreakAndMilestones(
+    tx: XpGrantTransaction,
+    userId: number,
+    stats: CharacterXpStats,
+    timeZone: string,
+    rewards: XpGrantRewards,
+    checkinDayKey?: Date,
+  ): Promise<CharacterXpStats> {
+    const todayKey = checkinDayKey ?? getTodayGameDayKey(timeZone);
+    const streakUpdate = computeCheckinStreakAfterGrant(
+      todayKey,
+      stats.lastCheckinDayKey,
+      stats.checkinStreak,
+      timeZone,
+    );
+    rewards.previousCheckinStreak = streakUpdate.previousCheckinStreak;
+    rewards.streakIncreased = streakUpdate.streakIncreased;
+    rewards.checkinStreak = streakUpdate.checkinStreak;
+
+    let nextStats: CharacterXpStats = {
+      ...stats,
+      checkinStreak: streakUpdate.checkinStreak,
+      lastCheckinDayKey: todayKey,
+    };
+
+    if (streakUpdate.streakIncreased) {
+      nextStats = await this.grantStreakMilestonesIfNeeded(
+        tx,
+        userId,
+        nextStats,
+        streakUpdate.previousCheckinStreak,
+        streakUpdate.checkinStreak,
+        rewards,
+      );
+    }
+
+    return nextStats;
+  }
+
+  private async grantStreakMilestonesIfNeeded(
+    tx: XpGrantTransaction,
+    userId: number,
+    stats: CharacterXpStats,
+    previousStreak: number,
+    newStreak: number,
+    rewards: XpGrantRewards,
+  ): Promise<CharacterXpStats> {
+    const milestones = getNewlyReachedStreakMilestones(previousStreak, newStreak);
+    let currentStats = stats;
+
+    for (const milestone of milestones) {
+      const dayKey = streakMilestoneDayKey(milestone.days);
+      const existing = await tx.xpEvent.findFirst({
+        where: {
+          userId,
+          type: XpEventType.CHECKIN_STREAK,
+          dayKey,
+        },
+        select: { id: true },
+      });
+      if (existing) {
+        continue;
+      }
+
+      currentStats = await this.recordXpEventAndApply(
+        tx,
+        userId,
+        {
+          type: XpEventType.CHECKIN_STREAK,
+          xpAmount: milestone.xp,
+          cardId: null,
+          dayKey,
+        },
+        currentStats,
+        false,
+      );
+      rewards.streakMilestoneXp += milestone.xp;
+      rewards.streakMilestonesReached.push(milestone.days);
+    }
+
+    return currentStats;
+  }
+
+  private async recordXpEventAndApply(
+    tx: XpGrantTransaction,
+    userId: number,
+    event: XpGrantEventInput,
+    stats: CharacterXpStats,
+    grantHp: boolean,
+  ): Promise<CharacterXpStats> {
+    try {
+      await tx.xpEvent.create({
+        data: {
+          userId,
+          type: event.type,
+          cardId: event.cardId,
+          dayKey: event.dayKey,
+          xpAmount: event.xpAmount,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        this.throwXpEventDuplicate(event.type);
+      }
+      throw error;
+    }
+
+    return this.applyXpToStats(stats, event.xpAmount, grantHp);
+  }
+
+  private getGameDayTimeZone(): string {
+    return (
+      this.configService.get<string>('GAME_DAY_TZ') ?? DEFAULT_GAME_DAY_TZ
+    );
+  }
+
+  private async grantAutoDailyCheckinIfNeeded(
+    tx: XpGrantTransaction,
+    userId: number,
+    stats: CharacterXpStats,
+    timeZone: string,
+    rewards: XpGrantRewards,
+  ): Promise<{ stats: CharacterXpStats; rewards: XpGrantRewards }> {
+    const dayKey = getTodayGameDayKey(timeZone);
+    const existing = await tx.xpEvent.findFirst({
+      where: {
+        userId,
+        type: XpEventType.DAILY_CHECKIN,
+        dayKey,
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      return { stats, rewards };
+    }
+
+    const nextStats = await this.recordXpEventAndApply(
+      tx,
+      userId,
+      {
+        type: XpEventType.DAILY_CHECKIN,
+        xpAmount: XP_DAILY_CHECKIN,
+        cardId: null,
+        dayKey,
+      },
+      stats,
+      false,
+    );
+
+    rewards.checkinXp += XP_DAILY_CHECKIN;
+    const withStreak = await this.applyCheckinStreakAndMilestones(
+      tx,
+      userId,
+      nextStats,
+      timeZone,
+      rewards,
+      dayKey,
+    );
+
+    return { stats: withStreak, rewards };
+  }
+
+  private throwXpEventDayKeyRequired(): never {
+    throw new BadRequestException({
+      code: 'XP_EVENT_DAY_KEY_REQUIRED',
+      message: 'dayKey is required for this experience event type',
+    });
+  }
+
+  private throwDailyTaskXpLimit(): never {
+    throw new ConflictException({
+      code: 'DAILY_TASK_XP_LIMIT',
+      message: 'Daily limit of task experience rewards reached',
+    });
+  }
+
+  private throwXpEventDuplicate(eventType: XpEventType): never {
+    if (eventType === XpEventType.DAILY_CHECKIN) {
+      throw new ConflictException({
+        code: 'CHECKIN_ALREADY_DONE',
+        message: 'Daily check-in was already completed for today',
+      });
+    }
+    throw new ConflictException({
+      code: 'XP_EVENT_ALREADY_RECORDED',
+      message: 'Experience for this action was already granted',
     });
   }
 }

@@ -45,7 +45,10 @@ describe('CardService', () => {
         isCompleted: false,
       });
       prisma.card!.update!.mockResolvedValue({});
-      characterService.addExperience.mockResolvedValue({} as never);
+      characterService.addExperience.mockResolvedValue({
+        character: {},
+        rewards: { taskXp: XP_PER_TASK_COMPLETED },
+      } as never);
 
       await service.setCardCompletion(1, { isCompleted: true }, 10);
 
@@ -63,6 +66,10 @@ describe('CardService', () => {
         isCompleted: false,
       });
       prisma.card!.update!.mockResolvedValue({});
+      characterService.addExperience.mockResolvedValue({
+        character: {},
+        rewards: { taskXp: XP_PER_TASK_COMPLETED },
+      } as never);
 
       await service.setCardCompletion(2, { isCompleted: true }, 10);
 

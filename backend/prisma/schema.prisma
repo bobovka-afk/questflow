@@ -77,6 +77,10 @@ enum XpEventType {
   CHECKIN_STREAK
 }
 
+enum HealthEventReason {
+  INACTIVITY_PENALTY
+}
+
 model User {
   id              Int       @id @default(autoincrement())
   email           String    @unique
@@ -95,6 +99,7 @@ model User {
   comments             Comment[]
   character            Character?
   xpEvents             XpEvent[]
+  healthEvents         HealthEvent[]
 }
 
 model AuthToken {
@@ -235,6 +240,8 @@ model Character {
   level   Int @default(1)
   health Int @default(100)
   dailyTaskXpCount Int @default(0) @map("daily_task_xp_count")
+  checkinStreak Int @default(0) @map("checkin_streak")
+  lastCheckinDayKey DateTime? @map("last_checkin_day_key") @db.Date
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -255,4 +262,17 @@ model XpEvent {
 
   @@unique([userId, type, cardId])
   @@unique([userId, type, dayKey])
+}
+
+model HealthEvent {
+  id        Int               @id @default(autoincrement())
+  userId    Int               @map("user_id")
+  dayKey    DateTime          @map("day_key") @db.Date
+  delta     Int
+  reason    HealthEventReason
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dayKey, reason])
 }

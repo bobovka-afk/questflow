@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CharacterService } from '../character/character.service';
+import type { CardCompletionResult } from './interface';
 import { CreateCardDto } from './dto/create-card.dto';
 import { MoveCardDto } from './dto/move-card.dto';
 import { SetCardCompletionDto } from './dto/set-card-completion.dto';
@@ -78,7 +79,7 @@ export class CardService {
     cardId: number,
     dto: SetCardCompletionDto,
     actorUserId: number,
-  ): Promise<{ ok: boolean }> {
+  ): Promise<CardCompletionResult> {
     const card = await this.prisma.card.findUnique({
       where: { id: cardId },
       select: { assigneeId: true, isCompleted: true },
@@ -95,19 +96,19 @@ export class CardService {
       data: { isCompleted: dto.isCompleted },
     });
 
+    let rewards: CardCompletionResult['rewards'];
     if (dto.isCompleted && !card.isCompleted) {
-      const xpUserId = card.assigneeId ?? actorUserId; 
-        await this.characterService.addExperience(
-          xpUserId,
-          XP_PER_TASK_COMPLETED,
-          XpEventType.TASK_COMPLETED,
-          cardId,
-        );
+      const xpUserId = card.assigneeId ?? actorUserId;
+      const outcome = await this.characterService.addExperience(
+        xpUserId,
+        XP_PER_TASK_COMPLETED,
+        XpEventType.TASK_COMPLETED,
+        cardId,
+      );
+      rewards = outcome.rewards;
     }
-  
-  
 
-    return { ok: true };
+    return { ok: true, rewards };
   }
 
   async moveCard(cardId: number, dto: MoveCardDto): Promise<Card | null> {

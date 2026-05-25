@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, formatApiError, type ApiError } from './lib/api';
+import { CheckinStreakCounter } from './CheckinStreakCounter';
 import { type CharacterDto, characterPortraitUrl } from './lib/character';
+import { CHARACTER_HEALTH_MAX } from './lib/xpRewards';
 import { getCharacterXpTowardNext } from './lib/level-curve';
 import { navigate, SpaLink } from './lib/navigation';
 import { userProfilePath } from './lib/avatar';
@@ -179,6 +181,9 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
               </div>
             </div>
             <div className="trello-character-profile-info-col">
+              <div className="trello-character-streak-block">
+                <CheckinStreakCounter streak={character.checkinStreak ?? 0} size="profile" />
+              </div>
               <div className="trello-character-stat-row">
                 <div className="trello-character-stat-pill trello-character-stat-pill--level">
                   <span className="trello-character-stat-label">Уровень</span>
@@ -231,7 +236,9 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
                   >
                     <div
                       className="trello-character-stat-bar-fill trello-character-stat-bar-fill--health"
-                      style={{ width: '100%' }}
+                      style={{
+                        width: `${Math.min(100, Math.round((character.health / CHARACTER_HEALTH_MAX) * 100))}%`,
+                      }}
                       aria-hidden
                     />
                     <span className="trello-character-stat-meter-value">{character.health}</span>

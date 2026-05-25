@@ -24,7 +24,17 @@ import {
 	isXpTaskSoftNoticeCode,
 	type ApiError
 } from './lib/api'
-import { XP_PER_TASK_COMPLETED } from './lib/xpRewards'
+import { CheckinRewardToast, TaskRewardToast } from './RewardGrantToast'
+import {
+	buildRewardToastSteps,
+	delayMs,
+	hasRewardToast,
+	REWARD_TOAST_GAP_MS,
+	REWARD_TOAST_VISIBLE_MS,
+	type CardCompletionResponse,
+	type RewardToastStep,
+	type XpGrantRewards
+} from './lib/gamificationRewards'
 import { avatarInitials, avatarSrcFromPath, userProfilePath } from './lib/avatar'
 import { handleSpaTileAuxClick, handleSpaTileClick, SpaLink } from './lib/navigation'
 import { ProfileToolbarAnchor } from './profileToolbarOutlet'
@@ -373,11 +383,11 @@ export function BoardPage({
 	const [completionBusyId, setCompletionBusyId] = useState<number | null>(
 		null
 	)
-	const [xpToast, setXpToast] = useState<{
-		amount: number
+	const [rewardToast, setRewardToast] = useState<{
+		step: RewardToastStep
 		id: number
 	} | null>(null)
-	const xpToastTimerRef = useRef<number>(0)
+	const rewardToastRunIdRef = useRef(0)
 	const [xpErrorAlertCode, setXpErrorAlertCode] = useState<string | null>(
 		null
 	)
@@ -393,10 +403,30 @@ export function BoardPage({
 
 	useEffect(() => {
 		return () => {
-			window.clearTimeout(xpToastTimerRef.current)
+			rewardToastRunIdRef.current += 1
 			window.clearTimeout(xpBottomNoticeTimerRef.current)
 		}
 	}, [])
+
+	const playRewardToastSequence = useCallback(
+		async (rewards: XpGrantRewards) => {
+			const steps = buildRewardToastSteps(rewards)
+			if (steps.length === 0) return
+
+			const runId = ++rewardToastRunIdRef.current
+			for (let i = 0; i < steps.length; i++) {
+				if (rewardToastRunIdRef.current !== runId) return
+				setRewardToast({ step: steps[i], id: Date.now() + i })
+				await delayMs(REWARD_TOAST_VISIBLE_MS)
+				if (rewardToastRunIdRef.current !== runId) return
+				setRewardToast(null)
+				if (i < steps.length - 1) {
+					await delayMs(REWARD_TOAST_GAP_MS)
+				}
+			}
+		},
+		[]
+	)
 
 	const [cardTitleEditing, setCardTitleEditing] = useState(false)
 	const cardTitleInputRef = useRef<HTMLInputElement>(null)
@@ -901,7 +931,7 @@ export function BoardPage({
 				}
 			})
 			try {
-				await api(
+				const completionRes = await api<CardCompletionResponse>(
 					`/workspace/${workspaceId}/cards/${card.id}/completion`,
 					{
 						method: 'PATCH',
@@ -914,14 +944,11 @@ export function BoardPage({
 				if (
 					next &&
 					xpRecipientId != null &&
-					xpRecipientId === currentUserId
+					xpRecipientId === currentUserId &&
+					completionRes.rewards &&
+					hasRewardToast(completionRes.rewards)
 				) {
-					window.clearTimeout(xpToastTimerRef.current)
-					const id = Date.now()
-					setXpToast({ amount: XP_PER_TASK_COMPLETED, id })
-					xpToastTimerRef.current = window.setTimeout(() => {
-						setXpToast(null)
-					}, 3000)
+					void playRewardToastSequence(completionRes.rewards)
 				}
 			} catch (err) {
 				const code = (err as ApiError).code
@@ -965,7 +992,13 @@ export function BoardPage({
 				setCompletionBusyId(null)
 			}
 		},
-		[accessToken, completionBusyId, currentUserId, workspaceId]
+		[
+			accessToken,
+			completionBusyId,
+			currentUserId,
+			playRewardToastSequence,
+			workspaceId
+		]
 	)
 
 	async function submitEditCard() {
@@ -2238,16 +2271,17 @@ export function BoardPage({
 				</div>
 			)}
 
-			{xpToast ? (
-				<div className='trello-xp-toast-root' aria-live='polite'>
-					<div key={xpToast.id} className='trello-xp-toast'>
-						<span className='trello-xp-toast-glyph' aria-hidden>
-							+
-						</span>
-						<span className='trello-xp-toast-value'>{xpToast.amount}</span>
-						<span className='trello-xp-toast-label'>XP</span>
-					</div>
-				</div>
+			{rewardToast?.step.kind === 'checkin' ? (
+				<CheckinRewardToast
+					rewards={rewardToast.step.rewards}
+					toastId={rewardToast.id}
+				/>
+			) : null}
+			{rewardToast?.step.kind === 'task' ? (
+				<TaskRewardToast
+					rewards={rewardToast.step.rewards}
+					toastId={rewardToast.id}
+				/>
 			) : null}
 
 			{xpBottomNotice ? (
