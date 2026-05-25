@@ -12,7 +12,7 @@ import { SetCardCompletionDto } from './dto/set-card-completion.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import type { Card } from '../generated/prisma/client';
 import { XpEventType } from '../generated/prisma/enums';
-import { XP_PER_TASK_COMPLETED } from '../character/config/level-curve';
+import { XP_PER_TASK_COMPLETED } from '../gamification/config/rewards';
 
 @Injectable()
 export class CardService {

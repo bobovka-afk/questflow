@@ -73,10 +73,10 @@ flowchart LR
 
 | Проблема | Влияние | Планируемое исправление |
 |----------|---------|------------------------|
-| `dailyTaskXpCount` не сбрасывается | После 5 закрытий XP за карточки больше не начисляется никогда | Cron в полночь `GAME_DAY_TZ` → `dailyTaskXpCount = 0` |
+| ~~`dailyTaskXpCount` не сбрасывается~~ | ~~После 5 закрытий XP за карточки больше не начисляется никогда~~ | **Fixed (0.5a):** cron `GamificationCronService.resetDailyTaskXpCounts` в 00:00 `GAME_DAY_TZ` |
 | Нет HP decay | HP только растёт при XP | Cron: −10 за вчера без активности |
 | Нет чекинов | Enum есть, эндпоинтов нет | `POST /character/checkin` |
-| Нет `@nestjs/schedule` | Нет фоновых джоб | Добавить модуль + `GamificationCronService` |
+| ~~Нет `@nestjs/schedule`~~ | ~~Нет фоновых джоб~~ | **Fixed (0.5a):** `ScheduleModule` + `GamificationCronService` (сброс XP-лимита; HP decay — Phase 1) |
 | HP bar в UI | Всегда 100% ширина полосы | Привязать width к `health` |
 
 ---
@@ -166,16 +166,17 @@ flowchart TB
 
 ---
 
-## Phase 0.5 — сброс суток и константы
+## Phase 0.5 — сброс суток и константы — **Done**
 
 **Deliverables:**
 
-- `@nestjs/schedule`, `GamificationCronService`.
-- Job `0 0 * * *` (в `GAME_DAY_TZ`): `UPDATE character SET daily_task_xp_count = 0`.
-- Вынести все числа наград в `rewards.ts`.
-- E2E: после сброса снова можно получить XP за 5 карточек.
+- [x] `@nestjs/schedule`, `GamificationCronService`.
+- [x] Job `0 0 * * *` (в `GAME_DAY_TZ`): сброс `dailyTaskXpCount`.
+- [x] `backend/src/gamification/config/rewards.ts`; `character.service` / `card.service` без magic numbers.
+- [x] `GAME_DAY_TZ` в `.env.example`; unit-тесты cron и `rewards`.
+- [ ] E2E: после сброса снова можно получить XP за 5 карточек (ручной/regression).
 
-**Зависимости:** нет (блокер для честного лимита 5/день).
+**Зависимости:** нет (блокер для честного лимита 5/день снят).
 
 ---
 
@@ -424,7 +425,8 @@ model InventoryItem {
 |------|------------|
 | [backend/src/character/character.service.ts](../backend/src/character/character.service.ts) | `addExperience`, HP, лимит 5 |
 | [backend/src/card/card.service.ts](../backend/src/card/card.service.ts) | Начисление при `setCardCompletion` |
-| [backend/src/character/config/level-curve.ts](../backend/src/character/config/level-curve.ts) | `XP_PER_TASK_COMPLETED`, кривая уровней |
+| [backend/src/gamification/config/rewards.ts](../backend/src/gamification/config/rewards.ts) | XP за таск, дневной лимит, HP-константы |
+| [backend/src/character/config/level-curve.ts](../backend/src/character/config/level-curve.ts) | Кривая уровней |
 | [backend/prisma/schema.prisma](../backend/prisma/schema.prisma) | `Character`, `XpEvent`, enums |
 | [frontend/src/lib/xpRewards.ts](../frontend/src/lib/xpRewards.ts) | Константы для UI |
 | [frontend/src/ProfileCharacterPage.tsx](../frontend/src/ProfileCharacterPage.tsx) | Отображение и гайд |

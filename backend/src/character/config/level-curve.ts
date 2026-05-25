@@ -10,9 +10,6 @@ export const XP_REQUIRED_BY_LEVEL: number[] = [
   5750, 5800, 5850, 5900, 5950,
 ];
 
-
-export const XP_PER_TASK_COMPLETED = 100;
-
 export function getRequiredXpForLevel(level: number): number {
   if (level <= 1) return XP_REQUIRED_BY_LEVEL[1];
   if (level >= MAX_LEVEL) return XP_REQUIRED_BY_LEVEL[MAX_LEVEL];

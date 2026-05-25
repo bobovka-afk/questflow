@@ -7,7 +7,7 @@ import { CardService } from './card.service';
 import { CharacterService } from '../character/character.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { createPrismaMock } from '../testing/prisma-mock';
-import { XP_PER_TASK_COMPLETED } from '../character/config/level-curve';
+import { XP_PER_TASK_COMPLETED } from '../gamification/config/rewards';
 
 describe('CardService', () => {
   let service: CardService;

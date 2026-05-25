@@ -15,6 +15,8 @@ import { RedisModule } from './redis/redis.module';
 import { LoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'node:crypto';
 import { CharacterModule } from './character/character.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { GamificationModule } from './gamification/gamification.module';
 
 
 @Module({
@@ -22,6 +24,7 @@ import { CharacterModule } from './character/character.module';
     ConfigModule.forRoot({
       isGlobal: true
     }),
+    ScheduleModule.forRoot(),
     LoggerModule.forRoot({
       pinoHttp: {
         autoLogging: false,
@@ -88,6 +91,7 @@ import { CharacterModule } from './character/character.module';
     HealthModule,
     RedisModule,
     CharacterModule,
+    GamificationModule,
   ],
   controllers: [],
   providers: [ ],

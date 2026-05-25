@@ -12,6 +12,10 @@ import {
 import { CharacterService } from './character.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { createPrismaMock } from '../testing/prisma-mock';
+import {
+  DAILY_TASK_XP_COMPLETIONS_MAX,
+  XP_PER_TASK_COMPLETED,
+} from '../gamification/config/rewards';
 
 describe('CharacterService', () => {
   let service: CharacterService;
@@ -110,10 +114,10 @@ describe('CharacterService', () => {
       tx.character.findUnique.mockResolvedValue({
         currentXp: 0,
         level: 1,
-        dailyTaskXpCount: 5,
+        dailyTaskXpCount: DAILY_TASK_XP_COMPLETIONS_MAX,
       });
       await expect(
-        service.addExperience(1, 100, XpEventType.TASK_COMPLETED),
+        service.addExperience(1, XP_PER_TASK_COMPLETED, XpEventType.TASK_COMPLETED),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -129,7 +133,7 @@ describe('CharacterService', () => {
       });
       tx.xpEvent.create.mockRejectedValue(err);
       await expect(
-        service.addExperience(1, 100, XpEventType.TASK_COMPLETED, 9),
+        service.addExperience(1, XP_PER_TASK_COMPLETED, XpEventType.TASK_COMPLETED, 9),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -144,7 +148,7 @@ describe('CharacterService', () => {
       tx.character.update.mockResolvedValue(updated);
 
       await expect(
-        service.addExperience(1, 100, XpEventType.TASK_COMPLETED),
+        service.addExperience(1, XP_PER_TASK_COMPLETED, XpEventType.TASK_COMPLETED),
       ).resolves.toEqual(updated);
 
       expect(tx.character.update).toHaveBeenCalledWith(

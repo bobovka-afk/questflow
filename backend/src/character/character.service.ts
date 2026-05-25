@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { UpdateCharacterDto } from './dto/update-character.dto';
 import { getRequiredXpForLevel } from './config/level-curve';
+import { DAILY_TASK_XP_COMPLETIONS_MAX } from '../gamification/config/rewards';
 import { XpEventType } from '../generated/prisma/enums';
 
 
@@ -120,7 +121,7 @@ export class CharacterService {
 
       if (
         eventType === XpEventType.TASK_COMPLETED &&
-        userStats.dailyTaskXpCount >= 5
+        userStats.dailyTaskXpCount >= DAILY_TASK_XP_COMPLETIONS_MAX
       ) {
         throw new ConflictException({
           code: 'DAILY_TASK_XP_LIMIT',

@@ -1,5 +1,3 @@
-/** Partial Prisma client mock for unit tests. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createPrismaMock(): any {
   const mockFn = () => jest.fn();
   return {
@@ -17,6 +15,7 @@ export function createPrismaMock(): any {
       findUnique: mockFn(),
       create: mockFn(),
       update: mockFn(),
+      updateMany: mockFn(),
     },
     xpEvent: {
       create: mockFn(),

@@ -15,22 +15,22 @@
 | Phase | Состояние |
 |-------|-----------|
 | 0 | **Done** — персонаж, XP за карточку, уровни, HP+5, UI |
-| 0.5 | **Not started** — cron, сброс `dailyTaskXpCount`, `rewards.ts` |
+| 0.5 | **Done** — cron сброс `dailyTaskXpCount`, `rewards.ts`, константы в сервисах |
 | 1 | **Not started** — чекины, HP decay, `HealthEvent` |
 | 2–3 | **Not started** — квесты, сундуки, dust |
 
-**Блокер продакшн-логики:** `dailyTaskXpCount` инкрементируется, но **никогда не обнуляется** — лимит 5 XP/день ломается после первых пяти закрытий. Первый кодовый шаг — Phase 0.5.
+**Суточный сброс:** cron `resetDailyTaskXpCounts` в `GamificationCronService` (00:00 `GAME_DAY_TZ`). Числа наград — `backend/src/gamification/config/rewards.ts`.
 
 ---
 
-## Константы (сейчас в коде — синхронизировать при переносе в `rewards.ts`)
+## Константы (синхронизировать backend ↔ frontend при изменении)
 
 | Константа | Значение | Backend | Frontend |
 |-----------|----------|---------|----------|
-| XP за карточку | 100 | `level-curve.ts` → `XP_PER_TASK_COMPLETED` | `lib/xpRewards.ts` |
-| Лимит XP-тасков / сутки | 5 | hardcode `>= 5` в `character.service.ts` | `DAILY_TASK_XP_COMPLETIONS_MAX` |
-| HP за XP-событие | +5, max 100 | `addHealth()` private | — |
-| Уровни | 1–100 | `XP_REQUIRED_BY_LEVEL`, `getRequiredXpForLevel` | `lib/level-curve.ts` (дубль кривой) |
+| XP за карточку | 100 | `gamification/config/rewards.ts` → `XP_PER_TASK_COMPLETED` | `lib/xpRewards.ts` |
+| Лимит XP-тасков / сутки | 5 | `DAILY_TASK_XP_COMPLETIONS_MAX` в `character.service` | `DAILY_TASK_XP_COMPLETIONS_MAX` |
+| HP за XP-событие | +5, max 100 | `HP_GAIN_PER_XP_EVENT`, `CHARACTER_HEALTH_MAX` в `rewards.ts` (применение в коде — Phase 1) | — |
+| Уровни | 1–100 | `character/config/level-curve.ts` | `lib/level-curve.ts` (дубль кривой) |
 
 `XpEvent` для чекинов: при создании события с `dayKey` нужно явно передавать `dayKey` в `create` — **сейчас `addExperience` не пишет `dayKey`**, только `cardId`.
 
@@ -49,7 +49,8 @@ questflow/
 │   │   ├── character.service.ts       ← addExperience, HP, лимит 5
 │   │   ├── character.controller.ts    ← GET/POST/PATCH /character
 │   │   ├── character.module.ts        ← exports CharacterService
-│   │   └── config/level-curve.ts      ← XP числа и кривая
+│   │   └── config/level-curve.ts      ← кривая уровней
+│   ├── src/gamification/config/rewards.ts ← XP/лимит/HP константы
 │   ├── src/card/card.service.ts       ← setCardCompletion → addExperience
 │   └── src/card/card.module.ts        ← imports CharacterModule
 ├── frontend/
@@ -62,10 +63,10 @@ questflow/
 │   └── src/lib/api.ts                 ← isXpGrantErrorCode, isXpTaskSoftNoticeCode
 ```
 
-**Целевая структура (ещё не создана):**
+**Gamification (частично):**
 
-- `backend/src/gamification/` — `gamification.module.ts`, `gamification-cron.service.ts`, `config/rewards.ts`
-- Подключить `ScheduleModule` в `app.module.ts`
+- `backend/src/gamification/` — module, cron, `config/rewards.ts`
+- `ScheduleModule.forRoot()` в `app.module.ts`
 - Env: `GAME_DAY_TZ` в `backend/.env.example`
 
 ---
@@ -90,7 +91,7 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 1. `PATCH` закрытие карточки → `CardService.setCardCompletion`.
 2. Только переход `isCompleted: false → true`.
 3. `xpUserId = card.assigneeId ?? actorUserId`.
-4. `characterService.addExperience(xpUserId, 100, TASK_COMPLETED, cardId)`.
+4. `characterService.addExperience(xpUserId, XP_PER_TASK_COMPLETED, TASK_COMPLETED, cardId)`.
 5. Ошибки XP **не откатывают** `isCompleted` на клиенте — см. `isXpGrantErrorCode` / `isXpTaskSoftNoticeCode` в `api.ts`, toast в `BoardPage.tsx`.
 
 ```typescript
@@ -110,6 +111,30 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 5. **Ошибки** — тело `{ code, message }`; фронт для «мягких» XP-случаев не показывает модалку ошибки.
 6. **Миграции** — `npx prisma migrate dev` в `backend/`; клиент: `src/generated/prisma`.
 7. **После изменения чисел** — backend config + `frontend/src/lib/xpRewards.ts` + пункты в гайде `ProfileCharacterPage`.
+
+---
+
+## Backend (`backend/src/`)
+
+### Unit-тесты (обязательно)
+
+При изменении логики добавляй или обновляй **unit-тесты** (`*.spec.ts` рядом с модулем или в том же каталоге).
+
+Покрывать реальное поведение: сервисы (`*.service.ts`), guards/filters/resolvers в `common/`, конфиг с логикой (`level-curve.ts`, `gamification/config/rewards.ts` и т.п.).
+
+Паттерн: Jest, `createPrismaMock()` из `src/testing/prisma-mock.ts`, `new Service(mock)` без поднятия всего приложения.
+
+После правок: `cd backend && npm run test` (или `test:unit` при крупных изменениях). Пороги coverage в `package.json` — не ломать без явного запроса.
+
+Не добавляй тесты «ради галочки» (тривиальные expect на константы), если поведение не менялось.
+
+### Комментарии в коде
+
+**Не добавляй** в `backend/src/**/*.ts` (кроме `*.spec.ts` при необходимости): блочные `/** ... */`, поясняющие `//`, JSDoc на экспортах.
+
+Контекст для агента и продукт — в `docs/` (этот файл, [roadmap](gamification-roadmap.md)). Имена и типы — самодокументируемые.
+
+Исключения: явная просьба пользователя; `eslint-disable`; внешний контракт, который нельзя выразить кодом.
 
 ---
 
@@ -151,9 +176,9 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 
 ## Очередь задач для агента (рекомендуемый порядок)
 
-1. **0.5a** — `npm i @nestjs/schedule`, `GamificationModule`, cron `resetDailyTaskXpCounts()` в `GAME_DAY_TZ`.
-2. **0.5b** — `backend/src/gamification/config/rewards.ts`, заменить magic numbers в `character.service` / `card.service`.
-3. **0.5c** — `GAME_DAY_TZ` в `.env.example`, тест cron вручную или unit с mock clock.
+1. ~~**0.5a**~~ — done: `@nestjs/schedule`, `GamificationModule`, cron `resetDailyTaskXpCounts()` в `GAME_DAY_TZ`.
+2. ~~**0.5b**~~ — done: `rewards.ts`, без magic numbers в `character.service` / `card.service`.
+3. ~~**0.5c**~~ — done: `GAME_DAY_TZ` в `.env.example`, unit-тесты cron.
 4. **1a** — `addExperience`: параметр `dayKey?`, чекин `POST /character/checkin`.
 5. **1b** — миграция `HealthEvent`, cron HP penalty, grace 48h от `character.createdAt`.
 6. **1c** — UI чекин + fix HP bar + гайд.
@@ -198,6 +223,7 @@ cd backend && npx prisma migrate dev
 - [ ] Таблица «Статус» здесь и [Known gaps](gamification-roadmap.md#known-gaps-критично-до-phase-1) актуальны
 - [ ] При новых таблицах — миграция + пример в Phase-чеклисте roadmap
 - [ ] E2E/ручной сценарий: лимит 5, идемпотентность карточки, (позже) чекин, cron
+- [ ] `cd backend && npm run test` проходит после изменений в `backend/src/`
 
 ---
 
