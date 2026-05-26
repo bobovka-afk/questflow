@@ -13,6 +13,7 @@ import {
 import { CharacterService } from './character.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { createPrismaMock } from '../testing/prisma-mock';
+import { QuestProgressService } from '../gamification/quest/quest-progress.service';
 import {
   CHARACTER_HEALTH_MAX,
   DAILY_TASK_XP_COMPLETIONS_MAX,
@@ -20,7 +21,7 @@ import {
   XP_DAILY_CHECKIN,
   XP_PER_TASK_COMPLETED,
 } from '../gamification/config/rewards';
-import { getTodayGameDayKey, getYesterdayGameDayKey } from '../gamification/game-day';
+import { getTodayGameDayKey, getYesterdayGameDayKey } from '../gamification/core/game-day';
 
 const baseXpStats = {
   currentXp: 0,
@@ -39,9 +40,19 @@ describe('CharacterService', () => {
   beforeEach(() => {
     prisma = createPrismaMock();
     configService = { get: jest.fn().mockReturnValue('UTC') };
+    const questProgressService = {
+      recordXpDay: jest.fn().mockResolvedValue([]),
+      recordDailyCheckin: jest.fn().mockResolvedValue([]),
+    } as unknown as QuestProgressService;
+    const achievementService = {
+      recordMax: jest.fn().mockResolvedValue([]),
+      recordIncrement: jest.fn().mockResolvedValue([]),
+    };
     service = new CharacterService(
       prisma as unknown as PrismaService,
       configService as unknown as ConfigService,
+      questProgressService,
+      achievementService as never,
     );
   });
 

@@ -1,7 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import { ValidationError } from 'class-validator';
 import * as cookieParser from 'cookie-parser';
 import * as path from 'path';
 import * as express from 'express';
@@ -32,11 +33,34 @@ async function bootstrap() {
   const uploadsPath = path.join(process.cwd(), 'uploads');
   app.use('/uploads', express.static(uploadsPath));
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      exceptionFactory: (errors: ValidationError[]) => {
+        const messages = errors.flatMap((error) => {
+          if (error.constraints) {
+            return Object.values(error.constraints);
+          }
+          if (error.children?.length) {
+            return error.children.flatMap((child) =>
+              child.constraints ? Object.values(child.constraints) : [],
+            );
+          }
+          return [`Лишнее поле: ${error.property}`];
+        });
+        const message =
+          messages.length <= 1
+            ? (messages[0] ?? 'Ошибка проверки данных')
+            : messages;
+        return new BadRequestException({
+          code: 'VALIDATION_ERROR',
+          message,
+        });
+      },
+    }),
+  );
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Questflow API')

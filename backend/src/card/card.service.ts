@@ -6,6 +6,10 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CharacterService } from '../character/character.service';
+import { resolveCardRewardUserId } from '../gamification/core/card-reward-user';
+import { QuestProgressService } from '../gamification/quest/quest-progress.service';
+import { AchievementService } from '../gamification/achievement/achievement.service';
+import { AchievementMetric } from '../generated/prisma/enums';
 import type { CardCompletionResult } from './interface';
 import { CreateCardDto } from './dto/create-card.dto';
 import { MoveCardDto } from './dto/move-card.dto';
@@ -20,6 +24,8 @@ export class CardService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly characterService: CharacterService,
+    private readonly questProgressService: QuestProgressService,
+    private readonly achievementService: AchievementService,
   ) {}
 
   async getCards(listId: number): Promise<Card[]> {
@@ -82,7 +88,16 @@ export class CardService {
   ): Promise<CardCompletionResult> {
     const card = await this.prisma.card.findUnique({
       where: { id: cardId },
-      select: { assigneeId: true, isCompleted: true },
+      select: {
+        assigneeId: true,
+        isCompleted: true,
+        dueDate: true,
+        list: {
+          select: {
+            board: { select: { workspaceId: true } },
+          },
+        },
+      },
     });
     if (!card) {
       throw new NotFoundException({
@@ -98,7 +113,7 @@ export class CardService {
 
     let rewards: CardCompletionResult['rewards'];
     if (dto.isCompleted && !card.isCompleted) {
-      const xpUserId = card.assigneeId ?? actorUserId;
+      const xpUserId = resolveCardRewardUserId(card.assigneeId, actorUserId);
       const outcome = await this.characterService.addExperience(
         xpUserId,
         XP_PER_TASK_COMPLETED,
@@ -106,6 +121,17 @@ export class CardService {
         cardId,
       );
       rewards = outcome.rewards;
+
+      await this.questProgressService.recordCardCompleted(xpUserId, {
+        cardId,
+        workspaceId: card.list.board.workspaceId,
+        dueDate: card.dueDate,
+      });
+      await this.achievementService.recordIncrement(
+        xpUserId,
+        AchievementMetric.CARDS_COMPLETED_TOTAL,
+        1,
+      );
     }
 
     return { ok: true, rewards };

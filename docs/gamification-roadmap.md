@@ -17,7 +17,7 @@ docker compose up -d --build postgres redis app frontend
 3. **Персонаж один на аккаунт;** прогресс учитывает активность в **любом** воркспейсе.
 4. **Сундуки v1 — только косметика,** без статов и влияния на XP/HP (нет pay-to-win).
 5. **Квесты выдают сундук (токен),** открытие сундука — отдельный момент награды (variable reward).
-6. Каждая новая механика дублируется в UI-гайде на странице персонажа (как сейчас «Как это работает»).
+6. В фазах 0–3 — только минимальные подсказки в UI при необходимости; **полный** гайд «Как это работает» и **E2E** — в финальной [Phase 4](#phase-4--e2e-и-гайд-по-игре-финал-v1).
 
 ---
 
@@ -59,27 +59,25 @@ flowchart LR
   CardComplete --> AddXP --> XpEvent --> Char
 ```
 
-### Зарезервировано в схеме, но не в API
-
-В Prisma уже есть типы `XpEventType`:
+### XpEventType (Phase 1)
 
 - `TASK_COMPLETED` — используется.
-- `DAILY_CHECKIN` — не реализован.
-- `CHECKIN_STREAK` — не реализован.
-
-Поле `XpEvent.dayKey` и unique `(userId, type, dayKey)` подготовлены под чекины.
+- `DAILY_CHECKIN` — **реализовано** (авто при первом XP за день + `POST /character/checkin`).
+- `CHECKIN_STREAK` — **реализовано** (пороги 7 / 14 / 30).
 
 ---
 
-## Known gaps (критично до Phase 1)
+## Known gaps (история; Phase 1 закрыта)
 
-| Проблема | Влияние | Планируемое исправление |
-|----------|---------|------------------------|
-| ~~`dailyTaskXpCount` не сбрасывается~~ | ~~После 5 закрытий XP за карточки больше не начисляется никогда~~ | **Fixed (0.5a):** cron `GamificationCronService.resetDailyTaskXpCounts` в 00:00 `GAME_DAY_TZ` |
-| ~~Нет HP decay~~ | ~~HP только растёт при XP~~ | **Fixed (1b):** midnight cron + `HealthEvent` |
-| ~~Нет чекинов~~ | ~~Enum есть, эндпоинтов нет~~ | **Fixed (1a):** `POST /character/checkin` |
-| ~~Нет `@nestjs/schedule`~~ | ~~Нет фоновых джоб~~ | **Fixed (0.5a):** `ScheduleModule` + `GamificationCronService` (сброс XP-лимита; HP decay — Phase 1) |
-| HP bar в UI | Всегда 100% ширина полосы | Привязать width к `health` |
+| Проблема | Статус |
+|----------|--------|
+| ~~`dailyTaskXpCount` не сбрасывается~~ | **Fixed (0.5a)** — cron в `GAME_DAY_TZ` |
+| ~~Нет HP decay~~ | **Fixed (1b)** — `HealthEvent` + cron |
+| ~~Нет чекинов~~ | **Fixed (1a)** |
+| ~~Нет `@nestjs/schedule`~~ | **Fixed (0.5a)** |
+| ~~HP bar в UI~~ | **Fixed (1c)** — width от `health` |
+| HP = 0, косметический статус в UI | **Backlog** — не блокирует доски |
+| Недельный чекин | **Optional** — можно объединить с weekly-квестами (Phase 2) |
 
 ---
 
@@ -118,7 +116,7 @@ flowchart LR
 | Первое закрытие карточки | 100 | 5 раз / игровые сутки | **Реализовано** |
 | Дневной чекин | 100 | 1 / сутки | **Реализовано (1a)** — `POST /character/checkin` |
 | Недельный чекин | 200 | 1 / неделя (periodKey) | Planned |
-| Streak 7 / 14 / 30 дней | 100 / 200 / 500 | Раз за milestone | Planned (`CHECKIN_STREAK`) |
+| Streak 7 / 14 / 30 дней | 200 / 400 / 800 | Раз за milestone | **Реализовано (1)** — `CHECKIN_STREAK` |
 
 **Игровые сутки:** граница по `GAME_DAY_TZ` (рекомендация: `Europe/Moscow` или `UTC`, одно значение в `.env`).
 
@@ -129,7 +127,7 @@ flowchart LR
 | Максимум | 100 | Реализовано |
 | За любое XP-событие с начислением | +5 | **Реализовано (1b)** в `addExperience` |
 | Штраф за вчера без активности | −5 | **Реализовано (1b)** — cron `applyInactivityHpPenalty` |
-| HP = 0 | Статус «истощён», доски не блокируются | Planned (UI) |
+| HP = 0 | Статус «истощён», доски не блокируются | Backlog (UI), механика есть |
 
 ### Активность (для HP decay) — черновое правило
 
@@ -176,13 +174,12 @@ flowchart TB
 - [x] Job `0 0 * * *` (в `GAME_DAY_TZ`): сброс `dailyTaskXpCount`.
 - [x] `backend/src/gamification/config/rewards.ts`; `character.service` / `card.service` без magic numbers.
 - [x] `GAME_DAY_TZ` в `.env.example`; unit-тесты cron и `rewards`.
-- [ ] E2E: после сброса снова можно получить XP за 5 карточек (ручной/regression).
 
 **Зависимости:** нет (блокер для честного лимита 5/день снят).
 
 ---
 
-## Phase 1 — чекины и HP cron
+## Phase 1 — чекины и HP cron — **Done**
 
 ### Дневной / недельный чекин
 
@@ -199,7 +196,7 @@ flowchart TB
 - Streak: поля `checkinStreak`, `lastCheckinDay` на `Character` **или** вычисление из `XpEvent` (в MD рекомендуем поля на Character для быстрого UI).
 - Milestone streak → `CHECKIN_STREAK` с синтетическим `dayKey` (идемпотентность по порогу 7/14/30): `gamification/config/checkin-streak-milestones.ts`, `checkin-streak-milestones.ts`.
 
-**UI:** кнопка «Отметиться», индикатор серии, текст в гайде.
+**UI:** индикатор серии, toast при наградах (авто-чекин без отдельной кнопки). Текст правил в гайде — [Phase 4](#phase-4--e2e-и-гайд-по-игре-финал-v1).
 
 ### HP decay cron
 
@@ -235,12 +232,64 @@ model HealthEvent {
 - [x] Check-in controller + Swagger (`POST /character/checkin`, 1a).
 - [x] Cron HP penalty + `GAME_DAY_TZ` (в одном midnight job с reset XP).
 - [x] HP +5 в `addExperience` (1b).
-- [ ] Frontend: чекин, streak, HP bar по `health`, гайд.
-- [ ] E2E: двойной чекин, штраф только раз, grace period.
+- [x] Frontend (1c): streak, HP bar по `health`, intro/toast, модалка (i) с порогами 7/14/30 (без полного гайда — Phase 4).
+
+**Не в scope Phase 1 (перенесено):** полный гайд и E2E → Phase 4; недельный чекин → optional / Phase 2.
 
 ---
 
 ## Phase 2 — квесты и сундуки (косметика)
+
+Фаза делится на две стадии: сначала **движок квестов** (2a), затем **награды-сундуки** (2b). UI гайда по квестам — в Phase 4 вместе с остальными правилами.
+
+### Phase 2a — квесты (quest engine)
+
+**Цель:** ежедневные и недельные задания с прогрессом по действиям в любом workspace; награда — токен сундука (выдача сундука в 2b).
+
+| Задача | Описание |
+|--------|----------|
+| Prisma | `QuestTemplate`, `UserQuestProgress`, enums `QuestPeriod`, `QuestMetric` |
+| Сиды / админ | Шаблоны: 3–4 дневных, 2–3 недельных (см. таблицы ниже) |
+| Quest service | `periodKey` в `GAME_DAY_TZ`, инкремент `current`, `completedAt` |
+| Hooks | После закрытия карточки, комментария, авто-чекина — в той же `$transaction`, где XP |
+| API | `GET /character/quests` (активные + прогресс), опционально claim bundle |
+| Идемпотентность | Unique `(userId, templateId, periodKey)`; повторное событие не дублирует прогресс сверх target |
+| UI (минимум) | Список квестов на профиле / виджет; детали в Phase 4 |
+
+**Дневные примеры:** 3 карточки, 1 с дедлайном сегодня, 1 комментарий, чекин за день.
+
+**Недельные примеры:** 15 карточек, 5 дней с XP, 2 workspace с активностью.
+
+**Чеклист 2a:**
+
+- [x] Миграция QuestTemplate + UserQuestProgress
+- [x] GamificationModule: `QuestProgressService` + unit-тесты (`quest-period`, `quest-progress`)
+- [x] Hook из `CardService`, `CommentService`, `CharacterService` (checkin / XP day)
+- [x] `GET /character/quests` + Swagger
+- [x] Frontend: блок «Квесты дня / недели» на `ProfileCharacterPage`
+
+### Phase 2b — сундуки и косметика
+
+**Цель:** variable reward — сундук за выполненный набор квестов; открытие → косметика в инвентарь; **без статов и влияния на XP/HP**.
+
+| Задача | Описание |
+|--------|----------|
+| Prisma | `CosmeticItem`, `UserChest`, `InventoryItem`, `ChestTier`, loot table (конфиг или таблица) |
+| Выдача сундука | **За каждый выполненный квест** — свой `UserChest` (tier из шаблона); `source` = `QUEST:{templateId}:{periodKey}`; бонус 7/7 чекинов → Epic (опц., отдельный source) |
+| API | `POST /character/chests/:id/open`, `GET /character/inventory`, `PATCH /character/cosmetics/equip` |
+| Дубликат | Phase 2: сообщение «уже есть»; Phase 3: пыль (dust) |
+| UI | Неполученные сундуки, анимация открытия, экипировка рамки/фона/badge; preset — через `updateCharacter` + проверка владения |
+| Ошибки | `CHEST_ALREADY_OPENED`, `COSMETIC_NOT_OWNED` (см. технический чеклист) |
+
+**Чеклист 2b:**
+
+- [x] Миграция cosmetic + chest + inventory
+- [x] Loot roll (weighted), запись `InventoryItem`
+- [x] Open chest + equip endpoints + Swagger
+- [x] Связка: завершение квеста → `ChestService.grant` (per-quest)
+- [x] Frontend: квесты, открытие сундука, экипировка косметики на профиле
+
+**Зависимости:** 2b требует 2a (сундук выдаётся за квесты). Можно параллелить Prisma-черновик 2b с концом 2a.
 
 ### Модель данных (черновик)
 
@@ -330,7 +379,7 @@ model InventoryItem {
 | Оставить комментарий | `COMMENTS_CREATED` | 1 |
 | Дневной чекин | `DAILY_CHECKIN_DONE` | 1 |
 
-**Награда:** при выполнении всех дневных квестов периода → `UserChest` tier **Common**. Отдельные квесты могут давать прогресс без сундука (настраивается в template).
+**Награда (v1):** **отдельный сундук за каждый выполненный квест** — `rewardChestTier` в шаблоне (Common для дневных, Rare для недельных). Зачёт карточек — **исполнителю** (`assigneeId ?? actor`), как XP.
 
 **Недельные:**
 
@@ -340,14 +389,14 @@ model InventoryItem {
 | 5 дней с ≥1 XP-событием | `ACTIVE_DAYS_WITH_XP` | 5 |
 | Активность в 2 воркспейсах | `DISTINCT_WORKSPACES_ACTIVE` | 2 |
 
-**Награда:** все недельные выполнены → **Rare**; бонус за 7/7 дней чекина → **Epic** (опционально).
+**Награда:** сундук **Rare за каждый** недельный квест; бонус 7/7 чекинов за неделю → **Epic** (опционально, отдельный `source`).
 
 ### Сундуки v1 — только косметика
 
 | Tier | Источник | Содержимое (примеры) |
 |------|----------|----------------------|
-| Common | Все дневные квесты дня | Рамка, badge, редкий duplicate → dust (Phase 3) |
-| Rare | Недельный bundle | Новый avatar preset, фон профиля |
+| Common | Каждый дневной квест | Рамка, badge, фон (duplicate → Phase 3 dust) |
+| Rare | Каждый недельный квест | Avatar preset, фон профиля |
 | Epic | Streak / особое недельное | Эксклюзивный preset / рамка |
 
 **Открытие:** `POST /character/chests/:id/open` → weighted roll по `LootTable` → `InventoryItem`. Дубликат: в Phase 3 конвертация в «пыль»; в Phase 2 — сообщение «уже есть» без ломания UX.
@@ -358,20 +407,44 @@ model InventoryItem {
 
 - Прогресс обновляется в тех же транзакциях, где карточка закрыта / комментарий создан / чекин (hook из сервисов, не только cron).
 - `periodKey` пересчитывается в `GAME_DAY_TZ`.
-- Завершение квеста → создать `UserChest` если ещё не выдан за этот bundle.
+- Завершение квеста → создать `UserChest` (unique `userId` + `source` = `QUEST:{templateId}:{periodKey}`).
 
 ---
 
-## Phase 3 — backlog
+## Phase 3 — пыль и достижения
 
-| Идея | Описание |
-|------|----------|
-| Пыль (dust) | Дубликаты косметики → валюта на выбор из loot table |
-| Achievements | One-time из агрегатов `XpEvent` |
-| Battle pass | 4-недельный сезон с треком наград |
-| Уведомления | Email / in-app: «завтра −5 HP», «сундук готов» |
-| Лидерборд workspace | Топ по XP за неделю в WS (opt-in) |
-| Командные weekly goals | Общий прогресс WS — отдельная фаза |
+| Идея | Статус | Описание |
+|------|--------|----------|
+| Пыль (dust) | **Done** | Дубликат косметики → пыль по tier предмета (15/40/100); магазин: 3 сундука (50/120/250 пыли) |
+| Achievements | **Done** | 15 one-time ачивок, прогресс по метрикам, бонусная пыль за разблокировку |
+| Battle pass | → Phase 4 backlog | 4-недельный сезон с треком наград |
+| Уведомления | → Phase 4 backlog | Email / in-app |
+| Лидерборд workspace | → Phase 4 backlog | Топ по XP за неделю (opt-in) |
+| Командные weekly goals | → Phase 4 backlog | Общий прогресс WS |
+
+**API:** `GET /character/achievements`, `GET /character/dust/shop`, `POST /character/dust/purchase` (`{ tier }`). Поле `Character.dust`. Коды: `INSUFFICIENT_DUST`, `DUST_SHOP_TIER_INVALID`.
+
+---
+
+## Phase 4 — E2E и гайд по игре (финал v1)
+
+**Когда:** после завершения механик Phase 0–2 (и опционально выбранных пунктов Phase 3). Не блокирует разработку фич — сводит правила и регрессию в одном месте.
+
+### Гайд «Как это работает»
+
+- [ ] Актуальный полный текст в `ProfileCharacterPage` («Как это работает»): XP за карточки, лимит 5/сутки, авто-чекин и серия, milestones, HP (+5 за награду, −5 за бездействие), grace, `GAME_DAY_TZ`.
+- [x] После Phase 2 — квесты, сундуки, косметика (без pay-to-win).
+- [ ] Константы в тексте = `xpRewards.ts` / `rewards.ts`; intro (`GamificationIntroModal`) не противоречит гайду.
+
+### E2E / regression
+
+- [ ] Сброс `dailyTaskXpCount`: после полуночи снова до 5 XP за карточки.
+- [ ] Идемпотентность: повторное закрытие той же карточки, лимит 5 за сутки.
+- [ ] Чекин: двойной запрос / авто-чекин при первом XP, milestones 7/14/30.
+- [ ] HP: штраф за вчера только раз, grace period, +5 при XP-событии.
+- [ ] (Phase 4 E2E) квесты → сундук → открытие, дубликат косметики.
+
+**Где:** Playwright/Cypress или согласованный manual regression-чеклист в репо; unit-тесты cron/сервисов остаются в фазах 0.5–1.
 
 ---
 
@@ -381,11 +454,11 @@ model InventoryItem {
 |-------|-------------|-------------|
 | **0** | Персонаж, XP за карточки, уровни, HP+5 | — |
 | **0.5** | Сброс `dailyTaskXpCount`, `rewards.ts` | schedule |
-| **1a** | Check-in API, streak, UI | XpEvent types |
-| **1b** | HP decay cron, `HealthEvent` | schedule, правило активности |
-| **2a** | Quest templates + progress hooks | карточки, комментарии, чекин |
-| **2b** | Chests, inventory, equip cosmetic | Prisma models |
+| **1** | Чекины, HP cron, streak UI | **Done** |
+| **2a** | Quest templates + progress hooks | Phase 1, card/comment/checkin |
+| **2b** | Chests, inventory, equip cosmetic | Phase 2a |
 | **3** | Dust, achievements, notifications | optional |
+| **4** | E2E regression, полный гайд по игре | Phase 0–2 (механики) |
 
 ---
 
@@ -395,8 +468,9 @@ model InventoryItem {
 - [ ] **Транзакции:** `addExperience` + quest progress + chest grant в `$transaction` где связано.
 - [ ] **Логи:** Pino — `userId`, `eventType`, `xpAmount`, `questId`, `chestId`.
 - [ ] **Конфиг:** один `rewards.ts`, без магических чисел в сервисах.
-- [ ] **Тесты:** лимит 5, повтор карточки, двойной чекин, cron dry-run, grace HP.
-- [ ] **Frontend:** константы из `xpRewards.ts`, гайд обновлять синхронно с backend.
+- [ ] **Unit-тесты** (в фазах фич): лимит 5, повтор карточки, cron, grace HP — `*.spec.ts`.
+- [ ] **E2E и полный гайд** — только [Phase 4](#phase-4--e2e-и-гайд-по-игре-финал-v1).
+- [ ] **Frontend:** константы из `xpRewards.ts` синхронно с backend; текст гайда — Phase 4.
 - [ ] **Swagger:** все новые эндпоинты с кодами ошибок (`DAILY_TASK_XP_LIMIT`, `XP_EVENT_ALREADY_RECORDED`, …).
 
 ### Коды ошибок (расширение)

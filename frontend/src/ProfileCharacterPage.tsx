@@ -11,8 +11,15 @@ import {
   ROLE_LABEL_RU,
 } from './lib/character';
 import { getCharacterXpTowardNext } from './lib/level-curve';
-import { CheckinStreakCounter } from './CheckinStreakCounter';
+import { CheckinStreakProfileRow } from './CheckinStreakProfileRow';
 import { CHECKIN_STREAK_MILESTONES } from './lib/checkinStreakMilestones';
+import {
+  computeStreakProfileFeedback,
+  readCharacterStreakSnapshot,
+  snapshotFromCharacter,
+  writeCharacterStreakSnapshot,
+  type StreakProfileFeedback,
+} from './lib/characterStreakSnapshot';
 import { STREAK_LABEL } from './lib/gamificationCopy';
 import {
 	CHARACTER_HEALTH_MAX,
@@ -23,6 +30,7 @@ import {
 import { CharacterCreateForm } from './CharacterCreateForm';
 import { SpaLink } from './lib/navigation';
 import { ProfileToolbarAnchor } from './profileToolbarOutlet';
+import { ProfileCharacterQuestsPanel } from './ProfileCharacterQuestsPanel';
 
 type Props = {
   accessToken: string;
@@ -50,6 +58,12 @@ export function ProfileCharacterPage(props: Props) {
   const [guideOpen, setGuideOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [saveCheckVisible, setSaveCheckVisible] = useState(false);
+  const [streakAnimateFrom, setStreakAnimateFrom] = useState<number | null>(null);
+  const [streakCelebrate, setStreakCelebrate] = useState(false);
+  const [streakLostNotice, setStreakLostNotice] = useState<Extract<
+    StreakProfileFeedback,
+    { kind: 'lost' }
+  > | null>(null);
 
   const [loadKey, setLoadKey] = useState(0);
 
@@ -94,6 +108,32 @@ export function ProfileCharacterPage(props: Props) {
     const id = window.setTimeout(() => setSaveCheckVisible(false), 1000);
     return () => window.clearTimeout(id);
   }, [saveCheckVisible]);
+
+  useEffect(() => {
+    if (!character) return;
+
+    const current = snapshotFromCharacter(character);
+    const previous = readCharacterStreakSnapshot(character.userId);
+    const feedback = computeStreakProfileFeedback(previous, current);
+
+    setStreakLostNotice(null);
+    setStreakAnimateFrom(null);
+    setStreakCelebrate(false);
+
+    if (feedback?.kind === 'increased') {
+      setStreakAnimateFrom(feedback.from);
+      setStreakCelebrate(true);
+      const timer = window.setTimeout(() => setStreakCelebrate(false), 720);
+      writeCharacterStreakSnapshot(character.userId, current);
+      return () => window.clearTimeout(timer);
+    }
+
+    if (feedback?.kind === 'lost') {
+      setStreakLostNotice(feedback);
+    }
+
+    writeCharacterStreakSnapshot(character.userId, current);
+  }, [character?.userId, character?.checkinStreak, character?.lastCheckinDayKey]);
 
   useEffect(() => {
     if (!character) return;
@@ -288,9 +328,13 @@ export function ProfileCharacterPage(props: Props) {
               </button>
             </div>
             <div className="trello-character-profile-info-col">
-              <div className="trello-character-streak-block">
-                <CheckinStreakCounter streak={character.checkinStreak ?? 0} size="profile" />
-              </div>
+              <CheckinStreakProfileRow
+                streak={character.checkinStreak ?? 0}
+                animateFrom={streakAnimateFrom}
+                celebrate={streakCelebrate}
+                lostNotice={streakLostNotice}
+                onDismissLost={() => setStreakLostNotice(null)}
+              />
               <div className="trello-character-stat-row">
                 <div className="trello-character-stat-pill trello-character-stat-pill--level">
                   <span className="trello-character-stat-label">Уровень</span>
@@ -404,9 +448,23 @@ export function ProfileCharacterPage(props: Props) {
                   <strong>Аккаунт.</strong> Фото профиля (круглое в углу) — отдельно от персонажа; раздел «Профиль →
                   Аккаунт».
                 </li>
+                <li>
+                  <strong>Квесты.</strong> Дневные и недельные задания (закрытие карточек, комментарии, серия дней).
+                  За каждый выполненный квест — свой сундук; откройте его здесь, чтобы получить косметику.
+                </li>
+                <li>
+                  <strong>Пыль.</strong> Если из сундука выпал уже имеющийся предмет — вы получаете пыль (больше за
+                  редкую косметику). Пылью можно купить один из трёх сундуков в блоке ниже.
+                </li>
+                <li>
+                  <strong>Достижения.</strong> Разовые награды за карточки, комментарии, серию, уровень, квесты и
+                  сундуки; часть даёт бонусную пыль.
+                </li>
               </ul>
             </div>
           )}
+
+          <ProfileCharacterQuestsPanel accessToken={props.accessToken} />
         </section>
       </div>
 

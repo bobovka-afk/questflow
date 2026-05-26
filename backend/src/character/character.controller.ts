@@ -17,6 +17,12 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CharacterService } from './character.service';
+import { QuestProgressService } from '../gamification/quest/quest-progress.service';
+import { ChestService } from '../gamification/chest/chest.service';
+import { DustService } from '../gamification/dust/dust.service';
+import { AchievementService } from '../gamification/achievement/achievement.service';
+import { EquipCosmeticDto } from './dto/equip-cosmetic.dto';
+import { PurchaseDustChestDto } from './dto/purchase-dust-chest.dto';
 import { JwtAuthGuard } from '../auth/guards/auth.guard';
 import type { AuthedRequest } from '../common/type';
 import { CreateCharacterDto } from './dto/create-character.dto';
@@ -28,7 +34,13 @@ import type { Character } from '../generated/prisma/client';
 @UseGuards(JwtAuthGuard)
 @Controller('character')
 export class CharacterController {
-  constructor(private readonly characterService: CharacterService) {}
+  constructor(
+    private readonly characterService: CharacterService,
+    private readonly questProgressService: QuestProgressService,
+    private readonly chestService: ChestService,
+    private readonly dustService: DustService,
+    private readonly achievementService: AchievementService,
+  ) {}
 
   @Get('me')
   @ApiOperation({ summary: 'Get current user character' })
@@ -89,5 +101,78 @@ export class CharacterController {
   })
   async dailyCheckin(@Req() req: AuthedRequest) {
     return this.characterService.dailyCheckin(req.user.id);
+  }
+
+  @Get('quests')
+  @ApiOperation({ summary: 'Daily and weekly quest progress' })
+  @ApiResponse({ status: 200, description: 'Quest list returned.' })
+  async getQuests(@Req() req: AuthedRequest) {
+    return this.questProgressService.getQuestsForUser(req.user.id);
+  }
+
+  @Get('chests')
+  @ApiOperation({ summary: 'List user chests' })
+  @ApiResponse({ status: 200, description: 'Chests returned.' })
+  async getChests(@Req() req: AuthedRequest) {
+    return this.chestService.listChests(req.user.id);
+  }
+
+  @Post('chests/:chestId/open')
+  @ApiOperation({ summary: 'Open a chest and receive cosmetic loot' })
+  @ApiResponse({ status: 200, description: 'Chest opened.' })
+  @ApiResponse({ status: 404, description: "code: 'CHEST_NOT_FOUND'" })
+  @ApiResponse({ status: 409, description: "code: 'CHEST_ALREADY_OPENED'" })
+  async openChest(
+    @Req() req: AuthedRequest,
+    @Param('chestId', ParseIntPipe) chestId: number,
+  ) {
+    return this.chestService.openChest(req.user.id, chestId);
+  }
+
+  @Get('inventory')
+  @ApiOperation({ summary: 'List owned cosmetics' })
+  @ApiResponse({ status: 200, description: 'Inventory returned.' })
+  async getInventory(@Req() req: AuthedRequest) {
+    return this.chestService.listInventory(req.user.id);
+  }
+
+  @Patch('cosmetics/equip')
+  @ApiOperation({ summary: 'Equip owned cosmetic (frame, background, badge)' })
+  @ApiBody({ type: EquipCosmeticDto })
+  @ApiResponse({ status: 200, description: 'Cosmetic equipped.' })
+  @ApiResponse({ status: 404, description: "code: 'COSMETIC_NOT_OWNED'" })
+  async equipCosmetic(
+    @Req() req: AuthedRequest,
+    @Body() dto: EquipCosmeticDto,
+  ) {
+    return this.chestService.equipCosmetic(req.user.id, dto.inventoryItemId);
+  }
+
+  @Get('achievements')
+  @ApiOperation({ summary: 'Achievement progress and unlocks' })
+  @ApiResponse({ status: 200, description: 'Achievements returned.' })
+  async getAchievements(@Req() req: AuthedRequest) {
+    return this.achievementService.getAchievementsForUser(req.user.id);
+  }
+
+  @Get('dust/shop')
+  @ApiOperation({ summary: 'Dust balance and chest shop (3 tiers)' })
+  @ApiResponse({ status: 200, description: 'Shop returned.' })
+  @ApiResponse({ status: 404, description: "code: 'CHARACTER_NOT_FOUND'" })
+  async getDustShop(@Req() req: AuthedRequest) {
+    return this.dustService.getShop(req.user.id);
+  }
+
+  @Post('dust/purchase')
+  @ApiOperation({ summary: 'Buy a chest with dust' })
+  @ApiBody({ type: PurchaseDustChestDto })
+  @ApiResponse({ status: 201, description: 'Chest purchased.' })
+  @ApiResponse({ status: 404, description: "code: 'CHARACTER_NOT_FOUND'" })
+  @ApiResponse({ status: 409, description: "code: 'INSUFFICIENT_DUST'" })
+  async purchaseDustChest(
+    @Req() req: AuthedRequest,
+    @Body() dto: PurchaseDustChestDto,
+  ) {
+    return this.dustService.purchaseChest(req.user.id, dto.tier);
   }
 }

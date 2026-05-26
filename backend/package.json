@@ -102,9 +102,11 @@
     },
     "collectCoverageFrom": [
       "**/*.service.ts",
+      "!**/tests/**",
       "**/*.guard.ts",
       "**/level-curve.ts",
       "**/gamification/config/rewards.ts",
+      "**/gamification/core/game-day.ts",
       "**/http-exception.filter.ts",
       "**/workspace-context.resolver.ts",
       "!**/prisma.service.ts",

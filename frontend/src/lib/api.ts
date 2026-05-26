@@ -1,3 +1,5 @@
+import { translateValidationMessages } from './validationMessagesRu';
+
 export const API_URL =
   import.meta.env.VITE_API_URL?.toString() || 'http://localhost:3000';
 
@@ -44,6 +46,14 @@ const API_ERROR_CODE_RU: Record<string, string> = {
   DAILY_TASK_XP_LIMIT: 'Сегодня лимит опыта за карточки исчерпан.',
   CHECKIN_ALREADY_DONE: 'Сегодня серия за этот день уже засчитана.',
   XP_EVENT_DAY_KEY_REQUIRED: 'Для этого действия требуется игровой день.',
+  CHEST_NOT_FOUND: 'Сундук не найден.',
+  CHEST_ALREADY_OPENED: 'Этот сундук уже открыт.',
+  COSMETIC_NOT_FOUND: 'Предмет не найден.',
+  COSMETIC_NOT_OWNED: 'У вас нет этого предмета.',
+  COSMETIC_EQUIP_NOT_SUPPORTED: 'Этот тип косметики нельзя надеть здесь.',
+  COSMETIC_ALREADY_OWNED: 'У вас уже есть этот предмет.',
+  INSUFFICIENT_DUST: 'Недостаточно пыли для покупки сундука.',
+  DUST_SHOP_TIER_INVALID: 'Недопустимый тип сундука.',
 };
 
 function translateCommonEnglishError(message: string): string | null {
@@ -167,6 +177,8 @@ export function formatApiError(e: unknown): string {
   if (typeof err?.message === 'string') {
     const translated = translateCommonEnglishError(err.message);
     if (translated) return translated;
+    const validationRu = translateValidationMessages(err.message);
+    if (validationRu !== err.message) return validationRu;
     return err.message;
   }
   return 'Ошибка запроса';

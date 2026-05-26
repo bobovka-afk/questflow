@@ -25,6 +25,7 @@ import {
 	type ApiError
 } from './lib/api'
 import { CheckinRewardToast, TaskRewardToast } from './RewardGrantToast'
+import { writeCharacterStreakSnapshot } from './lib/characterStreakSnapshot'
 import {
 	buildRewardToastSteps,
 	delayMs,
@@ -948,7 +949,18 @@ export function BoardPage({
 					completionRes.rewards &&
 					hasRewardToast(completionRes.rewards)
 				) {
-					void playRewardToastSequence(completionRes.rewards)
+					const rewards = completionRes.rewards
+					if (
+						currentUserId != null &&
+						rewards.streakIncreased &&
+						rewards.previousCheckinStreak !== rewards.checkinStreak
+					) {
+						writeCharacterStreakSnapshot(currentUserId, {
+							checkinStreak: rewards.previousCheckinStreak,
+							lastCheckinDayKey: null,
+						})
+					}
+					void playRewardToastSequence(rewards)
 				}
 			} catch (err) {
 				const code = (err as ApiError).code

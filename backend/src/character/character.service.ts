@@ -10,11 +10,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { UpdateCharacterDto } from './dto/update-character.dto';
 import { getRequiredXpForLevel } from './config/level-curve';
-import { computeCheckinStreakAfterGrant } from '../gamification/checkin-streak';
+import { computeCheckinStreakAfterGrant } from '../gamification/core/checkin-streak';
 import {
   getNewlyReachedStreakMilestones,
   streakMilestoneDayKey,
-} from '../gamification/checkin-streak-milestones';
+} from '../gamification/core/checkin-streak-milestones';
 import {
   CHARACTER_HEALTH_MAX,
   DAILY_TASK_XP_COMPLETIONS_MAX,
@@ -26,20 +26,25 @@ import {
   DEFAULT_GAME_DAY_TZ,
   XP_EVENT_TYPES_REQUIRING_DAY_KEY,
 } from '../gamification/constants';
-import { getTodayGameDayKey } from '../gamification/game-day';
+import { getTodayGameDayKey } from '../gamification/core/game-day';
+import { QuestProgressService } from '../gamification/quest/quest-progress.service';
+import { AchievementService } from '../gamification/achievement/achievement.service';
+import { AchievementMetric } from '../generated/prisma/enums';
 import type {
   CharacterXpStats,
   XpGrantEventInput,
   XpGrantResult,
   XpGrantRewards,
   XpGrantTransaction,
-} from '../gamification/interface';
+} from '../gamification/xp/interface';
 
 @Injectable()
 export class CharacterService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
+    private questProgressService: QuestProgressService,
+    private achievementService: AchievementService,
   ) {}
 
   async getCharacter(userId: number): Promise<Character> {
@@ -148,7 +153,7 @@ export class CharacterService {
 
     const timeZone = this.getGameDayTimeZone();
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const userStats = await tx.character.findUnique({
         where: { userId },
         select: {
@@ -252,6 +257,32 @@ export class CharacterService {
 
       return { character, rewards };
     });
+
+    await this.applyQuestProgressAfterXp(userId, result.rewards, dayKey ?? null);
+    await this.achievementService.recordMax(
+      userId,
+      AchievementMetric.CHARACTER_LEVEL,
+      result.character.level,
+    );
+    await this.achievementService.recordMax(
+      userId,
+      AchievementMetric.CHECKIN_STREAK_MAX,
+      result.character.checkinStreak,
+    );
+    return result;
+  }
+
+  private async applyQuestProgressAfterXp(
+    userId: number,
+    rewards: XpGrantRewards,
+    dayKey: Date | null,
+  ): Promise<void> {
+    const tz = this.getGameDayTimeZone();
+    const key = dayKey ?? getTodayGameDayKey(tz);
+    await this.questProgressService.recordXpDay(userId, key);
+    if (rewards.checkinXp > 0) {
+      await this.questProgressService.recordDailyCheckin(userId);
+    }
   }
 
   private applyXpToStats(

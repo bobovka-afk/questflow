@@ -5,6 +5,7 @@
 **Связанные документы:**
 
 - [gamification-roadmap.md](gamification-roadmap.md) — продуктовый план, фазы, баланс, квесты, сундуки
+- [gamification-assets.md](gamification-assets.md) — ТЗ на графику (размеры, ключи, папки)
 - [README.md](../README.md) — обзор приложения
 
 
@@ -16,8 +17,10 @@
 |-------|-----------|
 | 0 | **Done** — персонаж, XP за карточку, уровни, HP+5, UI |
 | 0.5 | **Done** — cron сброс `dailyTaskXpCount`, `rewards.ts`, константы в сервисах |
-| 1 | **In progress (1a–1b done, milestones 7/14/30, 1c UI)** — авто-серия, `CHECKIN_STREAK` XP, streak UI, intro |
-| 2–3 | **Not started** — квесты, сундуки, dust |
+| 1 | **Done** |
+| 2 | **Done** — **2a** квесты + **2b** сундуки (сундук **за каждый** квест; карточки → assignee ?? actor) |
+| 3 | **Done** — пыль (дубликаты + магазин 3 сундуков), achievements |
+| 4 | **Not started** — E2E, полный гайд, уведомления / battle pass / лидерборд ([roadmap](gamification-roadmap.md#phase-4--e2e-и-гайд-по-игре-финал-v1)) |
 
 **Суточный сброс:** cron `resetDailyTaskXpCounts` в `GamificationCronService` (00:00 `GAME_DAY_TZ`). Числа наград — `backend/src/gamification/config/rewards.ts`.
 
@@ -35,7 +38,7 @@
 | Grace period | 24 ч | `CHARACTER_GRACE_PERIOD_MS` | — |
 | Уровни | 1–100 | `character/config/level-curve.ts` | `lib/level-curve.ts` (дубль кривой) |
 
-`XpEvent.dayKey`: для `DAILY_CHECKIN` / `CHECKIN_STREAK` обязателен в `addExperience`; игровой день — `gamification/game-day.ts` + `GAME_DAY_TZ`.
+`XpEvent.dayKey`: для `DAILY_CHECKIN` / `CHECKIN_STREAK` обязателен в `addExperience`; игровой день — `gamification/core/game-day.ts` + `GAME_DAY_TZ`.
 
 ---
 
@@ -45,7 +48,7 @@
 |-----|-----|
 | Числа (XP, HP, лимиты) | `gamification/config/rewards.ts`, `config/checkin-streak-milestones.ts` |
 | TZ, списки enum | `gamification/constants.ts` |
-| Типы XP-транзакции | `gamification/interface/*.interface.ts` + `index.ts` |
+| Типы XP-транзакции | `gamification/xp/interface/*.interface.ts` + `index.ts` |
 | Ошибки API `{ code, message }` | **`character.service.ts`** — и CRUD персонажа, и XP/серия (приватные `throwXpEvent…`, без отдельной папки `errors/`) |
 
 **Коды геймификации (в `character.service`):**
@@ -76,21 +79,28 @@ questflow/
 │   │   ├── character.module.ts        ← exports CharacterService
 │   │   └── config/level-curve.ts      ← кривая уровней
 │   ├── src/gamification/
-│   │   ├── config/rewards.ts          ← XP/лимит/HP числа
-│   │   ├── constants.ts               ← GAME_DAY_TZ default, dayKey types
-│   │   ├── interface/                 ← типы XP-транзакции
-│   │   ├── game-day.ts
-│   │   ├── checkin-streak.ts
-│   │   ├── inactivity.ts
-│   │   └── gamification-cron.service.ts
-│   ├── src/card/card.service.ts       ← setCardCompletion → { ok, rewards? }
-│   └── src/card/card.module.ts        ← imports CharacterModule
+│   │   ├── gamification.module.ts, constants.ts, index.ts
+│   │   ├── config/          ← rewards, loot-table, checkin milestones
+│   │   ├── core/            ← game-day, streak, inactivity, card-reward-user
+│   │   ├── xp/interface/    ← типы XpGrant*
+│   │   ├── quest/           ← quest-period, quest-progress.service
+│   │   ├── chest/           ← chest.service
+│   │   ├── dust/            ← dust.service, config/dust.ts
+│   │   ├── achievement/     ← achievement.service
+│   │   ├── cron/            ← gamification-cron.service
+│   │   └── */tests/*.spec.ts  ← unit-тесты рядом с фичей
+│   ├── src/card/card.service.ts       ← setCardCompletion → XP + recordCardCompleted
+│   ├── src/comment/comment.service.ts ← recordCommentCreated
+│   └── src/card/card.module.ts        ← GamificationModule
 ├── frontend/
-│   ├── src/ProfileCharacterPage.tsx   ← персонаж, streak 🔥, гайд
+│   ├── src/ProfileCharacterPage.tsx   ← персонаж, streak, квесты
+│   ├── src/ProfileCharacterQuestsPanel.tsx
+│   ├── src/lib/quests.ts
 │   ├── src/App.tsx                    ← intro-модалка после регистрации (portal, глобально)
 │   ├── src/CharacterSetupPage.tsx     ← создание персонажа (без авто-редиректа)
 │   ├── src/GamificationIntroModal.tsx
 │   ├── src/CheckinStreakCounter.tsx   ← счётчик серии + анимация roll
+│   ├── src/CheckinStreakProfileRow.tsx ← streak + кнопка (i) + модалка порогов
 │   ├── src/RewardGrantToast.tsx       ← XP/чекин/HP/streak при закрытии карточки
 │   ├── src/UserCharacterPage.tsx      ← чужой персонаж (read-only)
 │   ├── src/BoardPage.tsx              ← парсит rewards с completion API
@@ -118,7 +128,16 @@ questflow/
 
 Swagger: `http://localhost:3000/api/docs` → tag `character`.
 
-**Запланировано:** `POST /character/checkin/weekly`, chest/inventory — см. [Phase 1–2 в roadmap](gamification-roadmap.md#phase-1--чекины-и-hp-cron).
+| GET | `/character/quests` | JWT — дневные/недельные квесты + прогресс |
+| GET | `/character/chests` | JWT |
+| POST | `/character/chests/:chestId/open` | JWT |
+| GET | `/character/inventory` | JWT |
+| PATCH | `/character/cosmetics/equip` | JWT, body `{ inventoryItemId }` |
+| GET | `/character/achievements` | JWT |
+| GET | `/character/dust/shop` | JWT — баланс + 3 варианта сундука |
+| POST | `/character/dust/purchase` | JWT, body `{ tier }` |
+
+**Запланировано:** `POST /character/checkin/weekly` (optional). Phase 4: уведомления, battle pass, лидерборд.
 
 ---
 
@@ -141,13 +160,13 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 
 ## Паттерны при добавлении механик
 
-1. **Сервер решает** — UI только отображает и дублирует константы/правила в гайде.
+1. **Сервер решает** — UI отображает состояние; полный текст правил в гайде — [Phase 4](gamification-roadmap.md#phase-4--e2e-и-гайд-по-игре-финал-v1).
 2. **Идемпотентность** — unique в Prisma + `ConflictException` с `code`, не silent ignore.
 3. **Транзакция** — XP + связанный прогресс (квест) в одном `prisma.$transaction`.
 4. **Расширять `addExperience`** (или вынести `grantReward`) — не дублировать level-up/HP в card/comment сервисах.
 5. **Ошибки XP** — в `character.service` (`{ code, message }`); фронт для «мягких» XP — `isXpTaskSoftNoticeCode` в `api.ts`.
 6. **Миграции** — `npx prisma migrate dev` в `backend/`; клиент: `src/generated/prisma`.
-7. **После изменения чисел** — backend config + `frontend/src/lib/xpRewards.ts` + пункты в гайде `ProfileCharacterPage`.
+7. **После изменения чисел** — backend config + `frontend/src/lib/xpRewards.ts`; пункты гайда — при Phase 4 (до этого достаточно констант в UI).
 
 ---
 
@@ -159,7 +178,7 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 
 Покрывать реальное поведение: сервисы (`*.service.ts`), guards/filters/resolvers в `common/`, конфиг с логикой (`level-curve.ts`, `gamification/config/rewards.ts` и т.п.).
 
-Паттерн: Jest, `createPrismaMock()` из `src/testing/prisma-mock.ts`, `new Service(mock)` без поднятия всего приложения.
+Паттерн: Jest, `createPrismaMock()` из `src/testing/prisma-mock.ts`, `new Service(mock)` без поднятия всего приложения. Тесты лежат в `{module}/tests/*.spec.ts` (или `{module}/{subfeature}/tests/`).
 
 После правок: `cd backend && npm run test` (или `test:unit` при крупных изменениях). Пороги coverage в `package.json` — не ломать без явного запроса.
 
@@ -201,13 +220,11 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 
 | Страница | Роль |
 |----------|------|
-| `ProfileCharacterPage` | Редактирование, **гайд обязателен** при новых правилах |
+| `ProfileCharacterPage` | Редактирование, streak; **полный гайд** — Phase 4 |
 | `UserCharacterPage` | Просмотр чужого персонажа |
 | `BoardPage` | XP toast при complete |
 
-**Баг UI:** HP bar `style={{ width: '100%' }}` — должно быть `${character.health}%` (Phase 0.5/1).
-
-Показывать `dailyTaskXpCount` в UI опционально (поле уже в API `Character`).
+Показывать `dailyTaskXpCount` в UI опционально (поле уже в API `Character`). Статус HP=0 «истощён» — опционально, Phase 2+ / polish.
 
 ---
 
@@ -218,10 +235,13 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 3. ~~**0.5c**~~ — done: `GAME_DAY_TZ` в `.env.example`, unit-тесты cron.
 4. ~~**1a**~~ — done: `addExperience` + `dayKey`, `game-day.ts`, `POST /character/checkin`.
 5. ~~**1b**~~ — done: `HealthEvent`, `applyInactivityHpPenalty`, HP +5 в `addExperience`, grace 48h.
-6. **1c** — UI чекин + fix HP bar + гайд.
-7. **2+** — квесты по [Phase 2 в roadmap](gamification-roadmap.md#phase-2--квесты-и-сундуки-косметика).
+6. ~~**1c**~~ — done: streak, HP bar, intro/toast, `CheckinStreakInfoModal`, анимация/баннер серии на профиле.
+7. ~~**2a**~~ — done: квесты, hooks, `GET /character/quests`.
+8. ~~**2b**~~ — done: сундуки, loot, open/inventory/equip, UI на профиле.
+9. ~~**3**~~ — done: пыль, achievements, магазин сундуков.
+10. **4** — E2E + полный гайд + backlog (уведомления, battle pass, …).
 
-После каждой фазы: обновить таблицу «Статус» в **этом файле**, [Known gaps](gamification-roadmap.md#known-gaps-критично-до-phase-1) и чеклисты Phase в roadmap.
+После каждой фазы: обновить таблицу «Статус» в **этом файле**, [Known gaps](gamification-roadmap.md#known-gaps-история-phase-1-закрыта) и чеклисты Phase в roadmap.
 
 ---
 
@@ -255,12 +275,12 @@ cd backend && npx prisma migrate dev
 
 ## Чеклист после PR / итерации агента
 
-- [ ] Константы совпадают backend ↔ `xpRewards.ts` ↔ гайд на `ProfileCharacterPage`
+- [ ] Константы совпадают backend ↔ `xpRewards.ts` (текст гайда — при Phase 4)
 - [ ] Новый `code` в `character.service` + Swagger + `API_ERROR_CODE_RU` в `api.ts`
-- [ ] Таблица «Статус» здесь и [Known gaps](gamification-roadmap.md#known-gaps-критично-до-phase-1) актуальны
+- [ ] Таблица «Статус» здесь и [Known gaps](gamification-roadmap.md#known-gaps-история-phase-1-закрыта) актуальны
 - [ ] При новых таблицах — миграция + пример в Phase-чеклисте roadmap
-- [ ] E2E/ручной сценарий: лимит 5, идемпотентность карточки, (позже) чекин, cron
 - [ ] `cd backend && npm run test` проходит после изменений в `backend/src/`
+- [ ] E2E и полный гайд — только в [Phase 4](gamification-roadmap.md#phase-4--e2e-и-гайд-по-игре-финал-v1), не в PR фич
 
 ---
 
@@ -268,7 +288,7 @@ cd backend && npx prisma migrate dev
 
 Геймификация **не заменяет** workspace/board/card guards. Закрытие карточки по-прежнему через `CardService` + workspace membership. XP — побочный эффект успешного `setCardCompletion`; отсутствие персонажа у assignee не мешает закрыть карточку (ошибка только на grant XP).
 
-Комментарии к карточкам пока **не** дают XP — задел под квест `COMMENTS_CREATED` (Phase 2).
+Комментарии дают прогресс квеста `COMMENTS_CREATED`, но не XP. Пыль: `config/dust.ts`, `dust.service.ts`. Дубликат при открытии сундука — `DUST_FOR_DUPLICATE_BY_TIER`. Коды: `CHEST_*`, `COSMETIC_*`, `INSUFFICIENT_DUST` — `API_ERROR_CODE_RU`.
 
 ---
 

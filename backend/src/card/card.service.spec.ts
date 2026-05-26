@@ -17,9 +17,17 @@ describe('CardService', () => {
   beforeEach(() => {
     prisma = createPrismaMock();
     characterService = { addExperience: jest.fn() };
+    const questProgressService = {
+      recordCardCompleted: jest.fn().mockResolvedValue([]),
+    };
+    const achievementService = {
+      recordIncrement: jest.fn().mockResolvedValue([]),
+    };
     service = new CardService(
       prisma as unknown as PrismaService,
       characterService as unknown as CharacterService,
+      questProgressService as never,
+      achievementService as never,
     );
   });
 

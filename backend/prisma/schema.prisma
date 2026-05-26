@@ -81,6 +81,44 @@ enum HealthEventReason {
   INACTIVITY_PENALTY
 }
 
+enum QuestPeriod {
+  DAILY
+  WEEKLY
+}
+
+enum QuestMetric {
+  CARDS_COMPLETED
+  CARDS_COMPLETED_WITH_DUE_TODAY
+  COMMENTS_CREATED
+  DAILY_CHECKIN_DONE
+  ACTIVE_DAYS_WITH_XP
+  DISTINCT_WORKSPACES_ACTIVE
+}
+
+enum ChestTier {
+  COMMON
+  RARE
+  EPIC
+}
+
+enum CosmeticType {
+  AVATAR_PRESET
+  PORTRAIT_FRAME
+  PROFILE_BACKGROUND
+  TITLE_BADGE
+}
+
+enum AchievementMetric {
+  CARDS_COMPLETED_TOTAL
+  COMMENTS_TOTAL
+  CHECKIN_STREAK_MAX
+  CHARACTER_LEVEL
+  QUESTS_COMPLETED_TOTAL
+  CHESTS_OPENED_TOTAL
+  DUST_EARNED_TOTAL
+  COSMETICS_OWNED_COUNT
+}
+
 model User {
   id              Int       @id @default(autoincrement())
   email           String    @unique
@@ -100,6 +138,13 @@ model User {
   character            Character?
   xpEvents             XpEvent[]
   healthEvents         HealthEvent[]
+  questProgress        UserQuestProgress[]
+  chests               UserChest[]
+  inventory            InventoryItem[]
+  questXpDays          UserQuestXpDay[]
+  questWorkspaceDays   UserWorkspaceQuestDay[]
+  achievements         UserAchievement[]
+  achievementProgress  UserAchievementProgress[]
 }
 
 model AuthToken {
@@ -246,7 +291,135 @@ model Character {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  equippedPortraitFrameKey     String? @map("equipped_portrait_frame_key")
+  equippedProfileBackgroundKey String? @map("equipped_profile_background_key")
+  equippedTitleBadgeKey        String? @map("equipped_title_badge_key")
+  dust                         Int     @default(0)
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model QuestTemplate {
+  id              Int         @id @default(autoincrement())
+  key             String      @unique
+  period          QuestPeriod
+  metric          QuestMetric
+  target          Int
+  rewardChestTier ChestTier   @map("reward_chest_tier")
+  titleRu         String      @map("title_ru")
+  descriptionRu   String?     @map("description_ru")
+  sortOrder       Int         @default(0) @map("sort_order")
+  active          Boolean     @default(true)
+
+  progress UserQuestProgress[]
+}
+
+model UserQuestProgress {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @map("user_id")
+  templateId  Int       @map("template_id")
+  periodKey   String    @map("period_key")
+  current     Int       @default(0)
+  completedAt DateTime? @map("completed_at")
+  chestId     Int?      @unique @map("chest_id")
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template QuestTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  chest    UserChest?    @relation(fields: [chestId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, templateId, periodKey])
+}
+
+model UserChest {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  tier      ChestTier
+  source    String
+  openedAt  DateTime? @map("opened_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  progress UserQuestProgress?
+
+  @@unique([userId, source])
+}
+
+model CosmeticItem {
+  id   Int          @id @default(autoincrement())
+  type CosmeticType
+  key  String       @unique
+  tier ChestTier
+  nameRu String @map("name_ru")
+
+  inventory InventoryItem[]
+}
+
+model InventoryItem {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @map("user_id")
+  cosmeticItemId Int      @map("cosmetic_item_id")
+  equipped       Boolean  @default(false)
+  obtainedAt     DateTime @default(now()) @map("obtained_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cosmeticItem CosmeticItem @relation(fields: [cosmeticItemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cosmeticItemId])
+}
+
+model UserQuestXpDay {
+  userId  Int      @map("user_id")
+  dayKey  DateTime @map("day_key") @db.Date
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, dayKey])
+}
+
+model UserWorkspaceQuestDay {
+  userId      Int      @map("user_id")
+  workspaceId Int      @map("workspace_id")
+  dayKey      DateTime @map("day_key") @db.Date
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, workspaceId, dayKey])
+}
+
+model AchievementTemplate {
+  id            Int               @id @default(autoincrement())
+  key           String            @unique
+  metric        AchievementMetric
+  target        Int
+  titleRu       String            @map("title_ru")
+  descriptionRu String?           @map("description_ru")
+  rewardDust    Int               @default(0) @map("reward_dust")
+  sortOrder     Int               @default(0) @map("sort_order")
+  active        Boolean           @default(true)
+
+  unlocks UserAchievement[]
+}
+
+model UserAchievement {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  templateId Int      @map("template_id")
+  unlockedAt DateTime @default(now()) @map("unlocked_at")
+
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template AchievementTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, templateId])
+}
+
+model UserAchievementProgress {
+  userId  Int               @map("user_id")
+  metric  AchievementMetric
+  current Int               @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, metric])
 }
 
 model XpEvent {

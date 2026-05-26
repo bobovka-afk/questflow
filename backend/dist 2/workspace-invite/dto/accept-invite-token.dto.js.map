@@ -1,1 +1,0 @@
-{"version":3,"file":"accept-invite-token.dto.js","sourceRoot":"","sources":["../../../src/workspace-invite/dto/accept-invite-token.dto.ts"],"names":[],"mappings":";;;;;;;;;;;;AAAA,qDAAuD;AACvD,6CAA8C;AAE9C,MAAa,oBAAoB;IAO/B,KAAK,CAAS;CACf;AARD,oDAQC;AADC;IANC,IAAA,qBAAW,EAAC;QACX,OAAO,EAAE,kCAAkC;QAC3C,WAAW,EAAE,wBAAwB;KACtC,CAAC;IACD,IAAA,0BAAQ,GAAE;IACV,IAAA,4BAAU,GAAE;;mDACC"}

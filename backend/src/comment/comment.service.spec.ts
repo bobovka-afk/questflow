@@ -13,7 +13,17 @@ describe('CommentService', () => {
 
   beforeEach(() => {
     prisma = createPrismaMock();
-    service = new CommentService(prisma as unknown as PrismaService);
+    const questProgressService = {
+      recordCommentCreated: jest.fn().mockResolvedValue([]),
+    };
+    const achievementService = {
+      recordIncrement: jest.fn().mockResolvedValue([]),
+    };
+    service = new CommentService(
+      prisma as unknown as PrismaService,
+      questProgressService as never,
+      achievementService as never,
+    );
   });
 
   it('getComments and createComment', async () => {

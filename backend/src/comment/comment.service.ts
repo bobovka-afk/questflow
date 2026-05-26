@@ -4,6 +4,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { QuestProgressService } from '../gamification/quest/quest-progress.service';
+import { AchievementService } from '../gamification/achievement/achievement.service';
+import { AchievementMetric } from '../generated/prisma/enums';
 import { WorkspaceRole } from '../generated/prisma/enums';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment-dto';
@@ -11,7 +14,11 @@ import type { CommentWithUser } from './interface';
 
 @Injectable()
 export class CommentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly questProgressService: QuestProgressService,
+    private readonly achievementService: AchievementService,
+  ) {}
 
   async getComments(cardId: number): Promise<CommentWithUser[]> {
     return this.prisma.comment.findMany({
@@ -30,7 +37,7 @@ export class CommentService {
     userId: number,
     dto: CreateCommentDto,
   ) {
-    return this.prisma.comment.create({
+    const comment = await this.prisma.comment.create({
       data: {
         cardId,
         userId,
@@ -42,6 +49,15 @@ export class CommentService {
         },
       },
     });
+
+    await this.questProgressService.recordCommentCreated(userId);
+    await this.achievementService.recordIncrement(
+      userId,
+      AchievementMetric.COMMENTS_TOTAL,
+      1,
+    );
+
+    return comment;
   }
 
   async updateComment(
