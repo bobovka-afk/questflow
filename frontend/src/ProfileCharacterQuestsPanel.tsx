@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api, formatApiError } from './lib/api';
 import {
+  type GenderCharacter,
+  isQuestAvatarPreset,
+} from './lib/character';
+import {
   CHEST_TIER_LABEL_RU,
   COSMETIC_TYPE_LABEL_RU,
   cosmeticTypeCanEquip,
@@ -19,6 +23,8 @@ import {
 
 type Props = {
   accessToken: string;
+  characterGender: GenderCharacter;
+  onCharacterRefresh?: () => Promise<void>;
 };
 
 function QuestRow(props: {
@@ -236,9 +242,27 @@ export function ProfileCharacterQuestsPanel(props: Props) {
       await api('/character/dust/purchase', {
         method: 'POST',
         accessToken: props.accessToken,
-        body: JSON.stringify({ tier }),
+        json: { tier },
       });
       await reload();
+    } catch (e) {
+      setLoadError(formatApiError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleApplyQuestAvatar(avatarPreset: string) {
+    setBusy(true);
+    setLoadError(null);
+    try {
+      await api('/character/me', {
+        method: 'PATCH',
+        accessToken: props.accessToken,
+        json: { avatarPreset },
+      });
+      await reload();
+      await props.onCharacterRefresh?.();
     } catch (e) {
       setLoadError(formatApiError(e));
     } finally {
@@ -253,9 +277,28 @@ export function ProfileCharacterQuestsPanel(props: Props) {
       await api('/character/cosmetics/equip', {
         method: 'PATCH',
         accessToken: props.accessToken,
-        body: JSON.stringify({ inventoryItemId }),
+        json: { inventoryItemId },
       });
       await reload();
+      await props.onCharacterRefresh?.();
+    } catch (e) {
+      setLoadError(formatApiError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleUnequip(inventoryItemId: number) {
+    setBusy(true);
+    setLoadError(null);
+    try {
+      await api('/character/cosmetics/unequip', {
+        method: 'PATCH',
+        accessToken: props.accessToken,
+        json: { inventoryItemId },
+      });
+      await reload();
+      await props.onCharacterRefresh?.();
     } catch (e) {
       setLoadError(formatApiError(e));
     } finally {
@@ -375,18 +418,21 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                       {COSMETIC_TYPE_LABEL_RU[item.cosmeticItem.type]}
                     </span>
                   </div>
-                  {item.equipped ? (
-                    <span className="trello-character-inventory-equipped">Надето</span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="trello-btn trello-btn-ghost trello-btn-sm"
-                      disabled={busy}
-                      onClick={() => void handleEquip(item.id)}
-                    >
-                      Надеть
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className={
+                      item.equipped
+                        ? 'trello-btn trello-btn-ghost trello-btn-sm trello-character-inventory-equip-btn'
+                        : 'trello-btn trello-btn-primary trello-btn-sm trello-character-inventory-equip-btn'
+                    }
+                    disabled={busy}
+                    aria-pressed={item.equipped}
+                    onClick={() =>
+                      void (item.equipped ? handleUnequip(item.id) : handleEquip(item.id))
+                    }
+                  >
+                    {item.equipped ? 'Снять' : 'Надеть'}
+                  </button>
                 </li>
               ))}
             </ul>
@@ -452,6 +498,22 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                       }}
                     >
                       Надеть
+                    </button>
+                  )}
+                {!openResult.alreadyOwned &&
+                  openResult.cosmeticType === 'AVATAR_PRESET' &&
+                  isQuestAvatarPreset(openResult.cosmeticKey) && (
+                    <button
+                      type="button"
+                      className="trello-btn trello-btn-primary"
+                      disabled={busy}
+                      onClick={() => {
+                        void handleApplyQuestAvatar(openResult.cosmeticKey).then(() =>
+                          setOpenResult(null),
+                        );
+                      }}
+                    >
+                      Применить образ
                     </button>
                   )}
                 <button

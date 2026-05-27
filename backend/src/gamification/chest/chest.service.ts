@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -79,7 +80,18 @@ export class ChestService {
         });
       }
 
-      const cosmeticKey = rollLootCosmeticKey(chest.tier);
+      const characterRow = await tx.character.findUnique({
+        where: { userId },
+        select: { gender: true },
+      });
+      if (!characterRow) {
+        throw new NotFoundException({
+          code: 'CHARACTER_NOT_FOUND',
+          message: 'Character not found',
+        });
+      }
+
+      const cosmeticKey = rollLootCosmeticKey(chest.tier, characterRow.gender);
       const cosmetic = await tx.cosmeticItem.findUnique({
         where: { key: cosmeticKey },
       });
@@ -216,6 +228,51 @@ export class ChestService {
       });
 
       return { equipped: true };
+    });
+  }
+
+  async unequipCosmetic(
+    userId: number,
+    inventoryItemId: number,
+  ): Promise<{ equipped: boolean }> {
+    return this.prisma.$transaction(async (tx) => {
+      const item = await tx.inventoryItem.findFirst({
+        where: { id: inventoryItemId, userId },
+        include: { cosmeticItem: true },
+      });
+      if (!item) {
+        throw new NotFoundException({
+          code: 'COSMETIC_NOT_OWNED',
+          message: 'Cosmetic not owned',
+        });
+      }
+
+      const field = cosmeticTypeToCharacterField(item.cosmeticItem.type);
+      if (!field) {
+        throw new ConflictException({
+          code: 'COSMETIC_EQUIP_NOT_SUPPORTED',
+          message: 'This cosmetic type cannot be equipped here',
+        });
+      }
+
+      if (!item.equipped) {
+        throw new BadRequestException({
+          code: 'COSMETIC_NOT_EQUIPPED',
+          message: 'This cosmetic is not equipped',
+        });
+      }
+
+      await tx.inventoryItem.update({
+        where: { id: inventoryItemId },
+        data: { equipped: false },
+      });
+
+      await tx.character.update({
+        where: { userId },
+        data: { [field]: null },
+      });
+
+      return { equipped: false };
     });
   }
 }

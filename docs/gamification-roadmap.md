@@ -432,9 +432,9 @@ model InventoryItem {
 
 ### Гайд «Как это работает»
 
-- [ ] Актуальный полный текст в `ProfileCharacterPage` («Как это работает»): XP за карточки, лимит 5/сутки, авто-чекин и серия, milestones, HP (+5 за награду, −5 за бездействие), grace, `GAME_DAY_TZ`.
+- [x] Актуальный полный текст в `ProfileCharacterPage` («Как это работает»): XP за карточки, лимит 5/сутки, авто-чекин и серия, milestones, HP (+5 за награду, −5 за бездействие), grace, `GAME_DAY_TZ`.
 - [x] После Phase 2 — квесты, сундуки, косметика (без pay-to-win).
-- [ ] Константы в тексте = `xpRewards.ts` / `rewards.ts`; intro (`GamificationIntroModal`) не противоречит гайду.
+- [x] Константы в тексте = `xpRewards.ts` / `rewards.ts`; intro (`GamificationIntroModal`) не противоречит гайду.
 
 ### E2E / regression
 

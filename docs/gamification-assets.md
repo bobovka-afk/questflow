@@ -5,7 +5,7 @@
 
 **Связанные документы:** [gamification-roadmap.md](gamification-roadmap.md), [gamification-agent-context.md](gamification-agent-context.md).
 
-**Статус кода (на момент документа):** портреты ролей отдаются с сервера; косметика хранится в БД и показывается текстом в инвентаре; рамка / фон / значок при экипировке **в UI ещё не рисуются** — ассеты нужны заранее + задача на отображение.
+**Статус кода (на момент документа):** `CharacterPortraitWithFrame` — слои в квадрате портрета: **`PROFILE_BACKGROUND`** → персонаж → **`PORTRAIT_FRAME`**. Значок титула — без картинки в UI.
 
 ---
 
@@ -28,10 +28,9 @@ backend/uploads/
 │   ├── Male/
 │   └── Female/
 ├── cosmetics/
-│   ├── frames/                 # PORTRAIT_FRAME
+│   ├── portraits/              # PORTRAIT_FRAME: bronze, silver, gold, mystic (+ квестовые AVATAR_PRESET)
 │   ├── backgrounds/            # PROFILE_BACKGROUND
-│   ├── badges/                 # TITLE_BADGE
-│   └── portraits/              # квестовые AVATAR_PRESET
+│   └── badges/                 # TITLE_BADGE
 ├── chests/                     # tier-иконки сундуков
 ├── dust/                       # пыль
 └── achievements/               # иконки достижений
@@ -47,23 +46,23 @@ backend/uploads/
 
 | Файл | Роль | Пол | Размер | Описание |
 |------|------|-----|--------|----------|
-| `Male/druid-man.png` | Druid | M | **400×400 px** | Портрет по пояс/грудь, лицо по центру, нейтральный фон или лёгкий градиент |
-| `Male/hunter-man.png` | Hunter | M | 400×400 | То же ракурс и масштаб, что у остальных мужских |
-| `Male/mage-man.png` | Mage | M | 400×400 | |
-| `Male/paladin-man.png` | Paladin | M | 400×400 | |
-| `Male/rogue-man.png` | Rogue | M | 400×400 | |
-| `Male/warrior-man.png` | Warrior | M | 400×400 | |
-| `Female/druid-woman.png` | Druid | F | 400×400 | Зеркально мужским по композиции |
-| `Female/hunter-woman.png` | Hunter | F | 400×400 | |
-| `Female/mage-woman.png` | Mage | F | 400×400 | |
-| `Female/paladin-woman.png` | Paladin | F | 400×400 | |
-| `Female/rogue-woman.png` | Rogue | F | 400×400 | |
-| `Female/warrior-woman.png` | Warrior | F | 400×400 | |
+| `Male/druid-man.png` | Druid | M | **1024×1024 px** (в UI до 300×300) | Портрет по пояс/грудь, чёрный фон на весь кадр |
+| `Male/hunter-man.png` | Hunter | M | 1024×1024 | То же ракурс и масштаб, что у остальных мужских |
+| `Male/mage-man.png` | Mage | M | 1024×1024 | |
+| `Male/paladin-man.png` | Paladin | M | 1024×1024 | |
+| `Male/rogue-man.png` | Rogue | M | 1024×1024 | |
+| `Male/warrior-man.png` | Warrior | M | 1024×1024 | |
+| `Female/druid-woman.png` | Druid | F | 1024×1024 | Зеркально мужским по композиции |
+| `Female/hunter-woman.png` | Hunter | F | 1024×1024 | |
+| `Female/mage-woman.png` | Mage | F | 1024×1024 | |
+| `Female/paladin-woman.png` | Paladin | F | 1024×1024 | |
+| `Female/rogue-woman.png` | Rogue | F | 1024×1024 | |
+| `Female/warrior-woman.png` | Warrior | F | 1024×1024 | |
 
 **Требования к композиции (все 12):**
 
-- Квадрат **400×400 px** (допустимо 512×512, если потом ужимаете до 400 в UI).
-- Лицо и плечи в центральном круге ~**320×320 px** — под наложение рамки (блок 2).
+- Квадрат **1024×1024 px** (чёрный фон на весь кадр; в профиле CSS `contain` до **300×300**).
+- Персонаж в центре; под рамку — экспорт `bronze.png` с **прозрачным центром** и бортом у краёв холста (см. `PORTRAIT_FRAME_BBOX` в `cosmetics.ts`).
 - Единое направление света (например, сверху-слева).
 - Без мелкого текста на изображении.
 
@@ -77,39 +76,155 @@ backend/uploads/
 
 | key (БД) | Файл | Tier | Размер | Описание |
 |----------|------|------|--------|----------|
-| `frame_bronze` | `cosmetics/frames/frame_bronze.png` | Common | **400×400 px** | Рамка «бронза»: простая металлическая окантовка 12–20 px, лёгкие сколы, тёплый коричнево-медный тон. **Центр полностью прозрачный** (дырка под портрет ~280–300 px) |
-| `frame_silver` | `cosmetics/frames/frame_silver.png` | Common | 400×400 | Тонкая серебряная рамка, холодный блик, без лишних деталей |
-| `frame_gold` | `cosmetics/frames/frame_gold.png` | Rare | 400×400 | Золото, чуть шире бронзы; углы с орнаментом (листья/виньетка), «награда за неделю» |
-| `frame_epic_flame` | `cosmetics/frames/frame_epic_flame.png` | Epic | 400×400 | Огненная кромка по периметру, оранжево-фиолетовые языки пламени; читается на тёмном и светлом фоне. Опционально позже: spritesheet для анимации |
+| `frame_bronze` | `cosmetics/portraits/bronze.png` | Common | **1024×1024** | inset **0.92**, `scaleX: 0.94` (шире по бокам) |
+| `frame_silver` | `cosmetics/portraits/silver.png` | Common | 1024×1024 | inset **0.97**, `scaleY: 0.99`, `translateY: -1%` (чуть выше) |
+| `frame_gold` | `cosmetics/portraits/gold.png` | Rare | 1024×1024 | inset **0.98** |
+| `frame_mystic` | `cosmetics/portraits/mystic.png` | Epic | 1024×1024 | «Мистическая рамка»; в БД через миграцию `20260527140000_frame_mystic_cosmetic` (в сиде не было) |
+| `frame_epic_flame` | тот же `mystic.png` | Epic | 1024×1024 | Сид: «Рамка пламени» — **другой** ключ; для теста mystic смотрите `frame_mystic` в инвентаре |
 
 **Технические требования:**
 
 - Только **PNG-24 с альфой**.
-- Внешний размер **400×400** = размер контейнера портрета в UI.
-- Прозрачное «окно» по центру: круг или скруглённый квадрат, диаметр **~300 px**.
-- Рамка не должна перекрывать лицо больше чем на **10–15%** площади портрета.
+- Портреты и рамки **1024×1024**; см. **блок 2a** (константы, inset, перенос UI).
 
 **Превью в инвентаре (опционально):** уменьшенная копия **96×96 px** или масштаб CSS с тем же файлом.
 
 ---
 
+## Блок 2a. Портрет + рамка в UI (зафиксировано, перенос на другой экран)
+
+**Источник констант в коде:** `frontend/src/lib/portraitLayout.ts`  
+**Рамки (URL + CSS vars):** `frontend/src/lib/cosmetics.ts` → `portraitFrameFitVars()`  
+**Компонент:** `CharacterPortraitWithFrame.tsx`  
+**Стили:** `frontend/src/index.css` → `.trello-character-profile-portrait-*`
+
+### Контейнер
+
+| Параметр | Значение |
+|----------|----------|
+| Форма | квадрат `aspect-ratio: 1` |
+| Макс. сторона | **300 px** (`PORTRAIT_CONTAINER_MAX_PX`) |
+| Ширина | `min(100%, 300px)` |
+| `overflow` | `hidden` |
+| С рамкой | без border/background/shadow у wrap |
+
+### Портрет (avatar PNG 1024×1024)
+
+| Параметр | Значение |
+|----------|----------|
+| Позиция | `absolute; inset: 0` |
+| Размер | `width/height: 100%` |
+| `object-fit` | **`cover`** |
+| `object-position` | `center center` |
+
+### Рамка (все `frame_*.png`, 1024×1024)
+
+Общий bbox эталона (`PORTRAIT_FRAME_FIT_REF`, px на холсте 1024):
+
+| Поле | Значение |
+|------|----------|
+| x0, y0 | 103, 126 |
+| x1, y1 | 921, 878 |
+
+CSS-переменные (inline `style` на stack, считает `portraitFrameFitVars`):
+
+| Переменная | Формула |
+|------------|---------|
+| `--portrait-frame-w` | `1024 / (x1−x0+1) × 100%` → **125.03%** |
+| `--portrait-frame-h` | `1024 / (y1−y0+1) × 100%` → **123.72%** |
+| `--portrait-frame-left` | `−x0 / (x1−x0+1) × 100%` → **−12.58%** |
+| `--portrait-frame-top` | `−y0 / (y1−y0+1) × 100%` → **−16.73%** |
+| `--portrait-frame-inset-scale` | см. таблицу ниже |
+
+| key | inset scale / axis tweak |
+|-----|--------------------------|
+| `frame_bronze` | **0.92**, `scaleX: 0.94` |
+| `frame_silver` | **0.97**, `scaleY: 0.99`, `translateY: -1%` |
+| `frame_gold` | **0.98** |
+| `frame_mystic` | **1.00** |
+| `frame_epic_flame` | **0.92** |
+
+Рамка: `object-fit: fill`, `transform: translateY(...) scaleX(...) scaleY(...)` (через css vars), `transform-origin: center`, `image-rendering: pixelated`.
+
+### Фон сцены (`PROFILE_BACKGROUND`, опционально)
+
+Если передан `profileBackgroundKey`, stack получает класс `--layered`. Слой `.trello-character-profile-portrait-scene-bg` — **тот же квадрат**, что и портрет (см. контейнер выше).
+
+| Параметр | Значение |
+|----------|----------|
+| Позиция | `absolute; inset: 0` |
+| Размер | `width/height: 100%` |
+| `object-fit` | **`cover`** |
+| `object-position` | `center center` |
+| z-index | **0** (за персонажем; персонаж — 1, рамка — 2) |
+
+Подробные требования к исходникам — **блок 3**.
+
+### Классы (копировать вместе)
+
+```
+wrap:    trello-character-profile-portrait-wrap trello-character-profile-portrait-wrap--square
+stack:   trello-character-profile-portrait-stack [--layered если есть фон] [--framed если есть рамка]
+scene:   trello-character-profile-portrait-scene-bg
+portrait: trello-character-profile-portrait
+frame:   trello-character-profile-portrait-frame
+```
+
+### Чеклист переноса
+
+1. Обернуть в `wrap--square` (или другой max-width — **пропорции 1:1 сохранить**).
+2. `<CharacterPortraitWithFrame avatarPreset={…} frameKey={…} profileBackgroundKey={…} />`.
+3. Не дублировать inset/bbox в новом месте — только `portraitFrameFitVars(frameKey)` на stack.
+4. После смены max-width (не 300px) масштаб рамки/портрета/фона масштабируется автоматически (% от контейнера).
+
+---
+
 ## Блок 3. Фоны профиля (`PROFILE_BACKGROUND`)
 
-Зона за героем на `ProfileCharacterPage` / `UserCharacterPage` (`equippedProfileBackgroundKey`).
+Картинка **внутри квадрата портрета** (за персонажем, под рамкой). **Не** широкая полоса на шапку профиля — устаревший формат **1200×400 (3:1)** больше не используется.
 
-| key | Файл | Tier | Размер | Описание |
-|-----|------|------|--------|----------|
-| `bg_meadow` | `cosmetics/backgrounds/bg_meadow.png` | Common | **1200×400 px** | Мягкий дневной пейзаж: луг, холмы, светлое небо. Без ярких объектов в центре (там портрет и текст). Горизонт примерно на нижней трети |
-| `bg_night` | `cosmetics/backgrounds/bg_night.png` | Rare | 1200×400 | Ночь: градиент тёмно-синий → фиолетовый, луна/звёзды по краям, силуэты деревьев |
+**Код:** `equippedProfileBackgroundKey` → `CharacterPortraitWithFrame` (`profileBackgroundKey`) → URL в `frontend/src/lib/cosmetics.ts`.
 
-**Технические требования:**
+### Где и как отображается
 
-- Соотношение сторон **3:1** (1200×400); допустим **1920×640** для Retina — один файл 2×.
-- Края **слева/справа** — без критичных деталей (на узком экране `background-size: cover` обрежет бока).
-- Центр **~600×400** — спокойный фон (контраст с белым/тёмным текстом проверить).
-- Формат: PNG или WebP, качество 80–90%.
+| Параметр | Значение |
+|----------|----------|
+| Контейнер | Квадрат **1:1**, макс. **300×300 px** (`PORTRAIT_CONTAINER_MAX_PX`) — тот же, что у аватара и рамки |
+| Слои (снизу вверх) | фон сцены → портрет персонажа → рамка |
+| Масштаб в UI | `<img>` на весь квадрат, **`object-fit: cover`**, **`object-position: center`** |
+| Обрезка | Лишнее по краям обрезается `overflow: hidden` у wrap; landscape-исходник даёт crop по бокам или сверху/снизу |
 
-**Мини-превью в инвентаре:** **240×80 px** (кроп центра) — опционально отдельный файл `bg_meadow_thumb.png`.
+### Требования к исходникам (новые фоны)
+
+| Параметр | Значение |
+|----------|----------|
+| **Рекомендуемый размер** | **1024×1024 px** (квадрат, как аватар и рамки) |
+| Retina (опционально) | **2048×2048 px** — один файл 2× |
+| Допустимо | Landscape (напр. **1536×1024** у `meadow`) — если сцена сосредоточена в **центральном квадрате ~1024×1024**; в UI всё равно показывается как квадрат с `cover` |
+| Соотношение сторон | **1:1 предпочтительно**; не проектировать под полосу 3:1 |
+| Формат | PNG или WebP; альфа не обязательна |
+| Цвет | sRGB; без мелкого текста на изображении |
+| Безопасная зона | Важные детали не у самого края (**8–12%** отступ) — crop + рамка по периметру |
+| Центр кадра | Основная сцена; персонаж закрывает центр, но **прозрачный фон аватара** даёт видеть фон вокруг силуэта |
+| Края | Декоративные детали (луна, деревья) — не только по левому/правому краю «полосы»; учитывать квадратный crop |
+
+**Аватары:** стартовые PNG с **чёрным** фоном перекрывают `PROFILE_BACKGROUND`. Для работы механики нужны портреты с **прозрачным** фоном (тест: `character-avatars/clear/druid_man.png` для `DRUID_MAN`).
+
+### Каталог ассетов
+
+| key | Файл | Tier | Размер исходника | Описание |
+|-----|------|------|------------------|----------|
+| `bg_meadow` | `cosmetics/backgrounds/meadow.png` | Common | **1536×1024** (факт); для редизайна лучше **1024×1024** | Луг, мягкий дневной свет; центр — трава и небо |
+| `bg_night` | `cosmetics/backgrounds/bg_night.png` | Rare | **1024×1024** (целевой) | Ночь: градиент тёмно-синий → фиолетовый, луна/звёзды, силуэты деревьев **в квадратном кадре** |
+
+**Мини-превью в инвентаре (опционально):** квадрат **96×96** или **128×128 px** (центральный crop), напр. `bg_meadow_thumb.png`. Устаревший формат **240×80** (полоса 3:1) не использовать.
+
+### Чеклист перед сдачей фона
+
+- [ ] Исходник читается в **квадрате 300×300** (предпросмотр с `object-fit: cover`).
+- [ ] С **прозрачным** тестовым аватаром фон виден за силуэтом и по краям внутри рамки.
+- [ ] Центр не «пустой» и не перегружен; с рамкой (`frame_bronze` и др.) края не конфликтуют.
+- [ ] Имя файла = `CosmeticItem.key` (или маппинг зафиксирован в `cosmetics.ts`).
 
 ---
 
@@ -144,9 +259,9 @@ backend/uploads/
 | key (БД) | Файл | Tier | Размер | Описание |
 |----------|------|------|--------|----------|
 | `QUEST_MAGE_MAN` | `cosmetics/portraits/quest_mage_man.png` | Rare | **400×400 px** | Мужской маг: тот же ракурс, что `mage-man.png`, но другой костюм (например, тёмно-фиолетовая мантия, руна на посохе, слабое свечение) — явно «награда», не стартовый скин |
-| *(рекомендуется)* `QUEST_MAGE_WOMAN` | `cosmetics/portraits/quest_mage_woman.png` | Rare | 400×400 | Женский аналог; потребует сида в БД и правки лут-таблицы для женских персонажей |
+| `QUEST_MAGE_WOMAN` | `cosmetics/portraits/quest_mage_woman.png` | Rare | 400×400 | Женский аналог; в луте rare-сундука подставляется по полу персонажа |
 
-**Важно:** сейчас в луте только мужской ключ; женским персонажам при выпадении нужен отдельный предмет или универсальный «квестовый» скин обоих полов.
+**Важно:** в БД два ключа; при открытии rare-сундука сервер выдаёт `QUEST_MAGE_WOMAN` женским персонажам и `QUEST_MAGE_MAN` — мужским.
 
 ---
 
@@ -308,7 +423,7 @@ backend/uploads/
 
 - [ ] Все ключи из таблиц совпадают с именами файлов (или зафиксирован маппинг в коде).
 - [ ] Рамки: прозрачный центр проверен на портрете 400×400.
-- [ ] Фоны: центр не перегружен; текст на профиле читаем.
+- [ ] Фоны: квадрат **1024×1024** (или центр landscape); в UI **300×300** с `cover`; с прозрачным аватаром виден за персонажем.
 - [ ] Значки и dust читаемы на 32 px.
 - [ ] Сундуки различимы в 24 px (Common / Rare / Epic).
 - [ ] `QUEST_MAGE_*` визуально отличается от стартового `mage-man` / `mage-woman`.
@@ -318,8 +433,9 @@ backend/uploads/
 
 ## Связь с кодом (для разработки после арта)
 
-1. Маппинг `CosmeticItem.key` → URL в `frontend/src/lib/cosmetics.ts` (или аналог).
-2. Отображение на `ProfileCharacterPage`: `equippedPortraitFrameKey`, `equippedProfileBackgroundKey`, `equippedTitleBadgeKey`.
+1. Маппинг `CosmeticItem.key` → URL в `frontend/src/lib/cosmetics.ts`.
+2. Портрет + рамка + фон: `CharacterPortraitWithFrame`, константы `frontend/src/lib/portraitLayout.ts`, блоки **2a** и **3** в этом файле.
+3. Отображение на `ProfileCharacterPage` / `UserCharacterPage`: `equippedPortraitFrameKey`, `equippedProfileBackgroundKey`, …
 3. Замена 🎁 на `<img src={chestIcon(tier)} />`.
 4. Иконки в `ProfileCharacterQuestsPanel` для достижений и пыли.
 

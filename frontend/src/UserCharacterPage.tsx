@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, formatApiError, type ApiError } from './lib/api';
 import { CheckinStreakCounter } from './CheckinStreakCounter';
-import { type CharacterDto, characterPortraitUrl } from './lib/character';
+import { type CharacterDto } from './lib/character';
+import { CharacterPortraitWithFrame } from './CharacterPortraitWithFrame';
 import { CHARACTER_HEALTH_MAX } from './lib/xpRewards';
 import { getCharacterXpTowardNext } from './lib/level-curve';
 import { navigate, SpaLink } from './lib/navigation';
@@ -65,8 +66,6 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
     }
     return getCharacterXpTowardNext(character.level, character.currentXp);
   }, [character]);
-
-  const portrait = character ? characterPortraitUrl(character.avatarPreset) : '';
 
   function goBack() {
     navigate(userProfilePath(userId));
@@ -177,7 +176,11 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
           <div className="trello-character-profile-hero trello-character-profile-hero--stacked">
             <div className="trello-character-profile-portrait-column">
               <div className="trello-character-profile-portrait-wrap trello-character-profile-portrait-wrap--square">
-                <img src={portrait} alt="" className="trello-character-profile-portrait" loading="lazy" />
+                <CharacterPortraitWithFrame
+                  avatarPreset={character.avatarPreset}
+                  frameKey={character.equippedPortraitFrameKey}
+                  profileBackgroundKey={character.equippedProfileBackgroundKey}
+                />
               </div>
             </div>
             <div className="trello-character-profile-info-col">

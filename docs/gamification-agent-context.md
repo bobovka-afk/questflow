@@ -20,7 +20,7 @@
 | 1 | **Done** |
 | 2 | **Done** — **2a** квесты + **2b** сундуки (сундук **за каждый** квест; карточки → assignee ?? actor) |
 | 3 | **Done** — пыль (дубликаты + магазин 3 сундуков), achievements |
-| 4 | **Not started** — E2E, полный гайд, уведомления / battle pass / лидерборд ([roadmap](gamification-roadmap.md#phase-4--e2e-и-гайд-по-игре-финал-v1)) |
+| 4 | **In progress** — гайд «Как это работает» + intro ([`GamificationGuide.tsx`](../frontend/src/GamificationGuide.tsx)); E2E и backlog (уведомления / battle pass / лидерборд) — [roadmap](gamification-roadmap.md#phase-4--e2e-и-гайд-по-игре-финал-v1) |
 
 **Суточный сброс:** cron `resetDailyTaskXpCounts` в `GamificationCronService` (00:00 `GAME_DAY_TZ`). Числа наград — `backend/src/gamification/config/rewards.ts`.
 
@@ -99,9 +99,11 @@ questflow/
 │   ├── src/App.tsx                    ← intro-модалка после регистрации (portal, глобально)
 │   ├── src/CharacterSetupPage.tsx     ← создание персонажа (без авто-редиректа)
 │   ├── src/GamificationIntroModal.tsx
+│   ├── src/GamificationGuide.tsx       ← полный гайд на профиле
 │   ├── src/CheckinStreakCounter.tsx   ← счётчик серии + анимация roll
 │   ├── src/CheckinStreakProfileRow.tsx ← streak + кнопка (i) + модалка порогов
 │   ├── src/RewardGrantToast.tsx       ← XP/чекин/HP/streak при закрытии карточки
+│   ├── src/CharacterPortraitWithFrame.tsx ← портрет + рамка
 │   ├── src/UserCharacterPage.tsx      ← чужой персонаж (read-only)
 │   ├── src/BoardPage.tsx              ← парсит rewards с completion API
 │   ├── src/lib/gamificationRewards.ts
@@ -109,6 +111,8 @@ questflow/
 │   ├── src/lib/xpRewards.ts           ← константы XP (должны = backend)
 │   ├── src/lib/level-curve.ts         ← расчёт полоски XP
 │   ├── src/lib/character.ts           ← CharacterDto, portrait URLs
+│   ├── src/lib/cosmetics.ts           ← URL рамок, portraitFrameFitVars()
+│   ├── src/lib/portraitLayout.ts      ← bbox/inset/классы (блок 2a assets)
 │   └── src/lib/api.ts                 ← isXpGrantErrorCode, isXpTaskSoftNoticeCode
 ```
 
@@ -239,7 +243,8 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 7. ~~**2a**~~ — done: квесты, hooks, `GET /character/quests`.
 8. ~~**2b**~~ — done: сундуки, loot, open/inventory/equip, UI на профиле.
 9. ~~**3**~~ — done: пыль, achievements, магазин сундуков.
-10. **4** — E2E + полный гайд + backlog (уведомления, battle pass, …).
+10. ~~**4a**~~ — done: полный гайд + `QUEST_MAGE_WOMAN` в луте/БД, валидация квестового образа.
+11. **4b** — E2E + backlog (уведомления, battle pass, …).
 
 После каждой фазы: обновить таблицу «Статус» в **этом файле**, [Known gaps](gamification-roadmap.md#known-gaps-история-phase-1-закрыта) и чеклисты Phase в roadmap.
 

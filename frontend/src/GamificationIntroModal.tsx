@@ -1,4 +1,10 @@
 import { SpaLink } from './lib/navigation';
+import { STREAK_LABEL } from './lib/gamificationCopy';
+import {
+  DAILY_TASK_XP_COMPLETIONS_MAX,
+  XP_DAILY_CHECKIN,
+  XP_PER_TASK_COMPLETED,
+} from './lib/xpRewards';
 
 type Props = {
   open: boolean;
@@ -50,9 +56,20 @@ export function GamificationIntroModal(props: Props) {
               сразу, а регулярная активность поощряется наградами.
             </p>
             <ul className="trello-gamification-intro-list">
-              <li>Закрывайте карточки — получайте опыт и автоматическую серию за день.</li>
-              <li>Серия растёт, если вы активны каждый игровой день подряд.</li>
+              <li>
+                Закрывайте карточки — до <strong>{DAILY_TASK_XP_COMPLETIONS_MAX}</strong> раз в сутки по{' '}
+                <strong>+{XP_PER_TASK_COMPLETED} XP</strong> (исполнителю или закрывшему).
+              </li>
+              <li>
+                {STREAK_LABEL} за день — <strong>+{XP_DAILY_CHECKIN} XP</strong> при первой награде за
+                сутки; длинная серия даёт бонусы XP.
+              </li>
+              <li>
+                Квесты, сундуки и косметика без влияния на силу персонажа — только внешний вид и
+                коллекция.
+              </li>
               <li>Без персонажа награды не начисляются — создайте героя один раз.</li>
+              <li>Подробные правила — в профиле персонажа, блок «Как это работает».</li>
             </ul>
           </section>
         </div>

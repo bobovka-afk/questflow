@@ -14,6 +14,9 @@ export type CharacterDto = {
   dust: number;
   checkinStreak: number;
   lastCheckinDayKey?: string | null;
+  equippedPortraitFrameKey?: string | null;
+  equippedProfileBackgroundKey?: string | null;
+  equippedTitleBadgeKey?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -46,8 +49,30 @@ export function presetForRole(
   return gender === 'MALE' ? `${role}_MAN` : `${role}_WOMAN`;
 }
 
-/** Static portrait under /uploads/character-avatars/… */
+const QUEST_AVATAR_PORTRAIT_FILES: Record<string, string> = {
+  QUEST_MAGE_MAN: 'quest_mage_man.png',
+  QUEST_MAGE_WOMAN: 'quest_mage_woman.png',
+};
+
+/** Тест прозрачного фона (PROFILE_BACKGROUND); preset → путь под uploads/ */
+const AVATAR_PRESET_UPLOAD_OVERRIDES: Record<string, string> = {
+  DRUID_MAN: 'character-avatars/clear/druid_man.png',
+};
+
+export function isQuestAvatarPreset(preset: string): boolean {
+  return preset in QUEST_AVATAR_PORTRAIT_FILES;
+}
+
+/** Static portrait under /uploads/character-avatars/… or quest cosmetics. */
 export function characterPortraitUrl(avatarPreset: string): string {
+  const uploadOverride = AVATAR_PRESET_UPLOAD_OVERRIDES[avatarPreset];
+  if (uploadOverride) {
+    return `${API_URL}/uploads/${uploadOverride}`;
+  }
+  const questFile = QUEST_AVATAR_PORTRAIT_FILES[avatarPreset];
+  if (questFile) {
+    return `${API_URL}/uploads/cosmetics/portraits/${questFile}`;
+  }
   const role = avatarPreset.replace(/_MAN$|_WOMAN$/i, '').toLowerCase();
   if (avatarPreset.endsWith('_MAN')) {
     return `${API_URL}/uploads/character-avatars/Male/${role}-man.png`;

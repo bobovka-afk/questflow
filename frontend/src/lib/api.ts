@@ -51,7 +51,11 @@ const API_ERROR_CODE_RU: Record<string, string> = {
   COSMETIC_NOT_FOUND: 'Предмет не найден.',
   COSMETIC_NOT_OWNED: 'У вас нет этого предмета.',
   COSMETIC_EQUIP_NOT_SUPPORTED: 'Этот тип косметики нельзя надеть здесь.',
+  COSMETIC_NOT_EQUIPPED: 'Этот предмет сейчас не надет.',
   COSMETIC_ALREADY_OWNED: 'У вас уже есть этот предмет.',
+  COSMETIC_AVATAR_NOT_OWNED: 'Сначала получите этот образ из сундука.',
+  AVATAR_PRESET_QUEST_NOT_ON_CREATE:
+    'Квестовый образ нельзя выбрать при создании персонажа.',
   INSUFFICIENT_DUST: 'Недостаточно пыли для покупки сундука.',
   DUST_SHOP_TIER_INVALID: 'Недопустимый тип сундука.',
 };

@@ -4982,26 +4982,96 @@ button.trello-card-comment-author-link:hover {
 
 .trello-character-profile-portrait-wrap--square {
   width: min(100%, 300px);
-  height: min(100%, 300px);
-  max-width: 300px;
-  max-height: 300px;
   aspect-ratio: 1;
+  height: auto;
+  max-width: 300px;
   border-radius: 16px;
   align-items: center;
   justify-content: center;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+}
+
+.trello-character-profile-portrait-wrap--square:has(
+    .trello-character-profile-portrait-stack--layered
+  ) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.trello-character-profile-portrait-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+}
+
+.trello-character-profile-portrait-stack:not(
+    .trello-character-profile-portrait-stack--layered
+  ) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Слои в квадрате портрета: фон сцены → персонаж → рамка */
+.trello-character-profile-portrait-stack--layered .trello-character-profile-portrait-scene-bg,
+.trello-character-profile-portrait-stack--layered .trello-character-profile-portrait {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: cover;
+  object-position: center center;
+}
+
+.trello-character-profile-portrait-stack--layered .trello-character-profile-portrait-scene-bg {
+  z-index: 0;
+  background-color: #5a8f4a;
+}
+
+.trello-character-profile-portrait-stack--layered .trello-character-profile-portrait {
+  z-index: 1;
+}
+
+.trello-character-profile-portrait-wrap--square
+  .trello-character-profile-portrait-stack:not(
+    .trello-character-profile-portrait-stack--layered
+  )
+  .trello-character-profile-portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+}
+
+/* Рамка: bbox из cosmetics.ts */
+.trello-character-profile-portrait-stack--framed .trello-character-profile-portrait-frame {
+  position: absolute;
+  width: var(--portrait-frame-w, 100%);
+  height: var(--portrait-frame-h, 100%);
+  left: var(--portrait-frame-left, 0);
+  top: var(--portrait-frame-top, 0);
+  max-width: none;
+  max-height: none;
+  object-fit: fill;
+  transform: translateY(var(--portrait-frame-translate-y, 0%))
+    scaleX(var(--portrait-frame-scale-x, var(--portrait-frame-inset-scale, 0.92)))
+    scaleY(var(--portrait-frame-scale-y, var(--portrait-frame-inset-scale, 0.92)));
+  transform-origin: center center;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+  z-index: 2;
 }
 
 .trello-character-profile-portrait {
   max-width: 100%;
   max-height: 100%;
-  object-fit: contain;
-}
-
-.trello-character-profile-portrait-wrap--square .trello-character-profile-portrait {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 }
 
 .trello-character-edit-trigger {
@@ -5351,10 +5421,9 @@ button.trello-card-comment-author-link:hover {
   margin-top: 2px;
 }
 
-.trello-character-inventory-equipped {
-  font-size: 13px;
-  font-weight: 600;
-  color: #22a06b;
+.trello-character-inventory-equip-btn {
+  flex-shrink: 0;
+  min-width: 5.5rem;
 }
 
 .trello-character-inventory-empty {
@@ -5627,6 +5696,14 @@ button.trello-card-comment-author-link:hover {
 .theme-dark .trello-character-profile-portrait-wrap {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.2);
+}
+
+.theme-dark
+  .trello-character-profile-portrait-wrap--square:has(
+    .trello-character-profile-portrait-stack--framed
+  ) {
+  background: transparent;
+  border-color: transparent;
 }
 
 .theme-dark .trello-character-guide {

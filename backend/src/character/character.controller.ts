@@ -22,6 +22,7 @@ import { ChestService } from '../gamification/chest/chest.service';
 import { DustService } from '../gamification/dust/dust.service';
 import { AchievementService } from '../gamification/achievement/achievement.service';
 import { EquipCosmeticDto } from './dto/equip-cosmetic.dto';
+import { UnequipCosmeticDto } from './dto/unequip-cosmetic.dto';
 import { PurchaseDustChestDto } from './dto/purchase-dust-chest.dto';
 import { JwtAuthGuard } from '../auth/guards/auth.guard';
 import type { AuthedRequest } from '../common/type';
@@ -146,6 +147,19 @@ export class CharacterController {
     @Body() dto: EquipCosmeticDto,
   ) {
     return this.chestService.equipCosmetic(req.user.id, dto.inventoryItemId);
+  }
+
+  @Patch('cosmetics/unequip')
+  @ApiOperation({ summary: 'Unequip cosmetic (frame, background, badge)' })
+  @ApiBody({ type: UnequipCosmeticDto })
+  @ApiResponse({ status: 200, description: 'Cosmetic unequipped.' })
+  @ApiResponse({ status: 400, description: "code: 'COSMETIC_NOT_EQUIPPED'" })
+  @ApiResponse({ status: 404, description: "code: 'COSMETIC_NOT_OWNED'" })
+  async unequipCosmetic(
+    @Req() req: AuthedRequest,
+    @Body() dto: UnequipCosmeticDto,
+  ) {
+    return this.chestService.unequipCosmetic(req.user.id, dto.inventoryItemId);
   }
 
   @Get('achievements')

@@ -1,4 +1,24 @@
-import { ChestTier, CosmeticType } from '../../generated/prisma/enums';
+import {
+  ChestTier,
+  CosmeticType,
+  GenderCharacter,
+} from '../../generated/prisma/enums';
+
+export const QUEST_MAGE_LOOT_KEY = 'QUEST_MAGE_MAN';
+
+export function resolveQuestMageLootKey(gender: GenderCharacter): string {
+  return gender === GenderCharacter.FEMALE ? 'QUEST_MAGE_WOMAN' : 'QUEST_MAGE_MAN';
+}
+
+export function resolveLootCosmeticKey(
+  rolledKey: string,
+  gender: GenderCharacter,
+): string {
+  if (rolledKey === QUEST_MAGE_LOOT_KEY) {
+    return resolveQuestMageLootKey(gender);
+  }
+  return rolledKey;
+}
 
 export type LootEntry = {
   cosmeticKey: string;
@@ -19,22 +39,26 @@ export const LOOT_TABLE_BY_TIER: Record<ChestTier, LootEntry[]> = {
     { cosmeticKey: 'QUEST_MAGE_MAN', weight: 20 },
   ],
   [ChestTier.EPIC]: [
-    { cosmeticKey: 'frame_epic_flame', weight: 50 },
+    { cosmeticKey: 'frame_mystic', weight: 50 },
     { cosmeticKey: 'badge_legend', weight: 50 },
   ],
 };
 
-export function rollLootCosmeticKey(tier: ChestTier): string {
+export function rollLootCosmeticKey(
+  tier: ChestTier,
+  gender: GenderCharacter,
+): string {
   const table = LOOT_TABLE_BY_TIER[tier];
   const total = table.reduce((sum, e) => sum + e.weight, 0);
   let roll = Math.random() * total;
   for (const entry of table) {
     roll -= entry.weight;
     if (roll <= 0) {
-      return entry.cosmeticKey;
+      return resolveLootCosmeticKey(entry.cosmeticKey, gender);
     }
   }
-  return table[table.length - 1].cosmeticKey;
+  const last = table[table.length - 1].cosmeticKey;
+  return resolveLootCosmeticKey(last, gender);
 }
 
 export function cosmeticTypeToCharacterField(

@@ -69,6 +69,8 @@ enum CharacterAvatarPreset {
   PALADIN_WOMAN
   ROGUE_WOMAN
   WARRIOR_WOMAN
+  QUEST_MAGE_MAN
+  QUEST_MAGE_WOMAN
 }
 
 enum XpEventType {

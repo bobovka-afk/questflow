@@ -12,7 +12,7 @@ import {
 } from './lib/character';
 import { getCharacterXpTowardNext } from './lib/level-curve';
 import { CheckinStreakProfileRow } from './CheckinStreakProfileRow';
-import { CHECKIN_STREAK_MILESTONES } from './lib/checkinStreakMilestones';
+import { GamificationGuide } from './GamificationGuide';
 import {
   computeStreakProfileFeedback,
   readCharacterStreakSnapshot,
@@ -20,17 +20,12 @@ import {
   writeCharacterStreakSnapshot,
   type StreakProfileFeedback,
 } from './lib/characterStreakSnapshot';
-import { STREAK_LABEL } from './lib/gamificationCopy';
-import {
-	CHARACTER_HEALTH_MAX,
-	DAILY_TASK_XP_COMPLETIONS_MAX,
-	XP_DAILY_CHECKIN,
-	XP_PER_TASK_COMPLETED,
-} from './lib/xpRewards';
+import { CHARACTER_HEALTH_MAX } from './lib/xpRewards';
 import { CharacterCreateForm } from './CharacterCreateForm';
 import { SpaLink } from './lib/navigation';
 import { ProfileToolbarAnchor } from './profileToolbarOutlet';
 import { ProfileCharacterQuestsPanel } from './ProfileCharacterQuestsPanel';
+import { CharacterPortraitWithFrame } from './CharacterPortraitWithFrame';
 
 type Props = {
   accessToken: string;
@@ -38,7 +33,7 @@ type Props = {
 };
 
 function roleFromPreset(preset: string): CharacterRole {
-  const base = preset.replace(/_MAN$|_WOMAN$/i, '').toUpperCase();
+  const base = preset.replace(/_MAN$|_WOMAN$/i, '').replace(/^QUEST_/, '').toUpperCase();
   return (CHARACTER_ROLES as readonly string[]).includes(base)
     ? (base as CharacterRole)
     : 'DRUID';
@@ -150,8 +145,6 @@ export function ProfileCharacterPage(props: Props) {
     }
     return getCharacterXpTowardNext(character.level, character.currentXp);
   }, [character]);
-
-  const portrait = character ? characterPortraitUrl(character.avatarPreset) : '';
 
   function openEdit() {
     if (!character) return;
@@ -321,7 +314,11 @@ export function ProfileCharacterPage(props: Props) {
           <div className="trello-character-profile-hero trello-character-profile-hero--stacked">
             <div className="trello-character-profile-portrait-column">
               <div className="trello-character-profile-portrait-wrap trello-character-profile-portrait-wrap--square">
-                <img src={portrait} alt="" className="trello-character-profile-portrait" loading="lazy" />
+                <CharacterPortraitWithFrame
+                  avatarPreset={character.avatarPreset}
+                  frameKey={character.equippedPortraitFrameKey}
+                  profileBackgroundKey={character.equippedProfileBackgroundKey}
+                />
               </div>
               <button type="button" className="trello-btn trello-btn-primary trello-character-edit-trigger" onClick={openEdit}>
                 Редактировать
@@ -407,64 +404,20 @@ export function ProfileCharacterPage(props: Props) {
           >
             {guideOpen ? '▼' : '▶'} Как это работает
           </button>
-          {guideOpen && (
-            <div className="trello-character-guide">
-              <ul>
-                <li>
-                  <strong>Опыт за карточки.</strong> За первое закрытие карточки (перевод в «выполнено»){' '}
-                  <strong>+{XP_PER_TASK_COMPLETED} XP</strong> получает персонаж исполнителя; если исполнитель не
-                  назначен — персонаж того, кто закрыл карточку. Повторное закрытие той же карточки опыт не даёт.
-                </li>
-                <li>
-                  <strong>{STREAK_LABEL} за день.</strong> При первом начислении опыта за игровой день (обычно
-                  первая закрытая карточка) автоматически засчитывается <strong>{STREAK_LABEL}</strong>{' '}
-                  <strong>+{XP_DAILY_CHECKIN} XP</strong> и растёт счётчик 🔥. Отдельная кнопка «отметиться» не
-                  нужна.
-                </li>
-                <li>
-                  <strong>Пороги {STREAK_LABEL.toLowerCase()}.</strong> При{' '}
-                  {CHECKIN_STREAK_MILESTONES.map((m) => m.days).join(', ')} днях подряд — бонус XP (
-                  {CHECKIN_STREAK_MILESTONES.map((m) => `+${m.xp}`).join(', ')}); позже привяжем к ачивкам и
-                  квестам.
-                </li>
-                <li>
-                  <strong>Лимит в день.</strong> Опыт за закрытие карточек начисляется не более{' '}
-                  <strong>{DAILY_TASK_XP_COMPLETIONS_MAX}</strong> раз в сутки на одного персонажа; после лимита
-                  карточки по-прежнему закрываются, без XP.
-                </li>
-                <li>
-                  <strong>Опыт.</strong> Счётчик <strong>текущий / нужно</strong> — сколько опыта уже набрано на
-                  текущем уровне и сколько нужно до следующего; полоска совпадает с этой долей (кривая как на
-                  сервере).
-                </li>
-                <li>
-                  <strong>Уровень.</strong> Растёт при накоплении опыта по правилам игры (кривая уровней на бэкенде).
-                </li>
-                <li>
-                  <strong>Смена облика.</strong> Кнопка «Редактировать» под портретом — имя, пол и один из шести
-                  образов. Пол и аватар должны соответствовать друг другу.
-                </li>
-                <li>
-                  <strong>Аккаунт.</strong> Фото профиля (круглое в углу) — отдельно от персонажа; раздел «Профиль →
-                  Аккаунт».
-                </li>
-                <li>
-                  <strong>Квесты.</strong> Дневные и недельные задания (закрытие карточек, комментарии, серия дней).
-                  За каждый выполненный квест — свой сундук; откройте его здесь, чтобы получить косметику.
-                </li>
-                <li>
-                  <strong>Пыль.</strong> Если из сундука выпал уже имеющийся предмет — вы получаете пыль (больше за
-                  редкую косметику). Пылью можно купить один из трёх сундуков в блоке ниже.
-                </li>
-                <li>
-                  <strong>Достижения.</strong> Разовые награды за карточки, комментарии, серию, уровень, квесты и
-                  сундуки; часть даёт бонусную пыль.
-                </li>
-              </ul>
-            </div>
-          )}
+          {guideOpen && <GamificationGuide />}
 
-          <ProfileCharacterQuestsPanel accessToken={props.accessToken} />
+          <ProfileCharacterQuestsPanel
+            accessToken={props.accessToken}
+            characterGender={character.gender}
+            onCharacterRefresh={async () => {
+              const c = await api<CharacterDto>('/character/me', {
+                method: 'GET',
+                accessToken: props.accessToken,
+              });
+              setCharacter(c);
+              props.onCharacterUpdated?.(c);
+            }}
+          />
         </section>
       </div>
 

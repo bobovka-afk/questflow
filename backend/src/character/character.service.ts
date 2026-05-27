@@ -21,7 +21,15 @@ import {
   HP_GAIN_PER_XP_EVENT,
   XP_DAILY_CHECKIN,
 } from '../gamification/config/rewards';
-import { XpEventType } from '../generated/prisma/enums';
+import {
+  CharacterAvatarPreset,
+  GenderCharacter,
+  XpEventType,
+} from '../generated/prisma/enums';
+import {
+  genderForAvatarPreset,
+  isQuestAvatarPreset,
+} from './config/quest-avatar-presets';
 import {
   DEFAULT_GAME_DAY_TZ,
   XP_EVENT_TYPES_REQUIRING_DAY_KEY,
@@ -84,6 +92,7 @@ export class CharacterService {
         message: 'Character already exists',
       });
     }
+    this.assertAvatarPresetAllowedForCreate(dto.avatarPreset, dto.gender);
     const character = await this.prisma.character.create({
       data: {
         userId,
@@ -115,6 +124,17 @@ export class CharacterService {
         code: 'CHARACTER_NOT_FOUND',
         message: 'Character not found',
       });
+    }
+
+    const nextGender = dto.gender ?? existing.gender;
+    if (dto.avatarPreset !== undefined) {
+      await this.assertAvatarPresetUpdateAllowed(
+        userId,
+        dto.avatarPreset,
+        nextGender,
+      );
+    } else if (dto.gender !== undefined && isQuestAvatarPreset(existing.avatarPreset)) {
+      this.assertAvatarPresetMatchesGender(existing.avatarPreset, nextGender);
     }
 
     return this.prisma.character.update({
@@ -467,6 +487,55 @@ export class CharacterService {
     );
 
     return { stats: withStreak, rewards };
+  }
+
+  private assertAvatarPresetAllowedForCreate(
+    avatarPreset: CharacterAvatarPreset,
+    gender: GenderCharacter,
+  ): void {
+    if (isQuestAvatarPreset(avatarPreset)) {
+      throw new BadRequestException({
+        code: 'AVATAR_PRESET_QUEST_NOT_ON_CREATE',
+        message: 'Quest avatar presets cannot be used when creating a character',
+      });
+    }
+    this.assertAvatarPresetMatchesGender(avatarPreset, gender);
+  }
+
+  private async assertAvatarPresetUpdateAllowed(
+    userId: number,
+    avatarPreset: CharacterAvatarPreset,
+    gender: GenderCharacter,
+  ): Promise<void> {
+    this.assertAvatarPresetMatchesGender(avatarPreset, gender);
+    if (!isQuestAvatarPreset(avatarPreset)) {
+      return;
+    }
+    const owned = await this.prisma.inventoryItem.findFirst({
+      where: {
+        userId,
+        cosmeticItem: { key: avatarPreset },
+      },
+      select: { id: true },
+    });
+    if (!owned) {
+      throw new ConflictException({
+        code: 'COSMETIC_AVATAR_NOT_OWNED',
+        message: 'Quest avatar preset is not owned',
+      });
+    }
+  }
+
+  private assertAvatarPresetMatchesGender(
+    avatarPreset: CharacterAvatarPreset,
+    gender: GenderCharacter,
+  ): void {
+    if (genderForAvatarPreset(avatarPreset) !== gender) {
+      throw new BadRequestException({
+        code: 'CHARACTER_AVATAR_GENDER_MISMATCH',
+        message: 'Avatar preset does not match character gender',
+      });
+    }
   }
 
   private throwXpEventDayKeyRequired(): never {
