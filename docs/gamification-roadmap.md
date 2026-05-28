@@ -4,7 +4,7 @@ docker compose up -d --build postgres redis app frontend
 
 Документ для продукта и разработки: что уже сделано, куда движемся, обязательные принципы и черновые числа баланса. Сервер — источник истины; все начисления должны быть идемпотентны и аудируемы в PostgreSQL.
 
-**Связанные файлы:** [README.md](../README.md), [gamification-agent-context.md](gamification-agent-context.md) (контекст для AI), [backend/prisma/schema.prisma](../backend/prisma/schema.prisma), [backend/src/character/](../backend/src/character/), [frontend/src/ProfileCharacterPage.tsx](../frontend/src/ProfileCharacterPage.tsx).
+**Связанные файлы:** [README.md](../README.md), [gamification-agent-context.md](gamification-agent-context.md) (контекст для AI), [backend/prisma/schema.prisma](../backend/prisma/schema.prisma), [backend/src/character/](../backend/src/character/), [frontend/src/pages/profile-character/ProfileCharacterPage.tsx](../frontend/src/pages/profile-character/ProfileCharacterPage.tsx).
 
 > **Для AI-агента:** перед задачей по геймификации читай [gamification-agent-context.md](gamification-agent-context.md). Не использовать `GAMIFICATION_ROADMAP (1).md` в корне — устаревший черновик.
 
@@ -46,7 +46,7 @@ docker compose up -d --build postgres redis app frontend
 | Лимит XP за таски | max 5/сутки на персонажа | `dailyTaskXpCount`, `DAILY_TASK_XP_LIMIT` |
 | Уровни | 1–100, кривая XP | `backend/src/character/config/level-curve.ts` |
 | HP при награде XP | +5, max 100 | `CharacterService.addHealth()` |
-| UI персонажа | Уровень, XP bar, HP, гайд | `frontend/src/ProfileCharacterPage.tsx` |
+| UI персонажа | Уровень, XP bar, HP, гайд | `frontend/src/pages/profile-character/ProfileCharacterPage.tsx` |
 
 ### Поток начисления (сейчас)
 
@@ -107,7 +107,7 @@ flowchart LR
 
 ## Экономика XP и HP
 
-Единый конфиг (целевое расположение): `backend/src/gamification/config/rewards.ts` + зеркало `frontend/src/lib/xpRewards.ts`.
+Единый конфиг (целевое расположение): `backend/src/gamification/config/rewards.ts` + зеркало `frontend/src/entities/reward/lib/xpRewards.ts`.
 
 ### XP
 
@@ -507,8 +507,8 @@ model InventoryItem {
 | [backend/src/gamification/config/rewards.ts](../backend/src/gamification/config/rewards.ts) | XP за таск, дневной лимит, HP-константы |
 | [backend/src/character/config/level-curve.ts](../backend/src/character/config/level-curve.ts) | Кривая уровней |
 | [backend/prisma/schema.prisma](../backend/prisma/schema.prisma) | `Character`, `XpEvent`, enums |
-| [frontend/src/lib/xpRewards.ts](../frontend/src/lib/xpRewards.ts) | Константы для UI |
-| [frontend/src/ProfileCharacterPage.tsx](../frontend/src/ProfileCharacterPage.tsx) | Отображение и гайд |
+| [frontend/src/entities/reward/lib/xpRewards.ts](../frontend/src/entities/reward/lib/xpRewards.ts) | Константы для UI |
+| [frontend/src/pages/profile-character/ProfileCharacterPage.tsx](../frontend/src/pages/profile-character/ProfileCharacterPage.tsx) | Отображение и гайд |
 
 ---
 

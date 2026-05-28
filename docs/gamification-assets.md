@@ -93,8 +93,8 @@ backend/uploads/
 
 ## Блок 2a. Портрет + рамка в UI (зафиксировано, перенос на другой экран)
 
-**Источник констант в коде:** `frontend/src/lib/portraitLayout.ts`  
-**Рамки (URL + CSS vars):** `frontend/src/lib/cosmetics.ts` → `portraitFrameFitVars()`  
+**Источник констант в коде:** `frontend/src/entities/character/lib/portraitLayout.ts`  
+**Рамки (URL + CSS vars):** `frontend/src/entities/character/lib/cosmetics.ts` → `portraitFrameFitVars()`  
 **Компонент:** `CharacterPortraitWithFrame.tsx`  
 **Стили:** `frontend/src/index.css` → `.trello-character-profile-portrait-*`
 
@@ -183,7 +183,7 @@ frame:   trello-character-profile-portrait-frame
 
 Картинка **внутри квадрата портрета** (за персонажем, под рамкой). **Не** широкая полоса на шапку профиля — устаревший формат **1200×400 (3:1)** больше не используется.
 
-**Код:** `equippedProfileBackgroundKey` → `CharacterPortraitWithFrame` (`profileBackgroundKey`) → URL в `frontend/src/lib/cosmetics.ts`.
+**Код:** `equippedProfileBackgroundKey` → `CharacterPortraitWithFrame` (`profileBackgroundKey`) → URL в `frontend/src/entities/character/lib/cosmetics.ts`.
 
 ### Где и как отображается
 
@@ -267,7 +267,7 @@ frame:   trello-character-profile-portrait-frame
 
 | Шаг | Файл |
 |-----|------|
-| URL кадров по `ChestTier` | `frontend/src/lib/chestAssets.ts` |
+| URL кадров по `ChestTier` | `frontend/src/entities/chest/lib/chestAssets.ts` |
 | Иконка в квесте | `ChestIcon.tsx` (`chests/common/0.png`) |
 | Tap-модалка | `ChestTapOpenModal.tsx` + `ProfileCharacterQuestsPanel` |
 | API | без изменений |
@@ -446,8 +446,8 @@ frame:   trello-character-profile-portrait-frame
 
 ## Связь с кодом (для разработки после арта)
 
-1. Маппинг `CosmeticItem.key` → URL в `frontend/src/lib/cosmetics.ts`.
-2. Портрет + рамка + фон: `CharacterPortraitWithFrame`, константы `frontend/src/lib/portraitLayout.ts`, блоки **2a** и **3** в этом файле.
+1. Маппинг `CosmeticItem.key` → URL в `frontend/src/entities/character/lib/cosmetics.ts`.
+2. Портрет + рамка + фон: `CharacterPortraitWithFrame`, константы `frontend/src/entities/character/lib/portraitLayout.ts`, блоки **2a** и **3** в этом файле.
 3. Отображение на `ProfileCharacterPage` / `UserCharacterPage`: `equippedPortraitFrameKey`, `equippedProfileBackgroundKey`, …
 3. Сундуки: `chestAssets.ts`, spritesheet-анимация в `ChestOpenModal` — блок **4**.
 4. Квестовые образы — блок **9**; маппинг в `character.ts` / `cosmetics.ts`.

@@ -1,0 +1,1674 @@
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { createPortal } from 'react-dom';
+import { api, API_URL, formatApiError, isRateLimitMessage, setSessionExpiredHandler, type ApiError } from '@shared/api';
+import { routeNeedsCharacterGate, type CharacterDto } from '@entities/character';
+import {
+  dismissGamificationIntroPending,
+  isGamificationIntroPending,
+  markGamificationIntroPending,
+} from '@shared/lib';
+import {
+  getPendingInviteToken,
+  tryAcceptPendingInvite,
+} from '@shared/lib';
+import { BoardPage, CharacterSetupPage, InviteAcceptPage, ProfileCharacterPage, UserCharacterPage, UserProfilePage, WorkspaceActivityPage, WorkspaceBoardsPage, WorkspaceMembersPage, WorkspacesPage } from '@pages/index';
+import { AlertModal, GamificationIntroModal, ProfileInvitesSection } from '@widgets/index';
+import { navigate, openSpaInNewTab, SpaLink } from '@shared/lib';
+import { ProfileToolbarAnchor, ProfileToolbarOutletProvider } from '@shared/ui/profile-toolbar';
+import { useProfileToolbarOutlet } from '@shared/ui/profile-toolbar';
+import '../index.css';
+
+type UserSafe = {
+  id: number;
+  email: string;
+  name: string;
+  avatarPath?: string | null;
+  hasPassword: boolean;
+  createdAt: string;
+};
+
+type AuthResponse = { user: UserSafe; accessToken: string };
+
+const ACCESS_TOKEN_KEY = 'questflow_access_token';
+const ACCESS_TOKEN_KEY_LEGACY = 'mini_trello_access_token';
+
+function migrateLegacyAccessTokenKey() {
+  try {
+    if (!localStorage.getItem(ACCESS_TOKEN_KEY) && localStorage.getItem(ACCESS_TOKEN_KEY_LEGACY)) {
+      localStorage.setItem(ACCESS_TOKEN_KEY, localStorage.getItem(ACCESS_TOKEN_KEY_LEGACY)!);
+      localStorage.removeItem(ACCESS_TOKEN_KEY_LEGACY);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+migrateLegacyAccessTokenKey();
+
+const THEME_KEY = 'questflow_theme';
+const THEME_KEY_LEGACY = 'mini_trello_theme';
+
+function migrateLegacyThemeKey() {
+  try {
+    if (!localStorage.getItem(THEME_KEY) && localStorage.getItem(THEME_KEY_LEGACY)) {
+      localStorage.setItem(THEME_KEY, localStorage.getItem(THEME_KEY_LEGACY)!);
+      localStorage.removeItem(THEME_KEY_LEGACY);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+migrateLegacyThemeKey();
+
+function useRoute() {
+  const [path, setPath] = useState(() => window.location.pathname);
+  useEffect(() => {
+    const onPop = () => setPath(window.location.pathname);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  return path;
+}
+
+function getAccessTokenFromStorage() {
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+function setAccessTokenToStorage(token: string | null) {
+  if (!token) localStorage.removeItem(ACCESS_TOKEN_KEY);
+  else localStorage.setItem(ACCESS_TOKEN_KEY, token);
+}
+
+function formatError(e: unknown) {
+  return formatApiError(e);
+}
+
+function getQueryParam(name: string) {
+  const url = new URL(window.location.href);
+  return url.searchParams.get(name);
+}
+
+function EmailVerificationRequestPage() {
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function submit() {
+    setMsg(null);
+    setBusy(true);
+    try {
+      await api('/auth/email/verification/request', {
+        method: 'POST',
+        json: { email },
+      });
+      setMsg('Проверьте почту и папку Спам. Если аккаунт зарегистрирован — письмо придет.');
+    } catch (e) {
+      setMsg(formatError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const isErrorMsg =
+    typeof msg === 'string' &&
+    (msg.toLowerCase().includes('ошиб') || msg.toLowerCase().includes('error'));
+  const isRateLimitMsg = isRateLimitMessage(msg);
+
+  return (
+    <div className="trello-app-shell">
+      <div className="trello-boards-main">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
+          <div className="trello-topbar-stripe-left">
+            <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/">
+              <span className="trello-logo" aria-hidden />
+              <span className="trello-top-left-brand-text">Questflow</span>
+            </SpaLink>
+          </div>
+          <h1 className="trello-topbar-stripe-center">Подтверждение email</h1>
+          <div className="trello-topbar-actions">
+            <SpaLink className="trello-btn trello-btn-ghost" to="/">
+              На главную
+            </SpaLink>
+          </div>
+        </header>
+
+        <section className="trello-panel">
+          <div style={{ padding: 16 }}>
+            <p className="trello-boards-sub" style={{ marginTop: 0 }}>
+              Запрос письма с ссылкой
+            </p>
+            <label className="trello-field">
+              <span className="trello-label">Email</span>
+              <input
+                className="trello-input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+              />
+            </label>
+
+            <button
+              className="trello-btn trello-btn-primary"
+              style={{ marginTop: 12 }}
+              onClick={() => void submit()}
+              disabled={busy}
+              type="button"
+            >
+              {busy ? '…' : 'Отправить письмо'}
+            </button>
+
+            {msg && (
+              <div
+                className={
+                  isRateLimitMsg
+                    ? 'trello-banner trello-banner-rate-limit'
+                    : isErrorMsg
+                      ? 'trello-banner trello-banner-error'
+                      : 'trello-banner trello-banner-warn'
+                }
+                style={{ marginTop: 12 }}
+              >
+                {msg}
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function EmailVerifiedStatusPage() {
+  const status = getQueryParam('status') || 'invalid';
+
+  let title = 'Invalid';
+  if (status === 'success') title = 'Success';
+  else if (status === 'expired') title = 'Expired';
+  else if (status === 'missing') title = 'Missing token';
+
+  return (
+    <div className="trello-app-shell">
+      <div className="trello-boards-main">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
+          <div className="trello-topbar-stripe-left">
+            <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/">
+              <span className="trello-logo" aria-hidden />
+              <span className="trello-top-left-brand-text">Questflow</span>
+            </SpaLink>
+          </div>
+          <h1 className="trello-topbar-stripe-center">Подтверждение email</h1>
+          <div className="trello-topbar-actions">
+            <SpaLink className="trello-btn trello-btn-ghost" to="/">
+              На главную
+            </SpaLink>
+          </div>
+        </header>
+
+        <section className="trello-panel">
+          <div style={{ padding: 16 }}>
+            <p className="trello-boards-sub" style={{ marginTop: 0 }}>
+              Результат: {title}
+            </p>
+            <div className="trello-banner trello-banner-warn">
+              <strong>Статус:</strong> {status}
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function PasswordResetRequestPage() {
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function submit() {
+    setMsg(null);
+    setBusy(true);
+    try {
+      await api('/auth/password/reset/request', {
+        method: 'POST',
+        json: { email },
+      });
+      setMsg('Проверьте почту и папку Спам. Если аккаунт зарегистрирован — письмо придет.');
+    } catch (e) {
+      setMsg(formatError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const isErrorMsg =
+    typeof msg === 'string' &&
+    (msg.toLowerCase().includes('ошиб') || msg.toLowerCase().includes('error'));
+  const isRateLimitMsg = isRateLimitMessage(msg);
+
+  return (
+    <div className="trello-app-shell">
+      <div className="trello-boards-main">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
+          <div className="trello-topbar-stripe-left">
+            <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/">
+              <span className="trello-logo" aria-hidden />
+              <span className="trello-top-left-brand-text">Questflow</span>
+            </SpaLink>
+          </div>
+          <h1 className="trello-topbar-stripe-center">Сброс пароля</h1>
+          <div className="trello-topbar-actions">
+            <SpaLink className="trello-btn trello-btn-ghost" to="/">
+              На главную
+            </SpaLink>
+          </div>
+        </header>
+
+        <section className="trello-panel">
+          <div style={{ padding: 16 }}>
+            <p className="trello-boards-sub" style={{ marginTop: 0 }}>
+              Запрос ссылки на почту
+            </p>
+            <label className="trello-field">
+              <span className="trello-label">Email</span>
+              <input
+                className="trello-input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+              />
+            </label>
+
+            <button
+              className="trello-btn trello-btn-primary"
+              style={{ marginTop: 12 }}
+              onClick={() => void submit()}
+              disabled={busy}
+              type="button"
+            >
+              {busy ? '…' : 'Отправить письмо'}
+            </button>
+
+            {msg && (
+              <div
+                className={
+                  isRateLimitMsg
+                    ? 'trello-banner trello-banner-rate-limit'
+                    : isErrorMsg
+                      ? 'trello-banner trello-banner-error'
+                      : 'trello-banner trello-banner-warn'
+                }
+                style={{ marginTop: 12 }}
+              >
+                {msg}
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function PasswordResetConfirmPage() {
+  const token = getQueryParam('token') || '';
+  const [newPassword, setNewPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function submit() {
+    setMsg(null);
+    setBusy(true);
+    try {
+      await api('/auth/password/reset/confirm', {
+        method: 'POST',
+        json: { token, newPassword },
+      });
+      setMsg('Пароль успешно изменён.');
+    } catch (e) {
+      setMsg(formatError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const isErrorMsg =
+    typeof msg === 'string' &&
+    (msg.toLowerCase().includes('ошиб') || msg.toLowerCase().includes('error'));
+  const isRateLimitMsg = isRateLimitMessage(msg);
+
+  return (
+    <div className="trello-app-shell">
+      <div className="trello-boards-main">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
+          <div className="trello-topbar-stripe-left">
+            <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/">
+              <span className="trello-logo" aria-hidden />
+              <span className="trello-top-left-brand-text">Questflow</span>
+            </SpaLink>
+          </div>
+          <h1 className="trello-topbar-stripe-center">Сброс пароля</h1>
+          <div className="trello-topbar-actions">
+            <SpaLink className="trello-btn trello-btn-ghost" to="/">
+              На главную
+            </SpaLink>
+          </div>
+        </header>
+
+        <section className="trello-panel">
+          <div style={{ padding: 16 }}>
+            <p className="trello-boards-sub" style={{ marginTop: 0 }}>
+              Введите новый пароль по ссылке из письма
+            </p>
+            {!token ? (
+              <div className="trello-banner trello-banner-error">
+                В ссылке нет параметра <code>token</code>. Откройте письмо и перейдите по ссылке оттуда.
+              </div>
+            ) : (
+              <>
+                <label className="trello-field">
+                  <span className="trello-label">Новый пароль</span>
+                  <input
+                    className="trello-input"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    type="password"
+                    autoComplete="new-password"
+                  />
+                </label>
+
+                <button
+                  className="trello-btn trello-btn-primary"
+                  style={{ marginTop: 12 }}
+                  onClick={() => void submit()}
+                  disabled={busy || !newPassword}
+                  type="button"
+                >
+                  {busy ? '…' : 'Сохранить пароль'}
+                </button>
+              </>
+            )}
+
+            {msg && (
+              <div
+                className={
+                  isRateLimitMsg
+                    ? 'trello-banner trello-banner-rate-limit'
+                    : isErrorMsg
+                      ? 'trello-banner trello-banner-error'
+                      : 'trello-banner trello-banner-warn'
+                }
+                style={{ marginTop: 12 }}
+              >
+                {msg}
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function avatarSrcForToolbar(p: string | null | undefined): string {
+  if (!p) return '';
+  const normalized = p.replace(/\\/g, '/');
+  if (normalized.startsWith('data:')) return normalized;
+  if (normalized.startsWith('http://') || normalized.startsWith('https://')) return normalized;
+  if (normalized.startsWith('//')) return `https:${normalized}`;
+  if (normalized.startsWith('/')) return `${API_URL}${normalized}`;
+  return `${API_URL}/${normalized}`;
+}
+
+type AuthedOptions = { gamificationIntro?: boolean };
+
+function Home(props: { onAuthed: (token: string, options?: AuthedOptions) => void; hasSession: boolean }) {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function submit() {
+    setMsg(null);
+    setBusy(true);
+    try {
+      const fromRegister = mode === 'register';
+      if (fromRegister) {
+        await api<UserSafe>('/auth/register', {
+          method: 'POST',
+          json: { email, password, name },
+        });
+      }
+
+      const res = await api<AuthResponse>('/auth/login', {
+        method: 'POST',
+        json: { email, password },
+      });
+      props.onAuthed(res.accessToken, { gamificationIntro: fromRegister });
+      const inviteResult = await tryAcceptPendingInvite(res.accessToken);
+      if (inviteResult === 'ok') {
+        navigate('/profile/me');
+        return;
+      }
+      if (inviteResult === 'fail') {
+        const p = getPendingInviteToken();
+        if (p) {
+          navigate(`/invite?token=${encodeURIComponent(p)}`);
+          return;
+        }
+      }
+      navigate('/workspaces');
+    } catch (e) {
+      setMsg(formatError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="trello-home-shell">
+      <header className="trello-home-header">
+        <SpaLink className="trello-home-brand" to={props.hasSession ? '/workspaces' : '/'}>
+          <span className="trello-logo" aria-hidden />
+          Questflow
+        </SpaLink>
+      </header>
+
+      <main className="trello-home-main">
+        <div className="trello-home-card">
+          <div className="trello-home-tabs">
+            <button
+              className={mode === 'login' ? 'trello-home-tab trello-home-tab-active' : 'trello-home-tab'}
+              onClick={() => setMode('login')}
+              type="button"
+            >
+              Вход
+            </button>
+            <button
+              className={mode === 'register' ? 'trello-home-tab trello-home-tab-active' : 'trello-home-tab'}
+              onClick={() => setMode('register')}
+              type="button"
+            >
+              Регистрация
+            </button>
+          </div>
+
+          <h1 className="trello-home-title trello-home-title-center">
+            {mode === 'login' ? 'Вход' : 'Создать аккаунт'}
+          </h1>
+          <p className="trello-home-sub trello-home-sub-center">
+            {mode === 'login'
+              ? 'Войдите, чтобы открыть доски и рабочие пространства'
+              : 'Зарегистрируйтесь и приглашайте команду на доски'}
+          </p>
+
+          {msg && (
+            <div
+              className={
+                isRateLimitMessage(msg)
+                  ? 'trello-banner trello-banner-rate-limit'
+                  : 'trello-banner trello-banner-error'
+              }
+              style={{ marginBottom: 16 }}
+            >
+              {msg}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {mode === 'register' && (
+              <label className="trello-field">
+                <span className="trello-label">Имя</span>
+                <input
+                  className="trello-input"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoComplete="name"
+                  maxLength={40}
+                />
+              </label>
+            )}
+
+            <label className="trello-field">
+              <span className="trello-label">Email</span>
+              <input
+                className="trello-input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                maxLength={80}
+              />
+            </label>
+
+            <label className="trello-field">
+              <span className="trello-label">Пароль</span>
+              <input
+                className="trello-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                maxLength={80}
+              />
+            </label>
+
+            <button
+              type="button"
+              className="trello-btn trello-btn-primary trello-home-submit"
+              onClick={() => void submit()}
+              disabled={busy}
+            >
+              {busy ? '…' : mode === 'login' ? 'Войти' : 'Зарегистрироваться'}
+            </button>
+
+            <a className="trello-home-google" href={`${API_URL}/auth/google`}>
+              <svg className="trello-google-icon" viewBox="0 0 24 24" aria-hidden>
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                />
+              </svg>
+              Продолжить с Google
+            </a>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function ProfileMePage(props: {
+  accessToken: string | null;
+  onUserUpdated?: (user: UserSafe) => void;
+}) {
+  const [user, setUser] = useState<UserSafe | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState(false);
+  const [avatarEditMenuOpen, setAvatarEditMenuOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [nameEditing, setNameEditing] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [nameBusy, setNameBusy] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordFormOpen, setPasswordFormOpen] = useState(false);
+  const [passwordSetupSuccessOpen, setPasswordSetupSuccessOpen] = useState(false);
+  const [passwordErrorModalMessage, setPasswordErrorModalMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      setMsg(null);
+      if (!props.accessToken) {
+        setMsg('Пожалуйста, сначала выполните вход.');
+        return;
+      }
+
+      try {
+        const res = await api<UserSafe>('/user/me', {
+          method: 'GET',
+          accessToken: props.accessToken,
+        });
+        setUser(res);
+      } catch (e) {
+        setMsg(formatError(e));
+      }
+    }
+
+    void load();
+  }, [props.accessToken]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [user?.avatarPath, previewUrl]);
+
+  const avatarSrc = useMemo(() => {
+    if (!user) return '';
+    const p = previewUrl || user.avatarPath || '';
+    if (!p) return '';
+    if (p.startsWith('data:')) return p;
+    if (p.startsWith('http://') || p.startsWith('https://')) return p;
+    if (p.startsWith('//')) return `https:${p}`;
+    if (p.startsWith('/')) return `${API_URL}${p}`;
+    return `${API_URL}/${p}`;
+  }, [previewUrl, user]);
+
+  async function uploadAvatar(fileToUpload: File) {
+    if (!props.accessToken) return;
+
+    setBusy(true);
+    setMsg(null);
+    try {
+      const form = new FormData();
+      form.append('file', fileToUpload);
+
+      const updated = await api<UserSafe>('/user/update-avatar', {
+        method: 'PATCH',
+        accessToken: props.accessToken,
+        body: form,
+      });
+      setUser(updated);
+      props.onUserUpdated?.(updated);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    } catch (e) {
+      setMsg(formatError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function onPickFile(file: File | null) {
+    setMsg(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    if (!file) return;
+
+    // Чтобы не упираться в MaxLength на бэке (и не отправлять огромные строки).
+    const MAX_BYTES = 50 * 1024; // ~50 KB
+    if (file.size > MAX_BYTES) {
+      setMsg('Файл слишком большой. Максимум ~50 KB.');
+      return;
+    }
+
+    const nextPreview = URL.createObjectURL(file);
+    setPreviewUrl(nextPreview);
+    void uploadAvatar(file);
+  }
+
+  function triggerPick() {
+    setMsg(null);
+    fileInputRef.current?.click();
+  }
+
+  async function removeAvatar() {
+    if (!props.accessToken) return;
+
+    setBusy(true);
+    setMsg(null);
+    try {
+      const updated = await api<UserSafe>('/user/remove-avatar', {
+        method: 'DELETE',
+        accessToken: props.accessToken,
+      });
+      setUser(updated);
+      props.onUserUpdated?.(updated);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+      setMsg('Аватар удалён.');
+    } catch (e) {
+      setMsg(formatError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function beginEditName() {
+    if (!user || nameBusy || busy) return;
+    setNameDraft(user.name);
+    setNameEditing(true);
+    setMsg(null);
+    queueMicrotask(() => nameInputRef.current?.focus());
+  }
+
+  function cancelEditName() {
+    setNameEditing(false);
+    setNameDraft('');
+  }
+
+  async function saveName() {
+    if (!props.accessToken || !user) return;
+    const next = nameDraft.trim();
+    if (next.length < 3 || next.length > 18) {
+      setMsg('Имя: от 3 до 18 символов.');
+      return;
+    }
+    if (next === user.name) {
+      setNameEditing(false);
+      return;
+    }
+    setNameBusy(true);
+    setMsg(null);
+    try {
+      const updated = await api<UserSafe>('/user/me', {
+        method: 'PATCH',
+        accessToken: props.accessToken,
+        json: { name: next },
+      });
+      setUser(updated);
+      props.onUserUpdated?.(updated);
+      setNameEditing(false);
+    } catch (e) {
+      setMsg(formatError(e));
+    } finally {
+      setNameBusy(false);
+    }
+  }
+
+  async function changePassword() {
+    if (!props.accessToken) return;
+    const settingInitialPassword = !user?.hasPassword;
+    if (!newPassword) {
+      setPasswordErrorModalMessage('Введите новый пароль.');
+      return;
+    }
+    if (newPassword.length < 6 || newPassword.length > 72) {
+      setPasswordErrorModalMessage('Новый пароль: от 6 до 72 символов.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordErrorModalMessage('Подтверждение нового пароля не совпадает.');
+      return;
+    }
+    if (user?.hasPassword && !currentPassword) {
+      setPasswordErrorModalMessage('Введите текущий пароль.');
+      return;
+    }
+    if (user?.hasPassword && currentPassword === newPassword) {
+      setPasswordErrorModalMessage('Новый пароль должен отличаться от текущего.');
+      return;
+    }
+
+    setPasswordBusy(true);
+    setMsg(null);
+    setPasswordErrorModalMessage(null);
+    try {
+      await api<{ ok: boolean }>('/auth/password/change', {
+        method: 'POST',
+        accessToken: props.accessToken,
+        json: user?.hasPassword
+          ? { currentPassword, newPassword }
+          : { newPassword },
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setPasswordFormOpen(false);
+      if (settingInitialPassword) {
+        setMsg(null);
+        setPasswordSetupSuccessOpen(true);
+        setUser((prev) => (prev ? { ...prev, hasPassword: true } : prev));
+      } else {
+        setMsg('Пароль успешно изменён.');
+      }
+    } catch (e) {
+      setPasswordErrorModalMessage(formatError(e));
+    } finally {
+      setPasswordBusy(false);
+    }
+  }
+
+  function formatRegisteredRU(isoDate: string) {
+    const d = new Date(isoDate);
+    const day = d.getDate();
+    // Месяц в родительном падеже (например: 20 марта, 5 апреля)
+    const monthGenitive = [
+      'января',
+      'февраля',
+      'марта',
+      'апреля',
+      'мая',
+      'июня',
+      'июля',
+      'августа',
+      'сентября',
+      'октября',
+      'ноября',
+      'декабря',
+    ];
+    const month = monthGenitive[d.getMonth()] ?? '';
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  }
+
+  const isErrorMsg =
+    typeof msg === 'string' &&
+    (msg.toLowerCase().includes('ошиб') || msg.toLowerCase().includes('error'));
+  const isRateLimitMsg = isRateLimitMessage(msg);
+
+  return (
+    <div className="trello-app-shell">
+      <div className="trello-boards-main">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
+          <div className="trello-topbar-stripe-left">
+            <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
+              <span className="trello-logo" aria-hidden />
+              <span className="trello-top-left-brand-text">Questflow</span>
+            </SpaLink>
+          </div>
+          <h1 className="trello-topbar-stripe-center">Профиль</h1>
+          <div className="trello-topbar-actions">
+            <SpaLink className="trello-btn trello-btn-ghost" to="/profile/character">
+              Персонаж
+            </SpaLink>
+            <SpaLink className="trello-btn trello-btn-ghost" to="/workspaces">
+              Назад
+            </SpaLink>
+            <ProfileToolbarAnchor />
+          </div>
+        </header>
+
+        {msg && (
+          <div
+            className={
+              isRateLimitMsg
+                ? 'trello-banner trello-banner-rate-limit'
+                : isErrorMsg
+                  ? 'trello-banner trello-banner-error'
+                  : 'trello-banner trello-banner-warn'
+            }
+          >
+            {msg}
+          </div>
+        )}
+
+        <section className="trello-panel">
+          <div className="trello-profile-body">
+            <div className="trello-profile-body-row">
+              <div className="trello-profile-avatar-col">
+                <div className="avatarWrap">
+                  {previewUrl || user?.avatarPath ? (
+                    !avatarError ? (
+                      <img
+                        className="avatarImg"
+                        src={avatarSrc}
+                        alt=""
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        crossOrigin="anonymous"
+                        onError={() => setAvatarError(true)}
+                      />
+                    ) : (
+                      <div className="trello-cell-meta trello-profile-avatar-fallback">Не удалось загрузить аватар</div>
+                    )
+                  ) : (
+                    <div className="trello-cell-meta trello-profile-avatar-fallback">Нет аватара</div>
+                  )}
+
+                  <button
+                    type="button"
+                    className="avatar-edit-toggle"
+                    onClick={() => setAvatarEditMenuOpen((o) => !o)}
+                    disabled={busy}
+                    aria-label="Изменить аватар"
+                  >
+                    <span className="avatar-edit-toggle-icon" aria-hidden>
+                      ✎
+                    </span>
+                    <span className="avatar-edit-toggle-text">Изменить</span>
+                  </button>
+
+                  {avatarEditMenuOpen && (
+                    <div className="avatar-edit-menu" role="menu" aria-label="Действия с аватаром">
+                      <button
+                        type="button"
+                        className="trello-btn trello-btn-primary trello-btn-sm avatar-edit-menu-btn"
+                        disabled={busy}
+                        onClick={() => {
+                          setAvatarEditMenuOpen(false);
+                          triggerPick();
+                        }}
+                      >
+                        {busy ? '…' : 'Загрузить фото'}
+                      </button>
+                      <button
+                        type="button"
+                        className="trello-btn trello-btn-danger-ghost trello-btn-sm avatar-edit-menu-btn"
+                        disabled={busy || !user?.avatarPath}
+                        onClick={() => {
+                          setAvatarEditMenuOpen(false);
+                          void removeAvatar();
+                        }}
+                      >
+                        {busy ? '…' : 'Удалить фото'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+                  disabled={busy}
+                />
+
+                <button
+                  type="button"
+                  className="trello-btn trello-btn-primary trello-btn-sm"
+                  style={{ marginTop: 14, width: '100%' }}
+                  onClick={() => setPasswordFormOpen((v) => !v)}
+                  disabled={passwordBusy}
+                >
+                  Сменить пароль
+                </button>
+              </div>
+
+              <div className="trello-profile-fields-col">
+                <div className="trello-profile-name-block">
+                  {nameEditing ? (
+                    <div className="trello-profile-name-edit">
+                      <input
+                        ref={nameInputRef}
+                        className="trello-input trello-profile-name-input"
+                        value={nameDraft}
+                        onChange={(e) => setNameDraft(e.target.value)}
+                        maxLength={18}
+                        disabled={nameBusy}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            void saveName();
+                          }
+                          if (e.key === 'Escape') {
+                            e.preventDefault();
+                            cancelEditName();
+                          }
+                        }}
+                        aria-label="Имя"
+                      />
+                      <div className="trello-profile-name-edit-actions">
+                        <button type="button" className="trello-btn trello-btn-primary trello-btn-sm" disabled={nameBusy} onClick={() => void saveName()}>
+                          {nameBusy ? '…' : 'Сохранить'}
+                        </button>
+                        <button type="button" className="trello-btn trello-btn-ghost trello-btn-sm" disabled={nameBusy} onClick={() => cancelEditName()}>
+                          Отмена
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="trello-profile-display-name"
+                      onClick={() => beginEditName()}
+                      disabled={!user || busy || nameBusy}
+                      title="Нажмите, чтобы изменить имя"
+                    >
+                      {user?.name ?? '—'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="trello-label">Почта</div>
+                <div style={{ marginBottom: 12 }}>{user?.email ?? '—'}</div>
+
+                <div className="trello-label">Зарегистрирован</div>
+                <div style={{ marginBottom: 0 }}>{user?.createdAt ? formatRegisteredRU(user.createdAt) : '—'}</div>
+
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {passwordFormOpen && (
+          <div className="trello-modal-backdrop" role="presentation" onClick={() => !passwordBusy && setPasswordFormOpen(false)}>
+            <div className="trello-modal trello-modal-narrow" role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+              <div className="trello-modal-head">
+                <h2 className="trello-modal-title">{user?.hasPassword ? 'Смена пароля' : 'Установка пароля'}</h2>
+                <button type="button" className="trello-modal-close" onClick={() => !passwordBusy && setPasswordFormOpen(false)} aria-label="Закрыть">
+                  ×
+                </button>
+              </div>
+              <div className="trello-modal-body">
+                {user?.hasPassword && (
+                  <label className="trello-field">
+                    <span className="trello-label">Текущий пароль</span>
+                    <input
+                      className="trello-input"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      type="password"
+                      autoComplete="current-password"
+                      disabled={passwordBusy}
+                    />
+                  </label>
+                )}
+                <label className="trello-field">
+                  <span className="trello-label">Новый пароль</span>
+                  <input
+                    className="trello-input"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    type="password"
+                    autoComplete="new-password"
+                    disabled={passwordBusy}
+                    autoFocus
+                  />
+                </label>
+                <label className="trello-field">
+                  <span className="trello-label">Подтверждение нового пароля</span>
+                  <input
+                    className="trello-input"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    type="password"
+                    autoComplete="new-password"
+                    disabled={passwordBusy}
+                  />
+                </label>
+              </div>
+              <div className="trello-modal-foot">
+                <button type="button" className="trello-btn trello-btn-ghost" onClick={() => !passwordBusy && setPasswordFormOpen(false)}>
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  className="trello-btn trello-btn-primary"
+                  onClick={() => void changePassword()}
+                  disabled={
+                    passwordBusy ||
+                    !newPassword ||
+                    !confirmNewPassword ||
+                    (user?.hasPassword ? !currentPassword : false)
+                  }
+                >
+                  {passwordBusy ? '…' : user?.hasPassword ? 'Изменить пароль' : 'Установить пароль'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {passwordSetupSuccessOpen && (
+          <div className="trello-modal-backdrop" role="presentation" onClick={() => setPasswordSetupSuccessOpen(false)}>
+            <div className="trello-modal trello-modal-narrow" role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+              <div className="trello-modal-head">
+                <h2 className="trello-modal-title">Пароль установлен</h2>
+                <button type="button" className="trello-modal-close" onClick={() => setPasswordSetupSuccessOpen(false)} aria-label="Закрыть">
+                  ×
+                </button>
+              </div>
+              <div className="trello-modal-body">
+                <div className="trello-confirm-text">Пароль успешно установлен.</div>
+              </div>
+              <div className="trello-modal-foot">
+                <button type="button" className="trello-btn trello-btn-primary" onClick={() => setPasswordSetupSuccessOpen(false)}>
+                  Ок
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        <AlertModal
+          open={passwordErrorModalMessage != null}
+          title="Ошибка"
+          message={passwordErrorModalMessage ?? ''}
+          onClose={() => setPasswordErrorModalMessage(null)}
+        />
+      </div>
+    </div>
+  );
+}
+
+function MyInvitesPage(props: {
+  accessToken: string | null;
+  onInvitesCountChange?: (count: number) => void;
+}) {
+  return (
+    <div className="trello-app-shell">
+      <div className="trello-boards-main">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
+          <div className="trello-topbar-stripe-left">
+            <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
+              <span className="trello-logo" aria-hidden />
+              <span className="trello-top-left-brand-text">Questflow</span>
+            </SpaLink>
+          </div>
+          <h1 className="trello-topbar-stripe-center">Приглашения</h1>
+          <div className="trello-topbar-actions">
+            <SpaLink className="trello-btn trello-btn-ghost" to="/workspaces">
+              Назад
+            </SpaLink>
+            {props.accessToken ? <ProfileToolbarAnchor /> : null}
+          </div>
+        </header>
+        <ProfileInvitesSection accessToken={props.accessToken} onRowsCountChange={props.onInvitesCountChange} />
+      </div>
+    </div>
+  );
+}
+
+function AppContent() {
+  const { outletEl } = useProfileToolbarOutlet();
+  const route = useRoute();
+  const [accessToken, setAccessToken] = useState<string | null>(() => {
+    const stored = getAccessTokenFromStorage();
+    if (stored) return stored;
+    const url = new URL(window.location.href);
+    return url.searchParams.get('accessToken');
+  });
+
+  type Theme = 'light' | 'dark';
+  const getInitialTheme = (): Theme => {
+    const fromStorage = localStorage.getItem(THEME_KEY);
+    if (fromStorage === 'light' || fromStorage === 'dark') return fromStorage;
+    try {
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
+  };
+
+  const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
+  const [toolbarUser, setToolbarUser] = useState<UserSafe | null>(null);
+  const [toolbarAvatarBroken, setToolbarAvatarBroken] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const [characterLoadState, setCharacterLoadState] = useState<
+    'idle' | 'loading' | 'missing' | 'ok'
+  >('idle');
+  const [gamificationIntroOpen, setGamificationIntroOpen] = useState(false);
+
+  const setToken = (t: string | null) => {
+    setAccessTokenToStorage(t);
+    setAccessToken(t);
+  };
+
+  function handleAuthed(token: string, options?: AuthedOptions) {
+    setToken(token);
+    if (options?.gamificationIntro) {
+      markGamificationIntroPending();
+      setGamificationIntroOpen(true);
+    }
+  }
+
+  function closeGamificationIntro() {
+    setGamificationIntroOpen(false);
+    dismissGamificationIntroPending();
+  }
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const tokenFromQuery = url.searchParams.get('accessToken');
+    if (!tokenFromQuery) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setToken(tokenFromQuery);
+    url.searchParams.delete('accessToken');
+    window.history.replaceState({}, '', url.pathname + url.search);
+
+    void (async () => {
+      const inviteResult = await tryAcceptPendingInvite(tokenFromQuery);
+      if (inviteResult === 'ok') {
+        navigate('/profile/me');
+        return;
+      }
+      if (inviteResult === 'fail') {
+        const p = getPendingInviteToken();
+        if (p) {
+          navigate(`/invite?token=${encodeURIComponent(p)}`);
+          return;
+        }
+      }
+      if (url.pathname.startsWith('/dashboard')) {
+        navigate('/workspaces');
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!accessToken) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setToolbarUser(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const u = await api<UserSafe>('/user/me', { method: 'GET', accessToken });
+        if (!cancelled) setToolbarUser(u);
+      } catch {
+        if (!cancelled) setToolbarUser(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, route]);
+
+  useEffect(() => {
+    if (!accessToken) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCharacterLoadState('idle');
+      return;
+    }
+    let cancelled = false;
+    setCharacterLoadState('loading');
+    void (async () => {
+      try {
+        await api<CharacterDto>('/character/me', { method: 'GET', accessToken });
+        if (!cancelled) setCharacterLoadState('ok');
+      } catch (e) {
+        const err = e as ApiError;
+        if (
+          err.status === 404 &&
+          (!err.code || err.code === 'CHARACTER_NOT_FOUND')
+        ) {
+          if (!cancelled) setCharacterLoadState('missing');
+        } else if (!cancelled) {
+          setCharacterLoadState('idle');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (!accessToken) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setGamificationIntroOpen(false);
+      return;
+    }
+    if (isGamificationIntroPending()) {
+      setGamificationIntroOpen(true);
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setToolbarAvatarBroken(false);
+  }, [toolbarUser?.avatarPath]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setProfileMenuOpen(false);
+  }, [route]);
+
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    function onDocMouseDown(e: MouseEvent) {
+      const el = profileMenuRef.current;
+      if (el && !el.contains(e.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [profileMenuOpen]);
+
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      setToken(null);
+      navigate('/');
+    });
+    return () => setSessionExpiredHandler(null);
+  }, []);
+
+  useEffect(() => {
+    const protectedPath =
+      route === '/workspaces' ||
+      route.startsWith('/workspaces/') ||
+      route.startsWith('/profile') ||
+      route.startsWith('/invites') ||
+      route.startsWith('/character/setup') ||
+      route.startsWith('/dashboard');
+    if (!accessToken && protectedPath) {
+      navigate('/');
+    }
+  }, [route, accessToken]);
+
+  useLayoutEffect(() => {
+    if (!accessToken) return;
+    if (characterLoadState !== 'ok') return;
+    if (route.startsWith('/character/setup')) {
+      navigate('/workspaces');
+    }
+  }, [accessToken, characterLoadState, route]);
+
+  useLayoutEffect(() => {
+    if (route === '/' && accessToken) {
+      navigate('/workspaces');
+    }
+  }, [route, accessToken]);
+
+  useEffect(() => {
+    if (route === '/profile') {
+      navigate('/profile/me');
+    }
+  }, [route]);
+
+  useEffect(() => {
+    if (!accessToken) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPendingInvitesCount(0);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const rows = await api<Array<{ id: number }>>('/workspace-invite/my?limit=100&offset=0', {
+          method: 'GET',
+          accessToken,
+        });
+        if (!cancelled) setPendingInvitesCount(Array.isArray(rows) ? rows.length : 0);
+      } catch {
+        if (!cancelled) setPendingInvitesCount(0);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, route]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      // ignore
+    }
+    document.documentElement.classList.toggle('theme-dark', theme === 'dark');
+  }, [theme]);
+
+  const toolbarInitials = useMemo(() => {
+    const n = toolbarUser?.name?.trim();
+    if (!n) return '?';
+    const parts = n.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return `${parts[0]![0]!}${parts[1]![0]!}`.toUpperCase();
+    return n.slice(0, 2).toUpperCase();
+  }, [toolbarUser?.name]);
+
+  const toolbarAvatarSrc =
+    toolbarUser?.avatarPath && !toolbarAvatarBroken ? avatarSrcForToolbar(toolbarUser.avatarPath) : '';
+
+  async function handleLogout() {
+    try {
+      await api<boolean>('/auth/logout', { method: 'POST' });
+    } catch {
+      // ignore
+    }
+    setToken(null);
+    setProfileMenuOpen(false);
+    navigate('/');
+  }
+
+  const boardDetailMatch = route.match(/^\/workspaces\/(\d+)\/boards\/(\d+)$/);
+  const boardsListMatch = route.match(/^\/workspaces\/(\d+)\/boards\/?$/);
+  const activityRouteMatch = route.match(/^\/workspaces\/(\d+)\/activity\/?$/);
+  const memberRouteMatch = route.match(/^\/workspaces\/(\d+)\/members$/);
+  const profileUserCharacterMatch = route.match(/^\/profile\/user\/(\d+)\/character\/?$/);
+  const profileUserMatch = route.match(/^\/profile\/user\/(\d+)$/);
+  const characterGateLoading =
+    Boolean(accessToken) &&
+    characterLoadState === 'loading' &&
+    routeNeedsCharacterGate(route);
+
+  let page: ReactElement;
+  if (route === '/invite' || route.startsWith('/invite/')) {
+    page = <InviteAcceptPage accessToken={accessToken} />;
+  } else if (route.startsWith('/invites')) {
+    page = <MyInvitesPage accessToken={accessToken} onInvitesCountChange={setPendingInvitesCount} />;
+  } else if (characterGateLoading) {
+    page = (
+      <div className="trello-app-shell">
+        <div className="trello-boards-main trello-character-gate-loading">Загрузка профиля персонажа…</div>
+      </div>
+    );
+  } else if (route.startsWith('/character/setup')) {
+    page =
+      !accessToken ? (
+        <Home onAuthed={handleAuthed} hasSession={false} />
+      ) : (
+        <CharacterSetupPage
+          accessToken={accessToken}
+          onCharacterCreated={() => setCharacterLoadState('ok')}
+        />
+      );
+  } else if (boardDetailMatch) {
+    page = (
+      <BoardPage
+        accessToken={accessToken}
+        workspaceId={Number(boardDetailMatch[1])}
+        boardId={Number(boardDetailMatch[2])}
+        currentUserId={toolbarUser?.id ?? null}
+      />
+    );
+  } else if (boardsListMatch) {
+    page = (
+      <WorkspaceBoardsPage accessToken={accessToken} workspaceId={Number(boardsListMatch[1])} />
+    );
+  } else if (activityRouteMatch) {
+    page = (
+      <WorkspaceActivityPage
+        accessToken={accessToken}
+        workspaceId={Number(activityRouteMatch[1])}
+      />
+    );
+  } else if (memberRouteMatch) {
+    page = <WorkspaceMembersPage accessToken={accessToken} workspaceId={Number(memberRouteMatch[1])} />;
+  } else if (route.startsWith('/dashboard')) {
+    // Google callback redirects here; we no longer show dashboard UI.
+    page = <WorkspacesPage accessToken={accessToken} />;
+  } else if (route.startsWith('/workspaces')) {
+    page = <WorkspacesPage accessToken={accessToken} />;
+  } else if (route.startsWith('/profile')) {
+    page =
+      !accessToken ? (
+        <Home onAuthed={handleAuthed} hasSession={false} />
+      ) : route === '/profile/character' || route.startsWith('/profile/character/') ? (
+        <ProfileCharacterPage
+          accessToken={accessToken}
+          onCharacterUpdated={() => setCharacterLoadState('ok')}
+        />
+      ) : profileUserCharacterMatch ? (
+        <UserCharacterPage
+          accessToken={accessToken}
+          userId={Number(profileUserCharacterMatch[1])}
+          currentUserId={toolbarUser?.id ?? null}
+        />
+      ) : profileUserMatch ? (
+        <UserProfilePage
+          accessToken={accessToken}
+          userId={Number(profileUserMatch[1])}
+          currentUserId={toolbarUser?.id ?? null}
+        />
+      ) : route === '/profile/me' || route.startsWith('/profile/me/') ? (
+        <ProfileMePage accessToken={accessToken} onUserUpdated={(u) => setToolbarUser(u)} />
+      ) : (
+        <ProfileMePage accessToken={accessToken} onUserUpdated={(u) => setToolbarUser(u)} />
+      );
+  } else if (route.startsWith('/test/email-verification/request')) {
+    page = <EmailVerificationRequestPage />;
+  } else if (route.startsWith('/email-verified')) {
+    page = <EmailVerifiedStatusPage />;
+  } else if (route.startsWith('/test/password-reset/request')) {
+    page = <PasswordResetRequestPage />;
+  } else if (route.startsWith('/reset-password')) {
+    page = <PasswordResetConfirmPage />;
+  } else if (route === '/' && accessToken) {
+    page = <WorkspacesPage accessToken={accessToken} />;
+  } else {
+    page = <Home onAuthed={handleAuthed} hasSession={!!accessToken} />;
+  }
+
+  const toolbarLayoutClass =
+    accessToken && boardDetailMatch
+      ? 'trello-fixed-toolbar--board'
+      : accessToken
+        ? 'trello-fixed-toolbar--shell'
+        : 'trello-fixed-toolbar--guest';
+
+  const themeSwitch = (
+    <label className="theme-switch" aria-label="Тёмная тема">
+      <input
+        className="theme-switch-input"
+        type="checkbox"
+        checked={theme === 'dark'}
+        onChange={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+      />
+      <span className="theme-switch-track" aria-hidden>
+        <span className="theme-switch-thumb" />
+      </span>
+    </label>
+  );
+
+  const toolbarAnchored = !!(accessToken && outletEl);
+  const toolbarPortalTarget = toolbarAnchored && outletEl ? outletEl : document.body;
+
+  const toolbarNode = (
+    <div
+      className={`trello-fixed-toolbar ${toolbarLayoutClass}${toolbarAnchored ? ' trello-fixed-toolbar--in-header' : ''}`}
+      aria-label="Параметры приложения"
+    >
+      {!accessToken && (
+        <div className="theme-toggle trello-theme-toggle-inline" aria-label="Theme switch">
+          <span className="theme-toggle-icon" aria-hidden>
+            ◐
+          </span>
+          {themeSwitch}
+        </div>
+      )}
+      {accessToken && (
+        <div className="trello-profile-dropdown" ref={profileMenuRef}>
+          <div className="trello-toolbar-avatar-wrap">
+            <button
+              type="button"
+              className="trello-toolbar-avatar-btn"
+              title="Меню"
+              aria-expanded={profileMenuOpen}
+              aria-haspopup="menu"
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey) {
+                  e.preventDefault();
+                  openSpaInNewTab('/profile/me');
+                  return;
+                }
+                setProfileMenuOpen((o) => !o);
+              }}
+              onAuxClick={(e) => {
+                if (e.button === 1) {
+                  e.preventDefault();
+                  openSpaInNewTab('/profile/me');
+                }
+              }}
+            >
+              {pendingInvitesCount > 0 && <span className="trello-toolbar-notification-dot" aria-hidden />}
+              {toolbarAvatarSrc ? (
+                <img
+                  src={toolbarAvatarSrc}
+                  alt=""
+                  className="trello-toolbar-avatar-img"
+                  loading="eager"
+                  referrerPolicy="no-referrer"
+                  crossOrigin="anonymous"
+                  onError={() => setToolbarAvatarBroken(true)}
+                />
+              ) : (
+                <span className="trello-toolbar-avatar-fallback">{toolbarInitials}</span>
+              )}
+            </button>
+          </div>
+          {profileMenuOpen && (
+            <div className="trello-profile-menu" role="menu">
+              <SpaLink
+                className="trello-profile-menu-item"
+                role="menuitem"
+                to="/profile/me"
+                onClick={() => setProfileMenuOpen(false)}
+              >
+                Профиль
+              </SpaLink>
+              <SpaLink
+                className="trello-profile-menu-item"
+                role="menuitem"
+                to="/profile/character"
+                onClick={() => setProfileMenuOpen(false)}
+              >
+                Персонаж
+              </SpaLink>
+              <SpaLink
+                className="trello-profile-menu-item trello-profile-menu-item-with-badge"
+                role="menuitem"
+                to="/invites"
+                onClick={() => setProfileMenuOpen(false)}
+              >
+                <span>Приглашения</span>
+                {pendingInvitesCount > 0 && (
+                  <span className="trello-profile-menu-item-badge" aria-label={`Активных приглашений: ${pendingInvitesCount}`}>
+                    {pendingInvitesCount}
+                  </span>
+                )}
+              </SpaLink>
+              <div className="trello-profile-menu-theme" role="presentation">
+                <span className="trello-profile-menu-theme-label">
+                  <svg className="trello-moon-icon" viewBox="0 0 24 24" aria-hidden>
+                    <path
+                      fill="currentColor"
+                      d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.54 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.86.89-3.51 2.26-4.4-.44-.06-.9-.1-1.36-.1z"
+                    />
+                  </svg>
+                  Темное оформление
+                </span>
+                {themeSwitch}
+              </div>
+              <SpaLink
+                className="trello-profile-menu-item"
+                role="menuitem"
+                to="/workspaces"
+                onClick={() => setProfileMenuOpen(false)}
+              >
+                Мои рабочие пространства
+              </SpaLink>
+              <button
+                type="button"
+                className="trello-profile-menu-item trello-profile-menu-logout"
+                role="menuitem"
+                onClick={() => void handleLogout()}
+              >
+                Выйти
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      {createPortal(toolbarNode, toolbarPortalTarget)}
+      {page}
+      {accessToken &&
+        createPortal(
+          <GamificationIntroModal
+            open={gamificationIntroOpen}
+            onClose={closeGamificationIntro}
+          />,
+          document.body,
+        )}
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <ProfileToolbarOutletProvider>
+      <AppContent />
+    </ProfileToolbarOutletProvider>
+  );
+}

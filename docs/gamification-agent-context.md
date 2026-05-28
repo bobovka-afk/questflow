@@ -20,7 +20,7 @@
 | 1 | **Done** |
 | 2 | **Done** — **2a** квесты + **2b** сундуки (сундук **за каждый** квест; карточки → assignee ?? actor) |
 | 3 | **Done** — пыль (дубликаты + магазин 3 сундуков), achievements |
-| 4 | **In progress** — гайд «Как это работает» + intro ([`GamificationGuide.tsx`](../frontend/src/GamificationGuide.tsx)); E2E и backlog (уведомления / battle pass / лидерборд) — [roadmap](gamification-roadmap.md#phase-4--e2e-и-гайд-по-игре-финал-v1) |
+| 4 | **In progress** — гайд «Как это работает» + intro ([`GamificationGuide.tsx`](../frontend/src/widgets/gamification-guide/GamificationGuide.tsx)); E2E и backlog (уведомления / battle pass / лидерборд) — [roadmap](gamification-roadmap.md#phase-4--e2e-и-гайд-по-игре-финал-v1) |
 
 **Суточный сброс:** cron `resetDailyTaskXpCounts` в `GamificationCronService` (00:00 `GAME_DAY_TZ`). Числа наград — `backend/src/gamification/config/rewards.ts`.
 
@@ -60,7 +60,7 @@
 | `XP_EVENT_ALREADY_RECORDED` | 409 | Повтор XP за ту же карточку (P2002) |
 | `CHECKIN_ALREADY_DONE` | 409 | Повтор серии за тот же `dayKey` (P2002) |
 
-**Фронт:** те же строки `code` в `frontend/src/lib/api.ts` → `API_ERROR_CODE_RU`; для «мягких» XP — `isXpGrantErrorCode` / `isXpTaskSoftNoticeCode`. Новый код → `throw` в сервисе + перевод в `api.ts` + `@ApiResponse`.
+**Фронт:** те же строки `code` в `frontend/src/shared/api/index.ts` → `API_ERROR_CODE_RU`; для «мягких» XP — `isXpGrantErrorCode` / `isXpTaskSoftNoticeCode`. Новый код → `throw` в сервисе + перевод в shared api + `@ApiResponse`.
 
 ---
 
@@ -180,7 +180,7 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 4. **Расширять `addExperience`** (или вынести `grantReward`) — не дублировать level-up/HP в card/comment сервисах.
 5. **Ошибки XP** — в `character.service` (`{ code, message }`); фронт для «мягких» XP — `isXpTaskSoftNoticeCode` в `api.ts`.
 6. **Миграции** — `npx prisma migrate dev` в `backend/`; клиент: `src/generated/prisma`.
-7. **После изменения чисел** — backend config + `frontend/src/lib/xpRewards.ts`; пункты гайда — при Phase 4 (до этого достаточно констант в UI).
+7. **После изменения чисел** — backend config + `frontend/src/entities/reward/index.ts` (реэкспорт `xpRewards`); пункты гайда — при Phase 4 (до этого достаточно констант в UI).
 
 ---
 

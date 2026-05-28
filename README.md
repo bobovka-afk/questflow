@@ -15,6 +15,16 @@ Fullstack‑проект в духе **Trello** с планом **геймифи
 
 - *Клиент:* **React**, **TypeScript**, SPA
 - *Сборка:* **Vite**
+- *Архитектура:* hybrid (`app/pages/widgets/features/entities/shared`) с alias-импортами (`@app`, `@pages`, `@widgets`, `@features`, `@entities`, `@shared`)
+
+### Frontend структура (hybrid)
+
+- `frontend/src/app` — вход приложения и app-shell.
+- `frontend/src/pages` — page-level композиция роутов/экранов.
+- `frontend/src/widgets` — крупные UI-блоки страниц.
+- `frontend/src/features` — пользовательские сценарии.
+- `frontend/src/entities` — доменные сущности (character, quest, board, workspace, invite, reward).
+- `frontend/src/shared` — общий API слой и инфраструктурные утилиты.
 
 ---
 

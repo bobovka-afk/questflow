@@ -1,0 +1,115 @@
+import { useEffect, useState } from 'react';
+import { api, formatApiError, isRateLimitMessage } from '@shared/api';
+import {
+  clearPendingInviteToken,
+  getPendingInviteToken,
+  storeInviteTokenFromUrl,
+} from '@entities/invite';
+import { SpaLink } from '@shared/lib/navigation';
+import { navigate } from '@shared/lib/navigation-core';
+import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
+
+function formatError(e: unknown) {
+  return formatApiError(e);
+}
+
+type Props = { accessToken: string | null };
+
+export function InviteAcceptPage({ accessToken }: Props) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [attempted, setAttempted] = useState(false);
+
+  const token =
+    new URL(window.location.href).searchParams.get('token') ??
+    getPendingInviteToken();
+
+  useEffect(() => {
+    storeInviteTokenFromUrl();
+  }, []);
+
+  useEffect(() => {
+    if (!accessToken || !token || attempted) return;
+    let cancelled = false;
+    setBusy(true);
+    setMsg(null);
+    void (async () => {
+      try {
+        await api('/workspace-invite/accept-token', {
+          method: 'POST',
+          accessToken,
+          json: { token },
+        });
+        clearPendingInviteToken();
+        if (!cancelled) navigate('/profile/me');
+      } catch (e) {
+        if (!cancelled) setMsg(formatError(e));
+      } finally {
+        if (!cancelled) {
+          setBusy(false);
+          setAttempted(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, token, attempted]);
+
+  return (
+    <div className="trello-app-shell">
+      <div className="trello-boards-main">
+        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
+          <div className="trello-topbar-stripe-left">
+            <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/">
+              <span className="trello-logo" aria-hidden />
+              <span className="trello-top-left-brand-text">Questflow</span>
+            </SpaLink>
+          </div>
+          <h1 className="trello-topbar-stripe-center">Приглашение</h1>
+          <div className="trello-topbar-actions">
+            <SpaLink className="trello-btn trello-btn-ghost" to={accessToken ? '/workspaces' : '/'}>
+              {accessToken ? 'К пространствам' : 'На главную'}
+            </SpaLink>
+            {accessToken ? <ProfileToolbarAnchor /> : null}
+          </div>
+        </header>
+
+        <section className="trello-panel">
+          <div style={{ padding: 16 }}>
+            {!token ? (
+              <p className="trello-boards-sub" style={{ marginTop: 0 }}>
+                В ссылке нет кода приглашения. Откройте письмо и перейдите по
+                кнопке из него.
+              </p>
+            ) : !accessToken ? (
+              <>
+                <p className="trello-boards-sub" style={{ marginTop: 0 }}>
+                  Чтобы принять приглашение, войдите в аккаунт с тем же email,
+                  на который оно было отправлено.
+                </p>
+                <SpaLink className="trello-btn trello-btn-primary" style={{ marginTop: 12 }} to="/">
+                  Войти
+                </SpaLink>
+              </>
+            ) : busy ? (
+              <p className="trello-boards-sub" style={{ marginTop: 0 }}>
+                Принимаем приглашение…
+              </p>
+            ) : msg ? (
+              <div
+                className={
+                  isRateLimitMessage(msg)
+                    ? 'trello-banner trello-banner-rate-limit'
+                    : 'trello-banner trello-banner-error'
+                }
+              >
+                {msg}
+              </div>
+            ) : null}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
