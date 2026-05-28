@@ -16,3 +16,11 @@ export function checkinToastIconUrl(): string {
 export function gamificationIntroIllustrationUrl(): string {
   return `${API_URL}/uploads/ui/intro/intro.png`;
 }
+
+export function levelStatIconUrl(): string {
+  return `${API_URL}/uploads/ui/xp/xp.png`;
+}
+
+export function healthStatIconUrl(): string {
+  return `${API_URL}/uploads/ui/xp/xp.png`;
+}

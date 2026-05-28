@@ -12,7 +12,6 @@ import {
 } from '@entities/character';
 import { getCharacterXpTowardNext } from '@entities/character/lib/level-curve';
 import { CheckinStreakProfileRow } from '@widgets/checkin-streak/profile-row/CheckinStreakProfileRow';
-import { GamificationGuide } from '@widgets/gamification-guide/GamificationGuide';
 import {
   computeStreakProfileFeedback,
   readCharacterStreakSnapshot,
@@ -24,8 +23,9 @@ import { CHARACTER_HEALTH_MAX } from '@entities/reward';
 import { CharacterCreateForm } from '@features/character-create/ui/CharacterCreateForm';
 import { SpaLink } from '@shared/lib/navigation';
 import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
-import { ProfileCharacterQuestsPanel } from '@widgets/profile-character-quests/ProfileCharacterQuestsPanel';
+import { ProfileCharacterQuestsPanel, type ProfileCharacterTabKey } from '@widgets/profile-character-quests/ProfileCharacterQuestsPanel';
 import { CharacterPortraitWithFrame } from '@widgets/character-portrait/CharacterPortraitWithFrame';
+import { healthStatIconUrl, levelStatIconUrl, xpToastIconUrl } from '@shared/assets/uiAssets';
 
 type Props = {
   accessToken: string;
@@ -50,7 +50,6 @@ export function ProfileCharacterPage(props: Props) {
   const [role, setRole] = useState<CharacterRole>('DRUID');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [guideOpen, setGuideOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [saveCheckVisible, setSaveCheckVisible] = useState(false);
   const [streakAnimateFrom, setStreakAnimateFrom] = useState<number | null>(null);
@@ -61,6 +60,8 @@ export function ProfileCharacterPage(props: Props) {
   > | null>(null);
 
   const [loadKey, setLoadKey] = useState(0);
+  const [activePanelTab, setActivePanelTab] = useState<ProfileCharacterTabKey>('quests');
+  const [tabOpenSignal, setTabOpenSignal] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -310,31 +311,68 @@ export function ProfileCharacterPage(props: Props) {
 
         {msg && <div className="trello-banner trello-banner-error">{msg}</div>}
 
-        <section className="trello-character-profile">
-          <div className="trello-character-profile-hero trello-character-profile-hero--stacked">
-            <div className="trello-character-profile-portrait-column">
-              <div className="trello-character-profile-portrait-wrap trello-character-profile-portrait-wrap--square">
-                <CharacterPortraitWithFrame
-                  avatarPreset={character.avatarPreset}
-                  frameKey={character.equippedPortraitFrameKey}
-                  profileBackgroundKey={character.equippedProfileBackgroundKey}
+        <section className="trello-character-profile trello-character-profile--rpg">
+          <div className="trello-character-rpg-shell">
+            <div className="trello-character-rpg-tabs" role="tablist" aria-label="Разделы персонажа">
+              {[
+                { key: 'quests', label: 'Задания' },
+                { key: 'inventory', label: 'Хранилище' },
+                { key: 'shop', label: 'Магазин' },
+                { key: 'achievements', label: 'Достижения' },
+                { key: 'rules', label: 'Правила' },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={activePanelTab === tab.key}
+                  className={
+                    activePanelTab === tab.key
+                      ? 'trello-character-rpg-tab trello-character-rpg-tab--active'
+                      : 'trello-character-rpg-tab'
+                  }
+                  onClick={() => {
+                    const nextTab = tab.key as ProfileCharacterTabKey;
+                    if (activePanelTab === nextTab) {
+                      setTabOpenSignal((prev) => prev + 1);
+                      return;
+                    }
+                    setActivePanelTab(nextTab);
+                    setTabOpenSignal((prev) => prev + 1);
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="trello-character-profile-hero trello-character-profile-hero--rpg-grid">
+              <div className="trello-character-profile-portrait-column">
+                <div className="trello-character-profile-portrait-wrap trello-character-profile-portrait-wrap--square">
+                  <CharacterPortraitWithFrame
+                    avatarPreset={character.avatarPreset}
+                    frameKey={character.equippedPortraitFrameKey}
+                    profileBackgroundKey={character.equippedProfileBackgroundKey}
+                  />
+                </div>
+                <button type="button" className="trello-btn trello-btn-primary trello-character-edit-trigger" onClick={openEdit}>
+                  Редактировать
+                </button>
+                <CheckinStreakProfileRow
+                  streak={character.checkinStreak ?? 0}
+                  animateFrom={streakAnimateFrom}
+                  celebrate={streakCelebrate}
+                  lostNotice={streakLostNotice}
+                  onDismissLost={() => setStreakLostNotice(null)}
                 />
               </div>
-              <button type="button" className="trello-btn trello-btn-primary trello-character-edit-trigger" onClick={openEdit}>
-                Редактировать
-              </button>
-            </div>
-            <div className="trello-character-profile-info-col">
-              <CheckinStreakProfileRow
-                streak={character.checkinStreak ?? 0}
-                animateFrom={streakAnimateFrom}
-                celebrate={streakCelebrate}
-                lostNotice={streakLostNotice}
-                onDismissLost={() => setStreakLostNotice(null)}
-              />
+              <div className="trello-character-profile-info-col trello-character-profile-info-col--rpg">
               <div className="trello-character-stat-row">
                 <div className="trello-character-stat-pill trello-character-stat-pill--level">
-                  <span className="trello-character-stat-label">Уровень</span>
+                  <div className="trello-character-stat-label-row">
+                    <span className="trello-character-stat-label">УРОВЕНЬ</span>
+                    <img src={levelStatIconUrl()} alt="" className="trello-character-stat-icon" loading="lazy" />
+                  </div>
                   <div
                     className="trello-character-stat-meter"
                     role="img"
@@ -349,7 +387,10 @@ export function ProfileCharacterPage(props: Props) {
                   </div>
                 </div>
                 <div className="trello-character-stat-pill trello-character-stat-pill--xp">
-                  <span className="trello-character-stat-label">Опыт</span>
+                  <div className="trello-character-stat-label-row">
+                    <span className="trello-character-stat-label">ОПЫТ</span>
+                    <img src={xpToastIconUrl()} alt="" className="trello-character-stat-icon" loading="lazy" />
+                  </div>
                   <div
                     className="trello-character-stat-meter"
                     role="img"
@@ -376,7 +417,10 @@ export function ProfileCharacterPage(props: Props) {
                   </div>
                 </div>
                 <div className="trello-character-stat-pill trello-character-stat-pill--health">
-                  <span className="trello-character-stat-label">Здоровье</span>
+                  <div className="trello-character-stat-label-row">
+                    <span className="trello-character-stat-label">ЗДОРОВЬЕ</span>
+                    <img src={healthStatIconUrl()} alt="" className="trello-character-stat-icon" loading="lazy" />
+                  </div>
                   <div
                     className="trello-character-stat-meter"
                     role="img"
@@ -393,31 +437,31 @@ export function ProfileCharacterPage(props: Props) {
                   </div>
                 </div>
               </div>
+              <div className="trello-character-rpg-inline-panel">
+                <ProfileCharacterQuestsPanel
+                  accessToken={props.accessToken}
+                  characterGender={character.gender}
+                  characterPortrait={{
+                    avatarPreset: character.avatarPreset,
+                    frameKey: character.equippedPortraitFrameKey,
+                    profileBackgroundKey: character.equippedProfileBackgroundKey,
+                  }}
+                  activeTab={activePanelTab}
+                  tabOpenSignal={tabOpenSignal}
+                  onCharacterRefresh={async () => {
+                    const c = await api<CharacterDto>('/character/me', {
+                      method: 'GET',
+                      accessToken: props.accessToken,
+                    });
+                    setCharacter(c);
+                    props.onCharacterUpdated?.(c);
+                  }}
+                />
+              </div>
             </div>
           </div>
+          </div>
 
-          <button
-            type="button"
-            className="trello-character-guide-toggle"
-            onClick={() => setGuideOpen((o) => !o)}
-            aria-expanded={guideOpen}
-          >
-            {guideOpen ? '▼' : '▶'} Как это работает
-          </button>
-          {guideOpen && <GamificationGuide />}
-
-          <ProfileCharacterQuestsPanel
-            accessToken={props.accessToken}
-            characterGender={character.gender}
-            onCharacterRefresh={async () => {
-              const c = await api<CharacterDto>('/character/me', {
-                method: 'GET',
-                accessToken: props.accessToken,
-              });
-              setCharacter(c);
-              props.onCharacterUpdated?.(c);
-            }}
-          />
         </section>
       </div>
 

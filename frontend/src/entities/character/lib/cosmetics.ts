@@ -19,9 +19,6 @@ const COSMETIC_UPLOAD_PATH: Record<string, string> = {
   bg_night: 'cosmetics/backgrounds/dark_castle.png',
   bg_woods: 'cosmetics/backgrounds/woods.png',
   bg_lake_forest: 'cosmetics/backgrounds/lake_forest.png',
-  badge_starter: 'cosmetics/badges/badge_starter.png',
-  badge_veteran: 'cosmetics/badges/badge_veteran.png',
-  badge_legend: 'cosmetics/badges/badge_legend.png',
 };
 
 const PORTRAIT_FRAME_KEYS = new Set([

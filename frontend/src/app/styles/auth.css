@@ -1,0 +1,239 @@
+/* —— Jira-like auth screen (start page) —— */
+.jira-auth-shell {
+  flex-direction: column;
+}
+
+.jira-auth-header {
+  width: 100%;
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.jira-auth-main {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 24px 16px 48px;
+}
+
+.jira-auth-panel {
+  width: 100%;
+  max-width: 440px;
+  overflow: hidden;
+}
+
+.jira-auth-panel-head {
+  padding: 16px 20px 0;
+}
+
+.jira-auth-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.jira-auth-subtitle {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #626f86;
+  line-height: 1.4;
+}
+
+.jira-auth-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px 0;
+}
+
+.jira-auth-tab {
+  flex: 1;
+  border: 1px solid #dfe1e6;
+  background: #fff;
+  color: #172b4d;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.jira-auth-tab-active {
+  border-color: #0c66e4;
+  background: #e9f2ff;
+  color: #0c66e4;
+}
+
+.jira-auth-form {
+  padding: 16px 20px 20px;
+}
+
+.jira-auth-submit {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.jira-auth-links {
+  margin-top: 10px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.jira-auth-google {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+/* Высота блока аватара: padding обёртки 5+5 + кнопка 48 = 58px → центр на 29px от верха тулбара.
+   Центр верхней полоски: padding-top 20px + половина строки кнопок (~18px) ≈ 38px от верха вьюпорта.
+   top = 38 − 29 ≈ 9px — одинаково на всех страницах с полоской. */
+.trello-fixed-toolbar {
+  position: fixed;
+  top: 0;
+  right: 12px;
+  padding-top: max(10px, env(safe-area-inset-top, 0px));
+  z-index: 10050;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.trello-fixed-toolbar > * {
+  pointer-events: auto;
+}
+
+.trello-fixed-toolbar--shell,
+.trello-fixed-toolbar--board {
+  top: 0;
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+}
+
+.trello-fixed-toolbar--guest {
+  top: 0;
+  padding-top: max(10px, env(safe-area-inset-top, 0px));
+}
+
+.trello-fixed-toolbar .theme-toggle {
+  position: static;
+  left: auto;
+  bottom: auto;
+}
+
+/* Якорь для портала меню профиля: резервируем место в шапке, сам тулбар — fixed справа как раньше */
+.trello-topbar-profile-toolbar-host {
+  width: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  flex: 0 0 48px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.trello-fixed-toolbar--in-header {
+  position: fixed;
+  top: 0;
+  right: max(12px, env(safe-area-inset-right, 0px));
+  left: auto;
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  z-index: 10050;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.trello-fixed-toolbar--in-header > * {
+  pointer-events: auto;
+}
+
+.trello-topbar-profile-toolbar-host .trello-profile-menu {
+  z-index: 10055;
+}
+
+.theme-toggle {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid #dfe1e6;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.trello-theme-toggle-inline.theme-toggle {
+  position: static;
+}
+
+.theme-toggle-icon {
+  font-size: 16px;
+  line-height: 1;
+  color: #0c66e4;
+}
+
+.theme-switch {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.theme-switch-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.theme-switch-track {
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  border: 1px solid #d1d5db;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  box-sizing: border-box;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.theme-switch-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  transform: translateX(0);
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.theme-switch-input:focus-visible + .theme-switch-track {
+  outline: 2px solid #0c66e4;
+  outline-offset: 2px;
+}
+
+.theme-switch-input:checked + .theme-switch-track {
+  background: #3f3f46;
+  border-color: #52525b;
+}
+
+.theme-switch-input:checked + .theme-switch-track .theme-switch-thumb {
+  transform: translateX(20px);
+  background: #f9fafb;
+}
+
+

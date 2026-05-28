@@ -28,22 +28,17 @@ export type LootEntry = {
 export const LOOT_TABLE_BY_TIER: Record<ChestTier, LootEntry[]> = {
   [ChestTier.COMMON]: [
     { cosmeticKey: 'frame_bronze', weight: 30 },
-    { cosmeticKey: 'frame_silver', weight: 25 },
-    { cosmeticKey: 'badge_starter', weight: 25 },
-    { cosmeticKey: 'bg_meadow', weight: 20 },
-    { cosmeticKey: 'bg_woods', weight: 15 },
-    { cosmeticKey: 'bg_lake_forest', weight: 15 },
+    { cosmeticKey: 'frame_silver', weight: 30 },
+    { cosmeticKey: 'bg_meadow', weight: 25 },
+    { cosmeticKey: 'bg_woods', weight: 20 },
+    { cosmeticKey: 'bg_lake_forest', weight: 20 },
   ],
   [ChestTier.RARE]: [
-    { cosmeticKey: 'frame_gold', weight: 30 },
-    { cosmeticKey: 'bg_night', weight: 25 },
-    { cosmeticKey: 'badge_veteran', weight: 25 },
-    { cosmeticKey: 'QUEST_MAGE_MAN', weight: 20 },
+    { cosmeticKey: 'frame_gold', weight: 35 },
+    { cosmeticKey: 'bg_night', weight: 35 },
+    { cosmeticKey: 'QUEST_MAGE_MAN', weight: 30 },
   ],
-  [ChestTier.EPIC]: [
-    { cosmeticKey: 'frame_mystic', weight: 50 },
-    { cosmeticKey: 'badge_legend', weight: 50 },
-  ],
+  [ChestTier.EPIC]: [{ cosmeticKey: 'frame_mystic', weight: 100 }],
 };
 
 export function rollLootCosmeticKey(
@@ -65,14 +60,12 @@ export function rollLootCosmeticKey(
 
 export function cosmeticTypeToCharacterField(
   type: CosmeticType,
-): 'equippedPortraitFrameKey' | 'equippedProfileBackgroundKey' | 'equippedTitleBadgeKey' | null {
+): 'equippedPortraitFrameKey' | 'equippedProfileBackgroundKey' | null {
   switch (type) {
     case CosmeticType.PORTRAIT_FRAME:
       return 'equippedPortraitFrameKey';
     case CosmeticType.PROFILE_BACKGROUND:
       return 'equippedProfileBackgroundKey';
-    case CosmeticType.TITLE_BADGE:
-      return 'equippedTitleBadgeKey';
     default:
       return null;
   }

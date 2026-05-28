@@ -20,7 +20,11 @@ export const COSMETIC_TYPE_LABEL_RU: Record<CosmeticType, string> = {
 };
 
 export function cosmeticTypeCanEquip(type: CosmeticType): boolean {
-  return type !== 'AVATAR_PRESET';
+  return type === 'PORTRAIT_FRAME' || type === 'PROFILE_BACKGROUND';
+}
+
+export function isTitleBadgeCosmetic(type: CosmeticType): boolean {
+  return type === 'TITLE_BADGE';
 }
 
 export type QuestChestSnippet = {

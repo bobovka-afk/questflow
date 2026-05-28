@@ -59,10 +59,15 @@ const AVATAR_PRESET_UPLOAD_OVERRIDES: Record<string, string> = {
   DRUID_MAN: 'character-avatars/clear_man/druid_man.png',
   DRUID_WOMAN: 'character-avatars/clear_girl/druid_girl.png',
   HUNTER_MAN: 'character-avatars/clear_man/hunter_man.png',
+  HUNTER_WOMAN: 'character-avatars/clear_girl/hunter_girl.png',
   MAGE_MAN: 'character-avatars/clear_man/mage_man.png',
+  MAGE_WOMAN: 'character-avatars/clear_girl/mage_girl.png',
   PALADIN_MAN: 'character-avatars/clear_man/paladin_man.png',
+  PALADIN_WOMAN: 'character-avatars/clear_girl/paladin_girl.png',
   ROGUE_MAN: 'character-avatars/clear_man/rogue_man.png',
+  ROGUE_WOMAN: 'character-avatars/clear_girl/rogue_girl.png',
   WARRIOR_MAN: 'character-avatars/clear_man/warrior_man.png',
+  WARRIOR_WOMAN: 'character-avatars/clear_girl/warrior_girl.png',
 };
 
 export function isQuestAvatarPreset(preset: string): boolean {

@@ -1,0 +1,67 @@
+:root {
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+    'Apple Color Emoji', 'Segoe UI Emoji';
+  line-height: 1.4;
+  color: var(--qf-text);
+  background: var(--qf-body-bg);
+
+  /* Accent (legacy name kept for existing var() usages) */
+  --trello-primary: #4f46e5;
+  --trello-primary-hover: #4338ca;
+  --trello-primary-contrast: #f8fafc;
+  --qf-primary-strong: #3730a3;
+
+  --qf-body-bg: #e4e9ef;
+  --qf-shell-gradient: linear-gradient(152deg, #c5dfd4 0%, #c4d4ec 40%, #d6cae3 100%);
+  --qf-shell-fg: rgba(15, 23, 42, 0.92);
+  --qf-shell-fg-muted: rgba(51, 65, 85, 0.88);
+  --qf-btn-ghost-on-gradient: rgba(15, 23, 42, 0.9);
+
+  --qf-topbar-glass: rgba(255, 255, 255, 0.42);
+  --qf-topbar-glass-border: rgba(15, 23, 42, 0.09);
+  --qf-topbar-title: rgba(15, 23, 42, 0.94);
+
+  --qf-text: #1e293b;
+  --qf-text-muted: #64748b;
+
+  --qf-logo-gradient: linear-gradient(135deg, #0d9488 0%, #4f46e5 100%);
+
+  --qf-nav-hover: rgba(79, 70, 229, 0.1);
+  --qf-nav-hover-border: rgba(79, 70, 229, 0.22);
+  --qf-nav-active-bg: rgba(79, 70, 229, 0.14);
+  --qf-nav-active-border: rgba(79, 70, 229, 0.35);
+
+  --trello-list-chrome: #e4e9f1;
+}
+
+html.theme-dark {
+  color: var(--qf-text);
+  background: var(--qf-body-bg);
+
+  --trello-primary: #8b93ff;
+  --trello-primary-hover: #a5adff;
+  --trello-primary-contrast: #0f172a;
+  --qf-primary-strong: #e0e7ff;
+
+  --qf-body-bg: #0f141c;
+  --qf-shell-gradient: linear-gradient(152deg, #121a24 0%, #171f2c 45%, #1c1628 100%);
+  --qf-shell-fg: rgba(226, 232, 240, 0.95);
+  --qf-shell-fg-muted: rgba(148, 163, 184, 0.9);
+  --qf-btn-ghost-on-gradient: rgba(248, 250, 252, 0.92);
+
+  --qf-topbar-glass: rgba(0, 0, 0, 0.32);
+  --qf-topbar-glass-border: rgba(255, 255, 255, 0.1);
+  --qf-topbar-title: rgba(248, 250, 252, 0.96);
+
+  --qf-text: #e2e8f0;
+  --qf-text-muted: #94a3b8;
+
+  --qf-logo-gradient: linear-gradient(135deg, #14b8a6 0%, #818cf8 100%);
+
+  --qf-nav-hover: rgba(129, 140, 248, 0.12);
+  --qf-nav-hover-border: rgba(129, 140, 248, 0.28);
+  --qf-nav-active-bg: rgba(79, 70, 229, 0.22);
+  --qf-nav-active-border: rgba(165, 180, 252, 0.45);
+
+  --trello-list-chrome: #262f3d;
+}
