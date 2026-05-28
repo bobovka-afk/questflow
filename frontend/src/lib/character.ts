@@ -54,9 +54,15 @@ const QUEST_AVATAR_PORTRAIT_FILES: Record<string, string> = {
   QUEST_MAGE_WOMAN: 'quest_mage_woman.png',
 };
 
-/** Тест прозрачного фона (PROFILE_BACKGROUND); preset → путь под uploads/ */
+/** Прозрачные male-портреты (clear_man); preset → путь под uploads/. */
 const AVATAR_PRESET_UPLOAD_OVERRIDES: Record<string, string> = {
-  DRUID_MAN: 'character-avatars/clear/druid_man.png',
+  DRUID_MAN: 'character-avatars/clear_man/druid_man.png',
+  DRUID_WOMAN: 'character-avatars/clear_girl/druid_girl.png',
+  HUNTER_MAN: 'character-avatars/clear_man/hunter_man.png',
+  MAGE_MAN: 'character-avatars/clear_man/mage_man.png',
+  PALADIN_MAN: 'character-avatars/clear_man/paladin_man.png',
+  ROGUE_MAN: 'character-avatars/clear_man/rogue_man.png',
+  WARRIOR_MAN: 'character-avatars/clear_man/warrior_man.png',
 };
 
 export function isQuestAvatarPreset(preset: string): boolean {

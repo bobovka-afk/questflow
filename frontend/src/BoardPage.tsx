@@ -389,18 +389,11 @@ export function BoardPage({
 		id: number
 	} | null>(null)
 	const rewardToastRunIdRef = useRef(0)
-	const [xpErrorAlertCode, setXpErrorAlertCode] = useState<string | null>(
-		null
-	)
 	const [xpBottomNotice, setXpBottomNotice] = useState<{
 		id: number
 		text: string
 	} | null>(null)
 	const xpBottomNoticeTimerRef = useRef(0)
-
-	useEffect(() => {
-		if (!alertOpen) setXpErrorAlertCode(null)
-	}, [alertOpen])
 
 	useEffect(() => {
 		return () => {
@@ -981,6 +974,13 @@ export function BoardPage({
 				}
 				if (
 					completionSavedButXpFailed &&
+					code === 'CHARACTER_NOT_FOUND'
+				) {
+					// Без персонажа карточка всё равно закрыта на сервере; не блокируем продуктовый флоу.
+					return
+				}
+				if (
+					completionSavedButXpFailed &&
 					isXpTaskSoftNoticeCode(code)
 				) {
 					window.clearTimeout(xpBottomNoticeTimerRef.current)
@@ -991,12 +991,6 @@ export function BoardPage({
 						4500
 					)
 				} else {
-					setXpErrorAlertCode(
-						completionSavedButXpFailed &&
-							code === 'CHARACTER_NOT_FOUND'
-							? (code as string)
-							: null
-					)
 					setAlertText(formatError(err))
 					setAlertOpen(true)
 				}
@@ -2307,13 +2301,7 @@ export function BoardPage({
 			<AlertModal
 				open={alertOpen}
 				message={alertText}
-				title={
-					isRateLimitMessage(alertText)
-						? 'Лимит запросов'
-						: xpErrorAlertCode === 'CHARACTER_NOT_FOUND'
-							? 'Опыт'
-							: undefined
-				}
+				title={isRateLimitMessage(alertText) ? 'Лимит запросов' : undefined}
 				onClose={() => setAlertOpen(false)}
 			/>
 

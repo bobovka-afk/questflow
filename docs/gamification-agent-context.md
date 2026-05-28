@@ -110,8 +110,15 @@ questflow/
 │   ├── src/lib/gamificationIntro.ts   ← sessionStorage после register
 │   ├── src/lib/xpRewards.ts           ← константы XP (должны = backend)
 │   ├── src/lib/level-curve.ts         ← расчёт полоски XP
-│   ├── src/lib/character.ts           ← CharacterDto, portrait URLs
-│   ├── src/lib/cosmetics.ts           ← URL рамок, portraitFrameFitVars()
+│   ├── src/lib/character.ts           ← CharacterDto, portrait URLs (+ clear_man overrides для male)
+│   ├── src/lib/cosmetics.ts           ← URL рамок/фонов, portraitFrameFitVars()
+│   ├── src/lib/chestAssets.ts         ← tap-кадры common (chests/common/0.png…4.png), иконка
+│   ├── src/ChestIcon.tsx              ← иконка сундука в квестах
+│   ├── src/ChestTapOpenModal.tsx      ← tap-to-open (Clash Royale), большой сундук
+│   ├── src/lib/dustAssets.ts          ← dust/dust.png
+│   ├── src/DustIcon.tsx               ← иконка пыли (24 / 48 px)
+│   ├── src/lib/achievementAssets.ts   ← иконки achievements (unlocked / locked)
+│   ├── src/lib/uiAssets.ts            ← UI-иконки геймификации (xp toast)
 │   ├── src/lib/portraitLayout.ts      ← bbox/inset/классы (блок 2a assets)
 │   └── src/lib/api.ts                 ← isXpGrantErrorCode, isXpTaskSoftNoticeCode
 ```
@@ -135,11 +142,14 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 | GET | `/character/quests` | JWT — дневные/недельные квесты + прогресс |
 | GET | `/character/chests` | JWT |
 | POST | `/character/chests/:chestId/open` | JWT |
+| GET | `/character/chests` | JWT — все сундуки пользователя (блок «Мои сундуки» на профиле) |
 | GET | `/character/inventory` | JWT |
 | PATCH | `/character/cosmetics/equip` | JWT, body `{ inventoryItemId }` |
 | GET | `/character/achievements` | JWT |
 | GET | `/character/dust/shop` | JWT — баланс + 3 варианта сундука |
 | POST | `/character/dust/purchase` | JWT, body `{ tier }` |
+
+Лут (актуально): common-сундук может дать `bg_meadow`, `bg_woods`, `bg_lake_forest`; rare — `bg_night`.
 
 **Запланировано:** `POST /character/checkin/weekly` (optional). Phase 4: уведомления, battle pass, лидерборд.
 

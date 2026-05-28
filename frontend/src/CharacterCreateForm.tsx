@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { api, formatApiError } from './lib/api';
+import { AlertModal } from './AlertModal';
 import {
   CHARACTER_ROLES,
   type CharacterDto,
@@ -21,15 +22,15 @@ export function CharacterCreateForm(props: Props) {
   const [gender, setGender] = useState<GenderCharacter>('MALE');
   const [role, setRole] = useState<CharacterRole>('DRUID');
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [errorModalMessage, setErrorModalMessage] = useState<string | null>(null);
 
   const avatarPreset = useMemo(() => presetForRole(gender, role), [gender, role]);
 
   async function submit() {
-    setMsg(null);
+    setErrorModalMessage(null);
     const trimmed = name.trim();
     if (trimmed.length < 3 || trimmed.length > 40) {
-      setMsg('Имя персонажа: от 3 до 40 символов.');
+      setErrorModalMessage('Имя персонажа: от 3 до 40 символов.');
       return;
     }
     setBusy(true);
@@ -45,7 +46,7 @@ export function CharacterCreateForm(props: Props) {
       });
       props.onCreated(created);
     } catch (e) {
-      setMsg(formatApiError(e));
+      setErrorModalMessage(formatApiError(e));
     } finally {
       setBusy(false);
     }
@@ -53,7 +54,6 @@ export function CharacterCreateForm(props: Props) {
 
   return (
     <>
-      {msg ? <div className="trello-banner trello-banner-error">{msg}</div> : null}
       <section className="trello-character-setup">
         <label className="trello-field">
           <span className="trello-label">Имя персонажа</span>
@@ -133,6 +133,12 @@ export function CharacterCreateForm(props: Props) {
           {busy ? 'Создаём…' : (props.submitLabel ?? 'Создать персонажа')}
         </button>
       </section>
+      <AlertModal
+        open={errorModalMessage != null}
+        title="Ошибка"
+        message={errorModalMessage ?? ''}
+        onClose={() => setErrorModalMessage(null)}
+      />
     </>
   );
 }

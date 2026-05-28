@@ -179,7 +179,7 @@ export function ProfileCharacterPage(props: Props) {
     const nextPreset = avatarPreset;
     if (nextPreset !== character.avatarPreset) patch.avatarPreset = nextPreset;
     if (Object.keys(patch).length === 0) {
-      setMsg('Нет изменений.');
+      closeEdit();
       return;
     }
     setBusy(true);

@@ -31,6 +31,8 @@ export const LOOT_TABLE_BY_TIER: Record<ChestTier, LootEntry[]> = {
     { cosmeticKey: 'frame_silver', weight: 25 },
     { cosmeticKey: 'badge_starter', weight: 25 },
     { cosmeticKey: 'bg_meadow', weight: 20 },
+    { cosmeticKey: 'bg_woods', weight: 15 },
+    { cosmeticKey: 'bg_lake_forest', weight: 15 },
   ],
   [ChestTier.RARE]: [
     { cosmeticKey: 'frame_gold', weight: 30 },

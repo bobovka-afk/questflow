@@ -33,6 +33,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import sharp from 'sharp';
 
 @ApiTags('user')
 @ApiBearerAuth()
@@ -100,10 +101,9 @@ export class UserController {
           fs.mkdirSync(dir, { recursive: true });
           cb(null, dir);
         },
-        filename: (req, file, cb) => {
+        filename: (req, _file, cb) => {
           const userId = (req as any).user?.id ?? 'anon';
-          const ext = path.extname(file.originalname).toLowerCase() || '.png';
-          const name = `${userId}-${Date.now()}-${randomUUID()}${ext}`;
+          const name = `${userId}-${Date.now()}-${randomUUID()}.upload`;
           cb(null, name);
         },
       }),
@@ -125,6 +125,7 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'User avatar updated successfully.' })
   @ApiResponse({ status: 400, description: "code: 'IMAGE_FILE_REQUIRED'" })
   @ApiResponse({ status: 400, description: "code: 'FILE_NOT_PROVIDED'" })
+  @ApiResponse({ status: 400, description: "code: 'IMAGE_FILE_INVALID'" })
   @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
   @ApiResponse({ status: 429, description: "code: 'RATE_LIMIT_EXCEEDED'" })
   async updateAvatar(
@@ -138,9 +139,30 @@ export class UserController {
       });
     }
 
-    const baseUrl = process.env.SERVER_URL ?? 'http://localhost:3000';
-    const avatarUrl = `${baseUrl}/uploads/user-avatars/${file.filename}`;
+    const uploadDir = path.join(process.cwd(), 'uploads', 'user-avatars');
+    const finalFilename = `${req.user.id}-${Date.now()}-${randomUUID()}.png`;
+    const finalPath = path.join(uploadDir, finalFilename);
+    const tempPath = file.path;
 
+    try {
+      await sharp(tempPath)
+        .rotate()
+        .resize(256, 256, { fit: 'cover', position: 'centre' })
+        .png({ compressionLevel: 9, palette: true, effort: 10 })
+        .toFile(finalPath);
+    } catch (_error) {
+      throw new BadRequestException({
+        code: 'IMAGE_FILE_INVALID',
+        message: 'Image file is invalid or unsupported',
+      });
+    } finally {
+      if (tempPath) {
+        fs.rmSync(tempPath, { force: true });
+      }
+    }
+
+    const baseUrl = process.env.SERVER_URL ?? 'http://localhost:3000';
+    const avatarUrl = `${baseUrl}/uploads/user-avatars/${finalFilename}`;
     return this.userService.updateAvatar(req.user.id, avatarUrl);
   }
 

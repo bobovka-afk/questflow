@@ -2,6 +2,12 @@ import type { ReactNode } from 'react';
 import { CheckinStreakCounter } from './CheckinStreakCounter';
 import { DAILY_CHECKIN_LABEL } from './lib/gamificationCopy';
 import type { XpGrantRewards } from './lib/gamificationRewards';
+import {
+  CHECKIN_TOAST_ICON_SIZE,
+  checkinToastIconUrl,
+  XP_TOAST_ICON_SIZE,
+  xpToastIconUrl,
+} from './lib/uiAssets';
 
 type ToastShellProps = {
   toastId: number;
@@ -38,16 +44,33 @@ export function CheckinRewardToast(props: CheckinProps) {
     >
       {rewards.checkinXp > 0 || (rewards.streakMilestoneXp ?? 0) > 0 ? (
         <div className="trello-reward-toast-xp">
-          <span className="trello-xp-toast-glyph" aria-hidden>
-            +
-          </span>
+          <img
+            src={xpToastIconUrl()}
+            alt=""
+            width={XP_TOAST_ICON_SIZE}
+            height={XP_TOAST_ICON_SIZE}
+            className="trello-reward-toast-xp-icon"
+            loading="lazy"
+            draggable={false}
+          />
           <span className="trello-xp-toast-value">
             {rewards.checkinXp + (rewards.streakMilestoneXp ?? 0)}
           </span>
           <span className="trello-xp-toast-label">XP</span>
         </div>
       ) : null}
-      <p className="trello-reward-toast-tagline">{DAILY_CHECKIN_LABEL}</p>
+      <p className="trello-reward-toast-tagline">
+        <img
+          src={checkinToastIconUrl()}
+          alt=""
+          width={CHECKIN_TOAST_ICON_SIZE}
+          height={CHECKIN_TOAST_ICON_SIZE}
+          className="trello-reward-toast-tagline-icon"
+          loading="lazy"
+          draggable={false}
+        />
+        {DAILY_CHECKIN_LABEL}
+      </p>
       {(rewards.streakMilestonesReached?.length ?? 0) > 0 ? (
         <p className="trello-reward-toast-extra">
           Порог серии:{' '}
@@ -84,9 +107,15 @@ export function TaskRewardToast(props: TaskProps) {
     >
       {rewards.taskXp > 0 ? (
         <div className="trello-reward-toast-xp">
-          <span className="trello-xp-toast-glyph" aria-hidden>
-            +
-          </span>
+          <img
+            src={xpToastIconUrl()}
+            alt=""
+            width={XP_TOAST_ICON_SIZE}
+            height={XP_TOAST_ICON_SIZE}
+            className="trello-reward-toast-xp-icon"
+            loading="lazy"
+            draggable={false}
+          />
           <span className="trello-xp-toast-value">{rewards.taskXp}</span>
           <span className="trello-xp-toast-label">XP</span>
         </div>

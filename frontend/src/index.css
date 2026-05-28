@@ -5362,9 +5362,164 @@ button.trello-card-comment-author-link:hover {
   margin-top: 8px;
 }
 
+.trello-character-quest-chest-row--flat {
+  margin-top: 0;
+}
+
+.trello-character-my-chests-list {
+  list-style: none;
+  margin: 8px 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trello-character-my-chests-item {
+  padding: 10px 12px;
+  border: 1px solid #ebecf0;
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+.trello-character-my-chests-empty {
+  padding: 8px 0;
+  font-size: 13px;
+}
+
 .trello-character-chest-icon {
   font-size: 18px;
   line-height: 1;
+}
+
+.trello-character-chest-icon-img {
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.trello-chest-open-sprite-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 8px 0 16px;
+}
+
+.trello-chest-open-sprite {
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.trello-chest-open-sprite--frames-6 {
+  background-size: 600% 100%;
+}
+
+.trello-chest-open-sprite--frames-6.trello-chest-open-sprite--last {
+  background-position: 100% 0;
+}
+
+.trello-chest-open-sprite--frames-6.trello-chest-open-sprite--playing {
+  animation: trello-chest-sprite-open-6 1.2s steps(6) forwards;
+}
+
+@keyframes trello-chest-sprite-open-6 {
+  from {
+    background-position: 0% 0;
+  }
+  to {
+    background-position: 100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trello-chest-open-sprite--playing {
+    animation: none;
+    background-position: 100% 0;
+  }
+}
+
+.trello-chest-tap-modal-backdrop {
+  background: rgba(9, 15, 28, 0.88);
+}
+
+.trello-chest-tap-open-modal {
+  max-width: min(480px, 96vw);
+  text-align: center;
+}
+
+.trello-chest-tap-open-modal .trello-modal-body {
+  padding-top: 8px;
+  padding-bottom: 24px;
+}
+
+.trello-chest-tap-open {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.trello-chest-tap-open-chest {
+  display: block;
+  width: min(50vh, min(90vw, 360px));
+  height: min(50vh, min(90vw, 360px));
+  margin: 0 auto;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: transform 80ms ease-out;
+}
+
+.trello-chest-tap-open-chest:disabled {
+  cursor: default;
+}
+
+.trello-chest-tap-open-chest--bump {
+  transform: scale(0.92);
+}
+
+.trello-chest-tap-open-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+  user-select: none;
+}
+
+.trello-chest-tap-open-hint {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #dfe1e6;
+}
+
+.trello-chest-tap-open-counter {
+  display: inline-block;
+  min-width: 2.5rem;
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+.trello-chest-tap-open-modal .trello-modal-title {
+  color: #f4f5f7;
+}
+
+.trello-chest-tap-open-modal .trello-modal-head {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trello-chest-tap-open-chest {
+    transition: none;
+  }
 }
 
 .trello-character-quest-chest-label {
@@ -5442,6 +5597,15 @@ button.trello-card-comment-author-link:hover {
   color: #172b4d;
 }
 
+.trello-dust-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
 .trello-character-dust-block {
   margin-bottom: 18px;
   padding-bottom: 18px;
@@ -5449,6 +5613,9 @@ button.trello-card-comment-author-link:hover {
 }
 
 .trello-character-dust-balance {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   margin: 0 0 10px;
   font-size: 15px;
   color: #172b4d;
@@ -5503,9 +5670,19 @@ button.trello-card-comment-author-link:hover {
 }
 
 .trello-character-dust-shop-cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 13px;
   font-weight: 700;
   color: #5e4db2;
+}
+
+.trello-character-chest-dust-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
 }
 
 .trello-character-achievement-list {
@@ -5518,10 +5695,28 @@ button.trello-card-comment-author-link:hover {
 }
 
 .trello-character-achievement-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 10px;
+  row-gap: 4px;
   padding: 10px 12px;
   border: 1px solid #ebecf0;
   border-radius: 8px;
   background: #fff;
+}
+
+.trello-character-achievement-icon {
+  display: block;
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.trello-character-achievement-row > :not(.trello-character-achievement-icon) {
+  grid-column: 2;
 }
 
 .trello-character-achievement-row--unlocked {
@@ -5543,6 +5738,10 @@ button.trello-card-comment-author-link:hover {
 }
 
 .trello-character-achievement-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
   margin: 0 0 6px;
   font-size: 12px;
   color: #5e4db2;
@@ -5845,6 +6044,9 @@ button.trello-card-comment-author-link:hover {
   position: relative;
   max-width: 600px;
   width: min(600px, calc(100vw - 32px));
+  max-height: min(92vh, 860px);
+  display: flex;
+  flex-direction: column;
 }
 
 .trello-gamification-intro-close {
@@ -5855,7 +6057,27 @@ button.trello-card-comment-author-link:hover {
 }
 
 .trello-gamification-intro-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   padding: 44px 20px 20px;
+}
+
+.trello-gamification-intro-hero {
+  margin: 0 -20px 16px;
+}
+
+.trello-gamification-intro-hero-img {
+  display: block;
+  width: 100%;
+  max-width: none;
+  max-height: min(56vh, 520px);
+  height: auto;
+  border-radius: 0;
+  object-fit: contain;
+  border-top: 1px solid rgba(148, 163, 184, 0.28);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(255, 255, 255, 0.65);
 }
 
 .trello-gamification-intro-block {
@@ -5912,6 +6134,10 @@ button.trello-card-comment-author-link:hover {
   flex-wrap: wrap;
 }
 
+.trello-gamification-intro-foot .trello-btn {
+  min-width: 160px;
+}
+
 .theme-dark .trello-gamification-intro-text,
 .theme-dark .trello-gamification-intro-list {
   color: var(--trello-text, #f1f5f9);
@@ -5924,6 +6150,56 @@ button.trello-card-comment-author-link:hover {
 
 .theme-dark .trello-gamification-intro-subtitle {
   color: var(--trello-primary, #579dff);
+}
+
+.theme-dark .trello-gamification-intro-hero-img {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(15, 23, 42, 0.45);
+}
+
+@media (max-height: 760px) {
+  .trello-gamification-intro-modal {
+    max-height: calc(100vh - 16px);
+  }
+
+  .trello-gamification-intro-body {
+    padding: 40px 16px 16px;
+  }
+
+  .trello-gamification-intro-hero {
+    margin: 0 -16px 12px;
+  }
+
+  .trello-gamification-intro-hero-img {
+    max-height: min(40vh, 340px);
+  }
+
+  .trello-gamification-intro-block + .trello-gamification-intro-block {
+    margin-top: 12px;
+  }
+
+  .trello-gamification-intro-text,
+  .trello-gamification-intro-list {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .trello-gamification-intro-list {
+    margin-top: 8px;
+  }
+
+  .trello-gamification-intro-list li + li {
+    margin-top: 6px;
+  }
+
+  .trello-gamification-intro-block--gamification {
+    padding: 12px 12px;
+  }
+
+  .trello-gamification-intro-foot {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
 }
 
 /* Счётчик серии дней (Duolingo-style) */
@@ -6271,12 +6547,25 @@ button.trello-card-comment-author-link:hover {
 }
 
 .trello-reward-toast-tagline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   margin: 0;
   font-size: 14px;
   font-weight: 600;
   line-height: 1.35;
   text-align: center;
   opacity: 0.95;
+}
+
+.trello-reward-toast-tagline-icon {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 .trello-reward-toast-extra {
@@ -6293,10 +6582,20 @@ button.trello-card-comment-author-link:hover {
 
 .trello-reward-toast-xp {
   display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
   font-size: 22px;
   font-weight: 700;
+}
+
+.trello-reward-toast-xp-icon {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border-radius: 4px;
 }
 
 .trello-reward-toast-lines {
