@@ -17,6 +17,7 @@ export type CharacterDto = {
   equippedPortraitFrameKey?: string | null;
   equippedProfileBackgroundKey?: string | null;
   equippedTitleBadgeKey?: string | null;
+  friendCode?: number;
   createdAt: string;
   updatedAt: string;
 };

@@ -21,6 +21,7 @@
 | 2 | **Done** — **2a** квесты + **2b** сундуки (сундук **за каждый** квест; карточки → assignee ?? actor) |
 | 3 | **Done** — пыль (дубликаты + магазин 3 сундуков), achievements |
 | 4 | **In progress** — гайд «Как это работает» + intro ([`GamificationGuide.tsx`](../frontend/src/widgets/gamification-guide/GamificationGuide.tsx)); E2E и backlog (уведомления / battle pass / лидерборд) — [roadmap](gamification-roadmap.md#phase-4--e2e-и-гайд-по-игре-финал-v1) |
+| 4.social | **Done (MVP)** — друзья по `friendCode` (#1492), заявки accept/decline, DM 1:1 (REST + poll 5 с в открытом чате), коллеги из общего workspace могут писать без дружбы |
 
 **Суточный сброс:** cron `resetDailyTaskXpCounts` в `GamificationCronService` (00:00 `GAME_DAY_TZ`). Числа наград — `backend/src/gamification/config/rewards.ts`.
 
@@ -92,6 +93,10 @@ questflow/
 │   ├── src/card/card.service.ts       ← setCardCompletion → XP + recordCardCompleted
 │   ├── src/comment/comment.service.ts ← recordCommentCreated
 │   └── src/card/card.module.ts        ← GamificationModule
+│   ├── src/social/                    ← friends, DM, canMessage (friends | shared WS)
+│   │   ├── social.service.ts
+│   │   ├── social.controller.ts       ← /social/*
+│   │   └── lib/friend-code.ts         ← 1000–9999, format #1492
 ├── frontend/
 │   ├── src/ProfileCharacterPage.tsx   ← персонаж, streak, квесты
 │   ├── src/ProfileCharacterQuestsPanel.tsx
@@ -120,6 +125,9 @@ questflow/
 │   ├── src/lib/achievementAssets.ts   ← иконки achievements (unlocked / locked)
 │   ├── src/lib/uiAssets.ts            ← UI-иконки геймификации (xp toast)
 │   ├── src/lib/portraitLayout.ts      ← bbox/inset/классы (блок 2a assets)
+│   ├── src/entities/social/           ← API, useMessagePolling (5 s)
+│   ├── src/widgets/social-friends/    ← FriendsPanel
+│   ├── src/widgets/social-messages/   ← MessagesPanel, ConversationView
 │   └── src/lib/api.ts                 ← isXpGrantErrorCode, isXpTaskSoftNoticeCode
 ```
 
@@ -152,6 +160,26 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 Лут (актуально): common-сундук может дать `bg_meadow`, `bg_woods`, `bg_lake_forest`; rare — `bg_night`.
 
 **Запланировано:** `POST /character/checkin/weekly` (optional). Phase 4: уведомления, battle pass, лидерборд.
+
+### Social (MVP, JWT)
+
+| Method | Path | Назначение |
+|--------|------|------------|
+| GET | `/social/me/code` | Свой `friendCode` (`#1492`) |
+| POST | `/social/friends/request` | `{ friendCode }` — заявка |
+| GET | `/social/friends` | Список друзей |
+| GET | `/social/friends/requests/incoming` \| `outgoing` | Заявки |
+| POST | `/social/friends/requests/:id/accept` \| `decline` | Ответ на заявку |
+| DELETE | `/social/friends/:userId` | Убрать из друзей |
+| GET | `/social/users/:userId/relation` | `isFriend`, `canMessage`, pending ids |
+| GET | `/social/messages/conversations` | Диалоги + unread |
+| GET | `/social/messages/with/:userId?since=` | История / poll новых |
+| POST | `/social/messages/with/:userId` | `{ body }` |
+| PATCH | `/social/messages/read` | `{ userId }` — прочитано |
+
+**Правила:** `Character.friendCode` при create; писать можно друзьям (`ACCEPTED`) или при общем workspace (`UserService.getProfileForViewer` логика). Коды: `MESSAGE_NOT_ALLOWED`, `FRIEND_CODE_NOT_FOUND`, … — `shared/api/api.ts`.
+
+**Не в v1:** WebSocket, групповые чаты, блокировка, поиск по имени.
 
 ---
 

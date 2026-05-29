@@ -11,6 +11,7 @@ import { PrismaModule } from '../prisma/prisma.module'
 import { MailModule } from '../mail/mail.module'
 import { RedisModule } from '../redis/redis.module'
 import { RateLimitGuard } from '../common/guards/rate-limit.guard'
+import { UserSettingsModule } from '../user-settings/user-settings.module'
 
 @Module({
 	imports: [
@@ -18,6 +19,7 @@ import { RateLimitGuard } from '../common/guards/rate-limit.guard'
 		PrismaModule,
 		MailModule,
 		RedisModule,
+		UserSettingsModule,
 		ConfigModule,
 		JwtModule.registerAsync({
 			imports: [ConfigModule],

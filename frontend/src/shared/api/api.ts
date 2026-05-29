@@ -36,6 +36,7 @@ const API_ERROR_CODE_RU: Record<string, string> = {
   INVITE_EXPIRED: 'Срок действия приглашения истёк.',
   INVITE_MAIL_FAILED:
     'Не удалось отправить письмо с приглашением. Проверьте настройки почты и попробуйте снова.',
+  SESSION_NOT_FOUND: 'Сессия не найдена.',
   RATE_LIMIT_EXCEEDED: `${RATE_LIMIT_MESSAGE_PREFIX} Подождите немного и повторите действие.`,
   CHARACTER_NOT_FOUND: 'Персонаж ещё не создан. Создайте его, чтобы продолжить.',
   CHARACTER_ALREADY_EXISTS: 'Персонаж для этого аккаунта уже создан.',
@@ -58,6 +59,19 @@ const API_ERROR_CODE_RU: Record<string, string> = {
     'Квестовый образ нельзя выбрать при создании персонажа.',
   INSUFFICIENT_DUST: 'Недостаточно пыли для покупки сундука.',
   DUST_SHOP_TIER_INVALID: 'Недопустимый тип сундука.',
+  FRIEND_CODE_INVALID: 'Код друга должен состоять из 4 цифр.',
+  FRIEND_CODE_NOT_FOUND: 'Персонаж с таким кодом не найден.',
+  FRIEND_REQUEST_SELF: 'Нельзя отправить заявку самому себе.',
+  ALREADY_FRIENDS: 'Вы уже в списке друзей.',
+  FRIEND_REQUEST_INCOMING_EXISTS: 'Этот игрок уже отправил вам заявку — примите её.',
+  FRIEND_REQUEST_NOT_FOUND: 'Заявка в друзья не найдена.',
+  FRIEND_REQUEST_NOT_PENDING: 'Заявка уже обработана.',
+  FRIENDSHIP_NOT_FOUND: 'Дружба не найдена.',
+  MESSAGE_NOT_ALLOWED: 'Писать можно только друзьям или коллегам из одного workspace.',
+  MESSAGE_BODY_EMPTY: 'Сообщение не может быть пустым.',
+  MESSAGE_BODY_TOO_LONG: 'Сообщение слишком длинное.',
+  MESSAGE_SELF: 'Нельзя отправить сообщение самому себе.',
+  FRIEND_CODE_GENERATION_FAILED: 'Не удалось сгенерировать игровой ID. Попробуйте позже.',
 };
 
 function translateCommonEnglishError(message: string): string | null {
@@ -171,7 +185,16 @@ export function isXpTaskSoftNoticeCode(code?: string): boolean {
   );
 }
 
+function isNetworkFetchError(e: unknown): boolean {
+  if (e instanceof TypeError) return true;
+  const message = e instanceof Error ? e.message : String(e);
+  return /failed to fetch|networkerror|load failed/i.test(message);
+}
+
 export function formatApiError(e: unknown): string {
+  if (isNetworkFetchError(e)) {
+    return 'Не удалось связаться с сервером. Проверьте, что backend запущен, и обновите страницу.';
+  }
   if (isRateLimitError(e)) return formatRateLimitMessage();
   const err = e as Partial<ApiError>;
   if (typeof err?.code === 'string') {
@@ -204,12 +227,25 @@ export async function api<T>(
   if (opts.json !== undefined) headers.set('Content-Type', 'application/json');
   if (opts.accessToken) headers.set('Authorization', `Bearer ${opts.accessToken}`);
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...opts,
-    headers,
-    body: opts.json !== undefined ? JSON.stringify(opts.json) : opts.body,
-    credentials: 'include',
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...opts,
+      headers,
+      body: opts.json !== undefined ? JSON.stringify(opts.json) : opts.body,
+      credentials: 'include',
+    });
+  } catch (e) {
+    const err: ApiError = {
+      status: 0,
+      message: isNetworkFetchError(e)
+        ? 'Failed to fetch'
+        : e instanceof Error
+          ? e.message
+          : 'Network error',
+    };
+    throw err;
+  }
 
   if (!res.ok) {
     const payload = await readErrorPayload(res);

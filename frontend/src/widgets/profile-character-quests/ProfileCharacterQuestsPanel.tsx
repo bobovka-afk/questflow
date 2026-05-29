@@ -704,11 +704,12 @@ export function ProfileCharacterQuestsPanel(props: Props) {
               className={[
                 'trello-modal',
                 'trello-character-loot-popup',
-                popupTab === 'inventory' || popupTab === 'achievements'
-                  ? 'trello-character-loot-popup--static'
+                popupTab === 'inventory'
+                  ? 'trello-character-loot-popup--static trello-character-loot-popup--storage'
                   : '',
+                popupTab === 'achievements' ? 'trello-character-loot-popup--static' : '',
                 popupTab === 'inventory' && storageInnerTab === 'cosmetics'
-                  ? 'trello-character-loot-popup--cosmetics'
+                  ? 'trello-character-loot-popup--storage-cosmetics'
                   : '',
               ]
                 .filter(Boolean)
@@ -717,6 +718,7 @@ export function ProfileCharacterQuestsPanel(props: Props) {
               aria-modal
               aria-labelledby="character-loot-popup-title"
               onClick={(e) => e.stopPropagation()}
+              onTouchMove={popupTab === 'inventory' ? (e) => e.stopPropagation() : undefined}
             >
               <div
                 className={[
@@ -746,7 +748,11 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                   ×
                 </button>
               </div>
-              <div className="trello-modal-body">
+              <div
+                className={
+                  popupTab === 'inventory' ? 'trello-modal-body trello-character-storage-modal-body' : 'trello-modal-body'
+                }
+              >
                 {popupTab === 'inventory' && (
                   <>
                     <div
@@ -796,7 +802,7 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                                 onClick={() => void handleOpenChest(chest.id, chest.tier)}
                               >
                                 <div className="trello-character-chest-slot-wrap">
-                                  <ChestIcon tier={chest.tier} size={112} />
+                                  <ChestIcon tier={chest.tier} size={100} />
                                   <ChestLootOddsButton tier={chest.tier} />
                                 </div>
                                 <strong className="trello-character-inventory-slot-title">

@@ -1,0 +1,1 @@
+export const DIRECT_MESSAGE_BODY_MAX_LENGTH = 2000;

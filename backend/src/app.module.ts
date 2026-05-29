@@ -17,6 +17,8 @@ import { randomUUID } from 'node:crypto';
 import { CharacterModule } from './character/character.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { GamificationModule } from './gamification/gamification.module';
+import { UserSettingsModule } from './user-settings/user-settings.module';
+import { SocialModule } from './social/social.module';
 
 
 @Module({
@@ -92,6 +94,8 @@ import { GamificationModule } from './gamification/gamification.module';
     RedisModule,
     CharacterModule,
     GamificationModule,
+    UserSettingsModule,
+    SocialModule,
   ],
   controllers: [],
   providers: [ ],

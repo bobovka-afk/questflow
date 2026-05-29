@@ -11,7 +11,20 @@ import {
   getPendingInviteToken,
   tryAcceptPendingInvite,
 } from '@shared/lib';
-import { BoardPage, CharacterSetupPage, InviteAcceptPage, ProfileCharacterPage, UserCharacterPage, UserProfilePage, WorkspaceActivityPage, WorkspaceBoardsPage, WorkspaceMembersPage, WorkspacesPage } from '@pages/index';
+import {
+  BoardPage,
+  CharacterSetupPage,
+  InviteAcceptPage,
+  parseSettingsTabFromRoute,
+  ProfileCharacterPage,
+  SettingsPage,
+  UserCharacterPage,
+  UserProfilePage,
+  WorkspaceActivityPage,
+  WorkspaceBoardsPage,
+  WorkspaceMembersPage,
+  WorkspacesPage,
+} from '@pages/index';
 import { AlertModal, GamificationIntroModal, ProfileInvitesSection } from '@widgets/index';
 import { navigate, openSpaInNewTab, SpaLink } from '@shared/lib';
 import { ProfileToolbarAnchor, ProfileToolbarOutletProvider } from '@shared/ui/profile-toolbar';
@@ -633,6 +646,12 @@ function ProfileMePage(props: {
 
     void load();
   }, [props.accessToken]);
+
+  useEffect(() => {
+    if (window.location.hash === '#password') {
+      setPasswordFormOpen(true);
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -1326,6 +1345,7 @@ function AppContent() {
       route.startsWith('/workspaces/') ||
       route.startsWith('/profile') ||
       route.startsWith('/invites') ||
+      route.startsWith('/settings') ||
       route.startsWith('/character/setup') ||
       route.startsWith('/dashboard');
     if (!accessToken && protectedPath) {
@@ -1466,6 +1486,13 @@ function AppContent() {
     page = <WorkspacesPage accessToken={accessToken} />;
   } else if (route.startsWith('/workspaces')) {
     page = <WorkspacesPage accessToken={accessToken} />;
+  } else if (route === '/settings' || route.startsWith('/settings/')) {
+    page =
+      !accessToken ? (
+        <Home onAuthed={handleAuthed} hasSession={false} />
+      ) : (
+        <SettingsPage accessToken={accessToken} initialTab={parseSettingsTabFromRoute(route)} />
+      );
   } else if (route.startsWith('/profile')) {
     page =
       !accessToken ? (
@@ -1613,6 +1640,14 @@ function AppContent() {
                     {pendingInvitesCount}
                   </span>
                 )}
+              </SpaLink>
+              <SpaLink
+                className="trello-profile-menu-item"
+                role="menuitem"
+                to="/settings"
+                onClick={() => setProfileMenuOpen(false)}
+              >
+                Настройки
               </SpaLink>
               <div className="trello-profile-menu-theme" role="presentation">
                 <span className="trello-profile-menu-theme-label">

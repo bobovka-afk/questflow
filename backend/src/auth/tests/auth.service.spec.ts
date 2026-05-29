@@ -10,6 +10,7 @@ import { AuthService } from '../auth.service';
 import { UserService } from '../../user/user.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../../mail/mail.service';
+import { UserSettingsService } from '../../user-settings/user-settings.service';
 import { createPrismaMock } from '../../testing/prisma-mock';
 
 describe('AuthService', () => {
@@ -22,6 +23,19 @@ describe('AuthService', () => {
   let prisma: ReturnType<typeof createPrismaMock>;
   let mailService: jest.Mocked<
     Pick<MailService, 'sendEmailVerification' | 'sendPasswordReset'>
+  >;
+  let userSettingsService: jest.Mocked<
+    Pick<
+      UserSettingsService,
+      | 'registerSession'
+      | 'resolveRefreshSession'
+      | 'rotateRefreshSession'
+      | 'revokeSessionByRefreshToken'
+      | 'revokeAllOtherSessions'
+      | 'revokeAllSessions'
+      | 'logPasswordChanged'
+      | 'logPasswordReset'
+    >
   >;
 
   beforeEach(() => {
@@ -50,12 +64,23 @@ describe('AuthService', () => {
       sendEmailVerification: jest.fn(),
       sendPasswordReset: jest.fn(),
     };
+    userSettingsService = {
+      registerSession: jest.fn().mockResolvedValue({ id: 'session-1' }),
+      resolveRefreshSession: jest.fn().mockResolvedValue({ id: 'session-1' }),
+      rotateRefreshSession: jest.fn().mockResolvedValue(undefined),
+      revokeSessionByRefreshToken: jest.fn().mockResolvedValue(undefined),
+      revokeAllOtherSessions: jest.fn().mockResolvedValue(undefined),
+      revokeAllSessions: jest.fn().mockResolvedValue(undefined),
+      logPasswordChanged: jest.fn().mockResolvedValue(undefined),
+      logPasswordReset: jest.fn().mockResolvedValue(undefined),
+    };
     service = new AuthService(
       userService as unknown as UserService,
       jwtService as unknown as JwtService,
       configService as unknown as ConfigService,
       prisma as unknown as PrismaService,
       mailService as unknown as MailService,
+      userSettingsService as unknown as UserSettingsService,
     );
   });
 
@@ -127,6 +152,26 @@ describe('AuthService', () => {
       const result = await service.getNewTokens('refresh');
       expect(result.user).toEqual({ id: 7 });
       expect(result.accessToken).toBe('token');
+      expect(userSettingsService.resolveRefreshSession).toHaveBeenCalledWith(
+        'refresh',
+        7,
+        undefined,
+      );
+      expect(userSettingsService.rotateRefreshSession).toHaveBeenCalledWith(
+        'session-1',
+        'token',
+        undefined,
+      );
+    });
+
+    it('rejects refresh when session cannot be resolved', async () => {
+      jwtService.verifyAsync.mockResolvedValue({ id: '7' });
+      userService.getById.mockResolvedValue({ id: 7 } as never);
+      userSettingsService.resolveRefreshSession.mockResolvedValue(null);
+      await expect(service.getNewTokens('refresh')).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(userSettingsService.rotateRefreshSession).not.toHaveBeenCalled();
     });
   });
 
@@ -142,6 +187,11 @@ describe('AuthService', () => {
         'o@x.com',
         'O',
         'p',
+      );
+      expect(userSettingsService.registerSession).toHaveBeenCalledWith(
+        3,
+        'token',
+        undefined,
       );
     });
 
@@ -250,8 +300,27 @@ describe('AuthService', () => {
       prisma.user!.findUnique!.mockResolvedValue({ id: 1, passwordHash: hash });
       prisma.user!.update!.mockResolvedValue({});
       await expect(
-        service.changePassword(1, 'old', 'new-pass'),
+        service.changePassword(1, 'old', 'new-pass', { ipAddress: '127.0.0.1' }, 'refresh-current'),
       ).resolves.toEqual({ ok: true });
+      expect(userSettingsService.logPasswordChanged).toHaveBeenCalledWith(
+        1,
+        true,
+        { ipAddress: '127.0.0.1' },
+      );
+      expect(userSettingsService.revokeAllOtherSessions).toHaveBeenCalledWith(
+        1,
+        'refresh-current',
+        { ipAddress: '127.0.0.1' },
+      );
+    });
+  });
+
+  describe('logout', () => {
+    it('revokes session by refresh token', async () => {
+      await service.logout('refresh-x');
+      expect(userSettingsService.revokeSessionByRefreshToken).toHaveBeenCalledWith(
+        'refresh-x',
+      );
     });
   });
 
@@ -288,8 +357,14 @@ describe('AuthService', () => {
       });
       prisma.$transaction!.mockResolvedValue([]);
       await expect(
-        service.confirmPasswordReset('token', 'new-pass'),
+        service.confirmPasswordReset('token', 'new-pass', { ipAddress: '10.0.0.2' }),
       ).resolves.toEqual({ ok: true });
+      expect(userSettingsService.logPasswordReset).toHaveBeenCalledWith(2, {
+        ipAddress: '10.0.0.2',
+      });
+      expect(userSettingsService.revokeAllSessions).toHaveBeenCalledWith(2, {
+        ipAddress: '10.0.0.2',
+      });
     });
   });
 
@@ -310,9 +385,17 @@ describe('AuthService', () => {
         passwordHash: hash,
         createdAt: new Date(),
       } as never);
-      const result = await service.login({ email: 'a@b.com', password: 'pass' });
+      const result = await service.login(
+        { email: 'a@b.com', password: 'pass' },
+        { userAgent: 'TestAgent' },
+      );
       expect(result.accessToken).toBe('token');
       expect(result.user.id).toBe(5);
+      expect(userSettingsService.registerSession).toHaveBeenCalledWith(
+        5,
+        'token',
+        { userAgent: 'TestAgent' },
+      );
     });
   });
 });

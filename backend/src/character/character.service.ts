@@ -45,6 +45,7 @@ import type {
   XpGrantRewards,
   XpGrantTransaction,
 } from '../gamification/xp/interface';
+import { SocialService } from '../social/social.service';
 
 @Injectable()
 export class CharacterService {
@@ -53,6 +54,7 @@ export class CharacterService {
     private configService: ConfigService,
     private questProgressService: QuestProgressService,
     private achievementService: AchievementService,
+    private socialService: SocialService,
   ) {}
 
   async getCharacter(userId: number): Promise<Character> {
@@ -93,12 +95,14 @@ export class CharacterService {
       });
     }
     this.assertAvatarPresetAllowedForCreate(dto.avatarPreset, dto.gender);
+    const friendCode = await this.socialService.generateUniqueFriendCode();
     const character = await this.prisma.character.create({
       data: {
         userId,
         name: dto.name,
         gender: dto.gender,
         avatarPreset: dto.avatarPreset,
+        friendCode,
       },
     });
     return character;

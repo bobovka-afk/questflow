@@ -3,6 +3,8 @@ export { BoardPage } from './board/BoardPage';
 export { InviteAcceptPage } from './invite-accept/InviteAcceptPage';
 export { InvitesPage } from './invites/InvitesPage';
 export { ProfileCharacterPage } from './profile-character/ProfileCharacterPage';
+export { SettingsPage } from './settings/SettingsPage';
+export { parseSettingsTabFromRoute, settingsRouteForTab } from './settings/settingsRoutes';
 export { UserCharacterPage } from './user-character/UserCharacterPage';
 export { UserProfilePage } from './user-profile/UserProfilePage';
 export { WorkspaceActivityPage } from './workspace-activity/WorkspaceActivityPage';

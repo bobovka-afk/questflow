@@ -14,6 +14,7 @@ import { CharacterService } from '../character.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { createPrismaMock } from '../../testing/prisma-mock';
 import { QuestProgressService } from '../../gamification/quest/quest-progress.service';
+import { SocialService } from '../../social/social.service';
 import {
   CHARACTER_HEALTH_MAX,
   DAILY_TASK_XP_COMPLETIONS_MAX,
@@ -44,10 +45,19 @@ describe('CharacterService', () => {
       recordXpDay: jest.fn().mockResolvedValue([]),
       recordDailyCheckin: jest.fn().mockResolvedValue([]),
     } as unknown as QuestProgressService;
+    const socialService = {
+      generateUniqueFriendCode: jest.fn().mockResolvedValue(1492),
+    } as unknown as SocialService;
+    const achievementService = {
+      recordMax: jest.fn().mockResolvedValue([]),
+      recordIncrement: jest.fn().mockResolvedValue([]),
+    };
     service = new CharacterService(
       prisma as unknown as PrismaService,
       configService as unknown as ConfigService,
       questProgressService,
+      achievementService as never,
+      socialService,
     );
   });
 

@@ -2033,7 +2033,7 @@
 
 .trello-character-rpg-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   gap: 10px;
   margin-bottom: 14px;
   width: 100%;
@@ -2073,6 +2073,25 @@
   background: linear-gradient(180deg, #3f6c4a, #2f5238);
   border-color: rgba(24, 59, 32, 0.7);
   color: #f7fbf7;
+}
+
+.trello-character-rpg-tab-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: #c45a1a;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.trello-character-rpg-tab--active .trello-character-rpg-tab-badge {
+  background: #f0dfb9;
+  color: #3f2a0f;
 }
 
 .trello-character-rpg-tab-panel {
@@ -2350,9 +2369,99 @@
   min-height: 0;
 }
 
-.trello-modal.trello-character-loot-popup--cosmetics {
-  width: min(90vw, 1880px);
-  max-width: min(90vw, 1880px);
+/* Хранилище: уже общего loot-popup (~−20% ширины), без вертикального скролла */
+.trello-modal.trello-character-loot-popup--storage {
+  width: min(70vw, 1480px);
+  max-width: min(70vw, 1480px);
+  max-height: min(88vh, 860px);
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+.trello-modal.trello-character-loot-popup--storage.trello-character-loot-popup--static .trello-modal-body,
+.trello-character-storage-modal-body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  padding: 8px 12px 10px;
+  gap: 6px;
+}
+
+.trello-character-loot-popup--storage .trello-character-loot-popup-head--centered {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.trello-character-loot-popup--storage .trello-character-loot-popup-title--hero {
+  font-size: clamp(16px, 1.9vw, 22px);
+  letter-spacing: 0.05em;
+  padding: 0 36px;
+}
+
+.trello-character-loot-popup--storage .trello-character-storage-inner-tabs {
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.trello-character-loot-popup--storage .trello-character-storage-inner-tab {
+  min-height: 36px;
+  padding: 8px 6px;
+  font-size: 12px;
+  border-radius: 9px;
+  letter-spacing: 0.03em;
+}
+
+.trello-character-loot-popup--storage .trello-character-inventory-grid--storage {
+  gap: clamp(6px, 0.75vw, 10px);
+}
+
+.trello-character-loot-popup--storage .trello-character-inventory-grid--storage .trello-character-inventory-slot {
+  padding: clamp(5px, 0.65vw, 9px);
+  gap: 4px;
+}
+
+.trello-character-loot-popup--storage .trello-character-inventory-grid--storage .trello-character-inventory-slot-title {
+  font-size: clamp(10px, 0.72vw, 12px);
+}
+
+.trello-character-loot-popup--storage .trello-character-inventory-grid--storage .trello-character-inventory-slot-meta {
+  font-size: clamp(9px, 0.65vw, 11px);
+}
+
+.trello-character-loot-popup--storage .trello-character-inventory-grid--storage .trello-character-chest-icon-img {
+  width: min(72%, 88px);
+}
+
+.trello-character-loot-popup--storage .trello-character-storage-pager {
+  padding-top: 0;
+}
+
+.trello-character-loot-popup--storage .trello-character-storage-pager-btn {
+  min-width: 42px;
+  min-height: 42px;
+  font-size: 20px;
+}
+
+.trello-character-loot-popup--storage .trello-character-storage-pager-label {
+  font-size: 13px;
+  min-width: 56px;
+}
+
+.trello-character-loot-popup--storage-cosmetics .trello-character-storage-cosmetics-layout--with-preview {
+  grid-template-columns: minmax(150px, 170px) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.trello-character-loot-popup--storage-cosmetics .trello-character-storage-preview-portrait {
+  width: min(100%, 160px);
+}
+
+.trello-character-loot-popup--storage-cosmetics .trello-character-storage-preview-hint {
+  font-size: 10px;
+  max-width: 160px;
+}
+
+.trello-character-loot-popup--storage .trello-character-storage-page {
+  overflow: hidden;
 }
 
 .trello-character-loot-popup-head--centered {
@@ -2803,10 +2912,14 @@
     grid-template-columns: repeat(8, minmax(0, 1fr));
   }
 
-  .trello-modal.trello-character-loot-popup--static,
-  .trello-modal.trello-character-loot-popup--cosmetics {
+  .trello-modal.trello-character-loot-popup--static {
     width: min(92vw, 1880px);
     max-width: min(92vw, 1880px);
+  }
+
+  .trello-modal.trello-character-loot-popup--storage {
+    width: min(78vw, 1480px);
+    max-width: min(78vw, 1480px);
   }
 
   .trello-modal.trello-chest-loot-odds-modal.trello-character-loot-popup--static {
@@ -2834,6 +2947,12 @@
     width: min(94vw, 1720px);
     max-width: min(94vw, 1720px);
     max-height: min(94vh, 920px);
+  }
+
+  .trello-modal.trello-character-loot-popup--storage {
+    width: min(84vw, 100%);
+    max-width: min(84vw, 1480px);
+    max-height: min(90vh, 860px);
   }
 
   .trello-modal.trello-chest-loot-odds-modal.trello-character-loot-popup--static {
@@ -3181,6 +3300,296 @@
 .theme-dark .trello-character-cosmetic-storage-slot--equipped {
   border-color: rgba(117, 193, 141, 0.65);
   box-shadow: inset 0 0 0 2px rgba(117, 193, 141, 0.2);
+}
+
+/* Social: friends & direct messages */
+.trello-social-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 200px;
+}
+
+.trello-social-section-title {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #5c4a32;
+}
+
+.theme-dark .trello-social-section-title {
+  color: #f2d6a8;
+}
+
+.trello-social-my-code-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.trello-social-my-code {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #3d2f1f;
+}
+
+.theme-dark .trello-social-my-code {
+  color: #fff4e0;
+}
+
+.trello-social-hint {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+}
+
+.trello-social-add-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trello-social-code-input {
+  max-width: 120px;
+}
+
+.trello-social-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trello-social-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(92, 74, 50, 0.08);
+}
+
+.theme-dark .trello-social-list-row {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.trello-social-list-name {
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.trello-social-list-code {
+  font-size: 0.8rem;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.trello-social-list-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.trello-social-messages-layout {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) 1fr;
+  gap: 12px;
+  min-height: 280px;
+}
+
+@media (max-width: 720px) {
+  .trello-social-messages-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trello-social-conv-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trello-social-conv-btn {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(92, 74, 50, 0.2);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  position: relative;
+}
+
+.trello-social-conv-btn--active {
+  border-color: rgba(180, 120, 40, 0.65);
+  background: rgba(217, 116, 42, 0.12);
+}
+
+.theme-dark .trello-social-conv-btn {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(209, 160, 84, 0.25);
+  color: #f5e6cc;
+}
+
+.trello-social-conv-name {
+  display: block;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.trello-social-conv-preview {
+  display: block;
+  font-size: 0.78rem;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trello-social-unread-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #c45a1a;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trello-social-conversation {
+  display: flex;
+  flex-direction: column;
+  min-height: 260px;
+  border: 1px solid rgba(92, 74, 50, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.theme-dark .trello-social-conversation {
+  border-color: rgba(209, 160, 84, 0.28);
+}
+
+.trello-social-conversation-head {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(92, 74, 50, 0.15);
+  background: rgba(92, 74, 50, 0.06);
+}
+
+.theme-dark .trello-social-conversation-head {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(209, 160, 84, 0.2);
+}
+
+.trello-social-messages-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  max-height: 320px;
+}
+
+.trello-social-messages-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trello-social-message {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.trello-social-message--mine {
+  align-self: flex-end;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 4px;
+  background: linear-gradient(180deg, #d9742a, #b85a1a);
+  color: #fff8ef;
+}
+
+.trello-social-message-body {
+  word-break: break-word;
+}
+
+.trello-social-msg-ticks {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.85;
+  margin-bottom: 1px;
+}
+
+.trello-social-msg-tick--second {
+  margin-left: -5px;
+}
+
+.trello-social-msg-ticks--read {
+  opacity: 1;
+  color: #b8dcff;
+}
+
+.trello-social-message--theirs {
+  align-self: flex-start;
+  background: rgba(92, 74, 50, 0.12);
+  color: inherit;
+}
+
+.theme-dark .trello-social-message--theirs {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.trello-social-compose {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-top: 1px solid rgba(92, 74, 50, 0.15);
+}
+
+.trello-social-compose-hint {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  border-top: 1px solid rgba(92, 74, 50, 0.15);
+}
+
+.trello-social-user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 0 16px 16px;
+}
+
+.trello-social-select-hint {
+  padding: 24px;
+  text-align: center;
 }
 
 

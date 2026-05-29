@@ -36,6 +36,7 @@ import {
 	type RewardToastStep,
 	type XpGrantRewards
 } from '@entities/reward'
+import { useGamificationSettings } from '@entities/user-settings'
 import { avatarInitials, avatarSrcFromPath, userProfilePath } from '@entities/user'
 import { SpaLink } from '@shared/lib/navigation'
 import { handleSpaTileAuxClick, handleSpaTileClick } from '@shared/lib/navigation-core'
@@ -390,6 +391,7 @@ export function BoardPage({
 		id: number
 	} | null>(null)
 	const rewardToastRunIdRef = useRef(0)
+	const [gamificationSettings] = useGamificationSettings(accessToken)
 	const [xpBottomNotice, setXpBottomNotice] = useState<{
 		id: number
 		text: string
@@ -405,7 +407,7 @@ export function BoardPage({
 
 	const playRewardToastSequence = useCallback(
 		async (rewards: XpGrantRewards) => {
-			const steps = buildRewardToastSteps(rewards)
+			const steps = buildRewardToastSteps(rewards, gamificationSettings)
 			if (steps.length === 0) return
 
 			const runId = ++rewardToastRunIdRef.current
@@ -420,7 +422,7 @@ export function BoardPage({
 				}
 			}
 		},
-		[]
+		[gamificationSettings]
 	)
 
 	const [cardTitleEditing, setCardTitleEditing] = useState(false)
@@ -941,7 +943,7 @@ export function BoardPage({
 					xpRecipientId != null &&
 					xpRecipientId === currentUserId &&
 					completionRes.rewards &&
-					hasRewardToast(completionRes.rewards)
+					hasRewardToast(completionRes.rewards, gamificationSettings)
 				) {
 					const rewards = completionRes.rewards
 					if (
@@ -1003,6 +1005,7 @@ export function BoardPage({
 			accessToken,
 			completionBusyId,
 			currentUserId,
+			gamificationSettings,
 			playRewardToastSequence,
 			workspaceId
 		]
@@ -2282,6 +2285,8 @@ export function BoardPage({
 				<CheckinRewardToast
 					rewards={rewardToast.step.rewards}
 					toastId={rewardToast.id}
+					showXp={rewardToast.step.showXp}
+					disableStreakAnimation={rewardToast.step.disableStreakAnimation}
 				/>
 			) : null}
 			{rewardToast?.step.kind === 'task' ? (

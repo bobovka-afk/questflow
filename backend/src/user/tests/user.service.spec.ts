@@ -87,7 +87,17 @@ describe('UserService', () => {
       name: 'U',
     });
     expect(user.hasPassword).toBe(true);
-    expect(prisma.user!.create).toHaveBeenCalled();
+    expect(prisma.user!.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          settings: expect.objectContaining({
+            create: expect.objectContaining({
+              gamification: expect.any(Object),
+            }),
+          }),
+        }),
+      }),
+    );
   });
 
   it('getProfileForViewer returns user when shared workspace', async () => {
@@ -103,7 +113,12 @@ describe('UserService', () => {
     prisma.user!.create!.mockResolvedValue({ id: 1, email: 'o@x.com' });
     await service.createOAuthUser(' O@X.COM ', 'O', 'pic');
     expect(prisma.user!.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ email: 'o@x.com' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          email: 'o@x.com',
+          settings: expect.objectContaining({ create: expect.any(Object) }),
+        }),
+      }),
     );
   });
 

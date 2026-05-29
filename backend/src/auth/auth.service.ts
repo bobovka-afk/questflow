@@ -22,11 +22,14 @@ import type {
   RefreshTokensResult,
   RegisterResult,
 } from './type';
+import { REFRESH_TOKEN_COOKIE_NAME } from './constants/refresh-token.constants';
+import { UserSettingsService } from '../user-settings/user-settings.service';
+import type { SessionRequestMeta } from '../user-settings/interface';
 
 @Injectable()
 export class AuthService {
   private readonly EXPIRE_DAY_REFRESH_TOKEN = 7
-  public readonly REFRESH_TOKEN_NAME = 'refreshToken'
+  public readonly REFRESH_TOKEN_NAME = REFRESH_TOKEN_COOKIE_NAME
 
   constructor(
     private readonly userService: UserService,
@@ -34,6 +37,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
+    private readonly userSettingsService: UserSettingsService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<RegisterResult> {
@@ -59,11 +63,14 @@ export class AuthService {
     return user;
   }
 
-  async login(loginDto: LoginDto): Promise<LoginResult> {
-    return this.signIn(loginDto);
+  async login(loginDto: LoginDto, meta?: SessionRequestMeta): Promise<LoginResult> {
+    return this.signIn(loginDto, meta);
   }
 
-  async getNewTokens(refreshToken: string): Promise<RefreshTokensResult> {
+  async getNewTokens(
+    refreshToken: string,
+    meta?: SessionRequestMeta,
+  ): Promise<RefreshTokensResult> {
     try {
         const result = await this.jwtService.verifyAsync<{ id: string }>(
             refreshToken
@@ -77,10 +84,28 @@ export class AuthService {
             })
         }
 
+        const session = await this.userSettingsService.resolveRefreshSession(
+          refreshToken,
+          user.id,
+          meta,
+        )
+        if (!session) {
+          throw new UnauthorizedException({
+            code: 'INVALID_REFRESH_TOKEN',
+            message: 'Invalid refresh token',
+          })
+        }
+
         const tokens = this.issueTokens(user.id)
+        await this.userSettingsService.rotateRefreshSession(
+          session.id,
+          tokens.refreshToken,
+          meta,
+        )
 
         return { user, ...tokens }
-    } catch {
+    } catch (error) {
+        if (error instanceof UnauthorizedException) throw error
         throw new UnauthorizedException({
           code: 'INVALID_REFRESH_TOKEN',
           message: 'Invalid refresh token',
@@ -103,9 +128,12 @@ export class AuthService {
     return { accessToken, refreshToken }
 }
 
-  async validateOAuthLogin(req: {
-    user: { email: string; name: string; picture: string };
-  }): Promise<OAuthLoginResult> {
+  async validateOAuthLogin(
+    req: {
+      user: { email: string; name: string; picture: string };
+    },
+    meta?: SessionRequestMeta,
+  ): Promise<OAuthLoginResult> {
     const normalizedEmail = this.normalizeEmail(req.user.email);
     let user: User | null = await this.userService.findByEmail(
         normalizedEmail
@@ -124,6 +152,7 @@ export class AuthService {
       });
     }
     const tokens = this.issueTokens(user!.id);
+    await this.userSettingsService.registerSession(user!.id, tokens.refreshToken, meta);
 
     return { user: user!, ...tokens };
   }
@@ -249,6 +278,7 @@ export class AuthService {
   async confirmPasswordReset(
     token: string,
     newPassword: string,
+    meta?: SessionRequestMeta,
   ): Promise<{ ok: boolean }> {
     if (!token) {
       throw new BadRequestException({
@@ -297,6 +327,9 @@ export class AuthService {
       }),
     ]);
 
+    await this.userSettingsService.logPasswordReset(authToken!.userId, meta);
+    await this.userSettingsService.revokeAllSessions(authToken!.userId, meta);
+
     return { ok: true };
   }
 
@@ -304,6 +337,8 @@ export class AuthService {
     userId: number,
     currentPassword: string | undefined,
     newPassword: string,
+    meta?: SessionRequestMeta,
+    currentRefreshToken?: string,
   ): Promise<{ ok: boolean }> {
     if (!newPassword) {
       throw new BadRequestException({
@@ -356,12 +391,27 @@ export class AuthService {
       data: { passwordHash },
     });
 
+    await this.userSettingsService.logPasswordChanged(userId, Boolean(user.passwordHash), meta);
+    await this.userSettingsService.revokeAllOtherSessions(
+      userId,
+      currentRefreshToken,
+      meta,
+    );
+
     return { ok: true };
   }
 
-  private async signIn(loginDto: LoginDto): Promise<LoginResult> {
+  async logout(refreshToken?: string): Promise<void> {
+    await this.userSettingsService.revokeSessionByRefreshToken(refreshToken);
+  }
+
+  private async signIn(
+    loginDto: LoginDto,
+    meta?: SessionRequestMeta,
+  ): Promise<LoginResult> {
     const user = await this.validateUser(loginDto);
     const tokens = this.issueTokens(user.id);
+    await this.userSettingsService.registerSession(user.id, tokens.refreshToken, meta);
     return { user, ...tokens };
   }
 

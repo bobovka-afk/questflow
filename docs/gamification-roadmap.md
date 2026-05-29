@@ -426,6 +426,20 @@ model InventoryItem {
 
 ---
 
+## Phase 4.social — Друзья и личные сообщения (MVP) — **Done**
+
+| Что | Реализация |
+|-----|-------------|
+| Friend code | `Character.friendCode` 1000–9999, UI `#1492`, уникальный при create |
+| Заявки | PENDING → ACCEPTED / DECLINED; добавление только по коду |
+| DM | `DirectMessage`, REST; poll `GET .../messages/with/:id?since=` каждые 5 с в открытом чате |
+| Кому писать | Друзья или общий workspace (как `getProfileForViewer`) |
+| UI | Вкладки «Друзья» / «Сообщения» на `ProfileCharacterPage`; кнопки на `UserCharacterPage` |
+
+**Не в v1:** WebSocket, групповые чаты, блокировка, поиск по имени персонажа.
+
+---
+
 ## Phase 4 — E2E и гайд по игре (финал v1)
 
 **Когда:** после завершения механик Phase 0–2 (и опционально выбранных пунктов Phase 3). Не блокирует разработку фич — сводит правила и регрессию в одном месте.

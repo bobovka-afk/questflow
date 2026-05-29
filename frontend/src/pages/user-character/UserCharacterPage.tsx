@@ -9,6 +9,13 @@ import { SpaLink } from '@shared/lib/navigation';
 import { navigate } from '@shared/lib/navigation-core';
 import { userProfilePath } from '@entities/user';
 import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
+import {
+  acceptFriendRequest,
+  fetchUserRelation,
+  formatFriendCode,
+  sendFriendRequest,
+  type UserRelationView,
+} from '@entities/social';
 
 type Props = {
   accessToken: string;
@@ -20,6 +27,9 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
   const [character, setCharacter] = useState<CharacterDto | null>(null);
   const [loadPhase, setLoadPhase] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading');
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [relation, setRelation] = useState<UserRelationView | null>(null);
+  const [socialBusy, setSocialBusy] = useState(false);
+  const [socialMsg, setSocialMsg] = useState<string | null>(null);
 
   const isSelf = currentUserId != null && userId === currentUserId;
 
@@ -61,6 +71,22 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
     };
   }, [accessToken, userId, isSelf]);
 
+  useEffect(() => {
+    if (isSelf || loadPhase !== 'ready') return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const rel = await fetchUserRelation(accessToken, userId);
+        if (!cancelled) setRelation(rel);
+      } catch {
+        if (!cancelled) setRelation(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, userId, isSelf, loadPhase]);
+
   const xpToward = useMemo(() => {
     if (!character) {
       return { atMaxLevel: false, into: 0, needed: 0, pct: 0 } as const;
@@ -70,6 +96,29 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
 
   function goBack() {
     navigate(userProfilePath(userId));
+  }
+
+  function openMessages() {
+    navigate(`/profile/character?with=${userId}`);
+  }
+
+  async function handleAddFriend() {
+    if (!character?.friendCode) return;
+    setSocialBusy(true);
+    setSocialMsg(null);
+    try {
+      if (relation?.incomingRequestId != null) {
+        await acceptFriendRequest(accessToken, relation.incomingRequestId);
+      } else {
+        await sendFriendRequest(accessToken, character.friendCode);
+      }
+      const rel = await fetchUserRelation(accessToken, userId);
+      setRelation(rel);
+    } catch (e) {
+      setSocialMsg(formatApiError(e));
+    } finally {
+      setSocialBusy(false);
+    }
   }
 
   if (isSelf) {
@@ -173,6 +222,8 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
           </div>
         </header>
 
+        {socialMsg && <div className="trello-banner trello-banner-error">{socialMsg}</div>}
+
         <section className="trello-character-profile">
           <div className="trello-character-profile-hero trello-character-profile-hero--stacked">
             <div className="trello-character-profile-portrait-column">
@@ -251,6 +302,42 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
               </div>
             </div>
           </div>
+          {relation && (
+            <div className="trello-social-user-actions">
+              {character.friendCode != null && (
+                <span className="trello-muted trello-social-user-code">
+                  ID: {formatFriendCode(character.friendCode)}
+                </span>
+              )}
+              {!relation.isFriend && !relation.outgoingRequestId && (
+                <button
+                  type="button"
+                  className="trello-btn trello-btn-primary trello-btn-sm"
+                  disabled={socialBusy || character.friendCode == null}
+                  onClick={() => void handleAddFriend()}
+                >
+                  {relation.incomingRequestId != null
+                    ? 'Принять заявку'
+                    : 'Добавить в друзья'}
+                </button>
+              )}
+              {relation.outgoingRequestId != null && !relation.isFriend && (
+                <span className="trello-muted">Заявка отправлена</span>
+              )}
+              {relation.isFriend && (
+                <span className="trello-muted">В друзьях</span>
+              )}
+              {relation.canMessage && (
+                <button
+                  type="button"
+                  className="trello-btn trello-btn-ghost trello-btn-sm"
+                  onClick={openMessages}
+                >
+                  Написать
+                </button>
+              )}
+            </div>
+          )}
         </section>
       </div>
     </div>

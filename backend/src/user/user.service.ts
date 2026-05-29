@@ -3,12 +3,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { User } from '../generated/prisma/client';
+import { Prisma, User } from '../generated/prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from '../auth/dto/register.dto';
 import type { UserProfileView, UserPublic } from './interface';
 import type { UserPublicRow } from './type';
+import {
+  DEFAULT_GAMIFICATION_SETTINGS,
+  DEFAULT_SECURITY_SETTINGS,
+  DEFAULT_SITE_SETTINGS,
+} from '../user-settings/config/default-user-settings';
 
 @Injectable()
 export class UserService {
@@ -89,6 +94,13 @@ export class UserService {
         email: normalizedEmail,
         name: dto.name,
         passwordHash: await bcrypt.hash(dto.password, 10),
+        settings: {
+          create: {
+            gamification: DEFAULT_GAMIFICATION_SETTINGS as Prisma.InputJsonValue,
+            site: DEFAULT_SITE_SETTINGS as Prisma.InputJsonValue,
+            security: DEFAULT_SECURITY_SETTINGS as Prisma.InputJsonValue,
+          },
+        },
       },
     });
     return this.toUserPublic(user);
@@ -106,6 +118,13 @@ export class UserService {
         name,
         avatarPath: picture,
         emailVerifiedAt: new Date(),
+        settings: {
+          create: {
+            gamification: DEFAULT_GAMIFICATION_SETTINGS as Prisma.InputJsonValue,
+            site: DEFAULT_SITE_SETTINGS as Prisma.InputJsonValue,
+            security: DEFAULT_SECURITY_SETTINGS as Prisma.InputJsonValue,
+          },
+        },
       },
     });
 

@@ -36,6 +36,8 @@ import type {
   RefreshTokensResult,
   RegisterResult,
 } from './type';
+import { sessionMetaFromRequest } from './lib/session-meta';
+import { REFRESH_TOKEN_COOKIE_NAME } from './constants/refresh-token.constants';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -68,9 +70,13 @@ export class AuthController {
   @ApiResponse({ status: 429, description: "code: 'RATE_LIMIT_EXCEEDED'" })
   async login(
     @Body() loginDto: LoginDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<Omit<LoginResult, 'refreshToken'>> {
-    const { refreshToken, ...response } = await this.authService.login(loginDto);
+    const { refreshToken, ...response } = await this.authService.login(
+      loginDto,
+      sessionMetaFromRequest(req),
+    );
     this.authService.addRefreshTokenToResponse(res, refreshToken);
     return response;
   }
@@ -97,7 +103,10 @@ export class AuthController {
 		}
 
 		const { refreshToken, ...response } =
-			await this.authService.getNewTokens(refreshTokenFromCookies)
+			await this.authService.getNewTokens(
+        refreshTokenFromCookies,
+        sessionMetaFromRequest(req),
+      )
 		this.authService.addRefreshTokenToResponse(res, refreshToken)
 		return response
 	}
@@ -107,7 +116,12 @@ export class AuthController {
 	@Post('logout')
 	@ApiOperation({ summary: 'Clear refresh token cookie' })
 	@ApiResponse({ status: 200, description: 'User logged out successfully.' })
-	logout(@Res({ passthrough: true }) res: Response): boolean {
+	async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<boolean> {
+    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE_NAME] as string | undefined;
+    await this.authService.logout(refreshToken);
 		this.authService.removeRefreshTokenFromResponse(res)
 		return true
 	}
@@ -194,13 +208,16 @@ export class AuthController {
   @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED' | code: 'USER_NOT_FOUND' | code: 'INVALID_CURRENT_PASSWORD'" })
   @ApiResponse({ status: 429, description: "code: 'RATE_LIMIT_EXCEEDED'" })
   changePassword(
-    @Req() req: AuthedRequest,
+    @Req() req: AuthedRequest & Request,
     @Body() dto: ChangePasswordDto,
   ): Promise<{ ok: boolean }> {
+    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE_NAME] as string | undefined;
     return this.authService.changePassword(
       req.user.id,
       dto.currentPassword,
       dto.newPassword,
+      sessionMetaFromRequest(req),
+      refreshToken,
     );
   }
 
@@ -216,11 +233,11 @@ export class AuthController {
 	@ApiOperation({ summary: 'Handle Google OAuth callback' })
 	@ApiResponse({ status: 302, description: 'Redirect to the client application after Google authentication.' })
 	async googleAuthCallback(
-		@Req() req: { user: { email: string; name: string; picture: string } },
+		@Req() req: Request & { user: { email: string; name: string; picture: string } },
 		@Res({ passthrough: true }) res: Response,
 	): Promise<void> {
 		const { refreshToken, ...response } =
-			await this.authService.validateOAuthLogin(req)
+			await this.authService.validateOAuthLogin(req, sessionMetaFromRequest(req))
 		this.authService.addRefreshTokenToResponse(res, refreshToken)
 		const clientUrl = this.configService.get<string>('CLIENT_URL') || ''
 		res.redirect(

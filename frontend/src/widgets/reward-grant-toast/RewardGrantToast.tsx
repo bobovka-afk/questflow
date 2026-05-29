@@ -28,21 +28,24 @@ function RewardToastShell(props: ToastShellProps) {
 type CheckinProps = {
   rewards: XpGrantRewards;
   toastId: number;
+  showXp?: boolean;
+  disableStreakAnimation?: boolean;
 };
 
 export function CheckinRewardToast(props: CheckinProps) {
   const { rewards } = props;
+  const showXp = props.showXp ?? true;
   const showStreak =
     rewards.streakIncreased ||
     rewards.checkinStreak > 0 ||
-    rewards.checkinXp > 0;
+    (showXp && rewards.checkinXp > 0);
 
   return (
     <RewardToastShell
       toastId={props.toastId}
       className="trello-reward-toast trello-reward-toast--checkin"
     >
-      {rewards.checkinXp > 0 || (rewards.streakMilestoneXp ?? 0) > 0 ? (
+      {showXp && (rewards.checkinXp > 0 || (rewards.streakMilestoneXp ?? 0) > 0) ? (
         <div className="trello-reward-toast-xp">
           <img
             src={xpToastIconUrl()}
@@ -82,7 +85,11 @@ export function CheckinRewardToast(props: CheckinProps) {
           <CheckinStreakCounter
             streak={rewards.checkinStreak}
             animateFrom={
-              rewards.streakIncreased ? rewards.previousCheckinStreak : null
+              props.disableStreakAnimation
+                ? null
+                : rewards.streakIncreased
+                  ? rewards.previousCheckinStreak
+                  : null
             }
             size="toast"
           />
