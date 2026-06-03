@@ -19,16 +19,16 @@ import {
   writeCharacterStreakSnapshot,
   type StreakProfileFeedback,
 } from '@entities/character/lib/characterStreakSnapshot';
-import { CHARACTER_HEALTH_MAX } from '@entities/reward';
 import { CharacterCreateForm } from '@features/character-create/ui/CharacterCreateForm';
 import { SpaLink } from '@shared/lib/navigation';
 import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
 import { ProfileCharacterQuestsPanel, type ProfileCharacterTabKey } from '@widgets/profile-character-quests/ProfileCharacterQuestsPanel';
 import { FriendsPanel } from '@widgets/social-friends/FriendsPanel';
 import { MessagesPanel } from '@widgets/social-messages/MessagesPanel';
+import { RaidPanel } from '@widgets/party-raid/RaidPanel';
 import { useSocialInboxSummary } from '@entities/social';
 import { CharacterPortraitWithFrame } from '@widgets/character-portrait/CharacterPortraitWithFrame';
-import { healthStatIconUrl, levelStatIconUrl, xpToastIconUrl } from '@shared/assets/uiAssets';
+import { CharacterStatsPanel } from '@widgets/character-stats/CharacterStatsPanel';
 
 type Props = {
   accessToken: string;
@@ -63,9 +63,9 @@ export function ProfileCharacterPage(props: Props) {
   > | null>(null);
 
   const [loadKey, setLoadKey] = useState(0);
-  const [activePanelTab, setActivePanelTab] = useState<ProfileCharacterTabKey | 'friends' | 'messages'>(
-    'quests',
-  );
+  const [activePanelTab, setActivePanelTab] = useState<
+    ProfileCharacterTabKey | 'character' | 'friends' | 'messages' | 'raid'
+  >('character');
   const [tabOpenSignal, setTabOpenSignal] = useState(0);
   const [messagePeerUserId, setMessagePeerUserId] = useState<number | null>(null);
 
@@ -335,6 +335,7 @@ export function ProfileCharacterPage(props: Props) {
           <div className="trello-character-rpg-shell">
             <div className="trello-character-rpg-tabs" role="tablist" aria-label="Разделы персонажа">
               {[
+                { key: 'character', label: 'Персонаж', badge: 0 },
                 { key: 'quests', label: 'Задания', badge: 0 },
                 {
                   key: 'friends',
@@ -349,6 +350,7 @@ export function ProfileCharacterPage(props: Props) {
                   label: 'Сообщения',
                   badge: inboxSummary.unreadMessages,
                 },
+                { key: 'raid', label: 'Рейд', badge: 0 },
                 { key: 'inventory', label: 'Хранилище', badge: 0 },
                 { key: 'shop', label: 'Магазин', badge: 0 },
                 { key: 'achievements', label: 'Достижения', badge: 0 },
@@ -365,7 +367,12 @@ export function ProfileCharacterPage(props: Props) {
                       : 'trello-character-rpg-tab'
                   }
                   onClick={() => {
-                    const nextTab = tab.key as ProfileCharacterTabKey | 'friends' | 'messages';
+                    const nextTab = tab.key as
+                      | ProfileCharacterTabKey
+                      | 'character'
+                      | 'friends'
+                      | 'messages'
+                      | 'raid';
                     if (activePanelTab === nextTab) {
                       setTabOpenSignal((prev) => prev + 1);
                       return;
@@ -409,78 +416,10 @@ export function ProfileCharacterPage(props: Props) {
                 />
               </div>
               <div className="trello-character-profile-info-col trello-character-profile-info-col--rpg">
-              <div className="trello-character-stat-row">
-                <div className="trello-character-stat-pill trello-character-stat-pill--level">
-                  <div className="trello-character-stat-label-row">
-                    <span className="trello-character-stat-label">УРОВЕНЬ</span>
-                    <img src={levelStatIconUrl()} alt="" className="trello-character-stat-icon" loading="lazy" />
-                  </div>
-                  <div
-                    className="trello-character-stat-meter"
-                    role="img"
-                    aria-label={`Уровень ${character.level}`}
-                  >
-                    <div
-                      className="trello-character-stat-bar-fill trello-character-stat-bar-fill--level"
-                      style={{ width: '100%' }}
-                      aria-hidden
-                    />
-                    <span className="trello-character-stat-meter-value">{character.level}</span>
-                  </div>
-                </div>
-                <div className="trello-character-stat-pill trello-character-stat-pill--xp">
-                  <div className="trello-character-stat-label-row">
-                    <span className="trello-character-stat-label">ОПЫТ</span>
-                    <img src={xpToastIconUrl()} alt="" className="trello-character-stat-icon" loading="lazy" />
-                  </div>
-                  <div
-                    className="trello-character-stat-meter"
-                    role="img"
-                    aria-label={
-                      xpToward.atMaxLevel
-                        ? 'Опыт: максимальный уровень'
-                        : `Опыт ${xpToward.into} из ${xpToward.needed}`
-                    }
-                  >
-                    <div
-                      className="trello-character-stat-bar-fill trello-character-stat-bar-fill--xp"
-                      style={{ width: `${xpToward.pct}%` }}
-                      aria-hidden
-                    />
-                    <span className="trello-character-stat-meter-value trello-character-stat-meter-value--xp">
-                      {xpToward.atMaxLevel ? (
-                        <>Макс. уровень</>
-                      ) : (
-                        <>
-                          {xpToward.into} / {xpToward.needed}
-                        </>
-                      )}
-                    </span>
-                  </div>
-                </div>
-                <div className="trello-character-stat-pill trello-character-stat-pill--health">
-                  <div className="trello-character-stat-label-row">
-                    <span className="trello-character-stat-label">ЗДОРОВЬЕ</span>
-                    <img src={healthStatIconUrl()} alt="" className="trello-character-stat-icon" loading="lazy" />
-                  </div>
-                  <div
-                    className="trello-character-stat-meter"
-                    role="img"
-                    aria-label={`Здоровье ${character.health}`}
-                  >
-                    <div
-                      className="trello-character-stat-bar-fill trello-character-stat-bar-fill--health"
-                      style={{
-                        width: `${Math.min(100, Math.round((character.health / CHARACTER_HEALTH_MAX) * 100))}%`,
-                      }}
-                      aria-hidden
-                    />
-                    <span className="trello-character-stat-meter-value">{character.health}</span>
-                  </div>
-                </div>
-              </div>
               <div className="trello-character-rpg-inline-panel">
-                {activePanelTab === 'friends' ? (
+                {activePanelTab === 'character' ? (
+                  <CharacterStatsPanel character={character} xpToward={xpToward} />
+                ) : activePanelTab === 'friends' ? (
                   <FriendsPanel
                     accessToken={props.accessToken}
                     onInboxChange={refreshInbox}
@@ -497,6 +436,20 @@ export function ProfileCharacterPage(props: Props) {
                     initialPeerUserId={messagePeerUserId}
                     visible={activePanelTab === 'messages'}
                     onInboxChange={refreshInbox}
+                  />
+                ) : activePanelTab === 'raid' ? (
+                  <RaidPanel
+                    accessToken={props.accessToken}
+                    currentUserId={character.userId}
+                    manaCurrent={character.manaCurrent ?? 0}
+                    onRefreshCharacter={async () => {
+                      const c = await api<CharacterDto>('/character/me', {
+                        method: 'GET',
+                        accessToken: props.accessToken,
+                      });
+                      setCharacter(c);
+                      props.onCharacterUpdated?.(c);
+                    }}
                   />
                 ) : (
                   <ProfileCharacterQuestsPanel

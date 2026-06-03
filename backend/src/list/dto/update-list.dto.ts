@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MaxLength, MinLength, IsEnum } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MaxLength, MinLength, IsEnum } from 'class-validator';
 import { ListColorPreset } from '../../generated/prisma/enums';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -24,4 +24,8 @@ export class UpdateListDto {
   @IsEnum(ListColorPreset)
   colorPreset?: ListColorPreset;
 
+  @ApiPropertyOptional({ description: 'true = archive, false = restore' })
+  @IsOptional()
+  @IsBoolean()
+  archived?: boolean;
 }

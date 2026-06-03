@@ -2,17 +2,31 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { UserService } from '../user.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { createPrismaMock } from '../../testing/prisma-mock';
+import { UserSettingsService } from '../../user-settings/user-settings.service';
 
 describe('UserService', () => {
   let service: UserService;
   let prisma: ReturnType<typeof createPrismaMock>;
+  let userSettingsService: {
+    getPrivacySettings: jest.Mock;
+  };
 
   beforeEach(() => {
     prisma = createPrismaMock();
-    service = new UserService(prisma as unknown as PrismaService);
+    userSettingsService = {
+      getPrivacySettings: jest.fn().mockResolvedValue({
+        allowCharacterView: true,
+        showAccountAvatarOnPublicProfile: true,
+      }),
+    };
+    service = new UserService(
+      prisma as unknown as PrismaService,
+      userSettingsService as unknown as UserSettingsService,
+    );
   });
 
   describe('getById', () => {
@@ -53,12 +67,41 @@ describe('UserService', () => {
       );
     });
 
-    it('throws when workspaces not shared', async () => {
+    it('throws when not colleague and not friends', async () => {
       prisma.user!.findUnique!.mockResolvedValue({ id: 2, name: 'T' });
       prisma.workspaceMember!.findFirst!.mockResolvedValue(null);
+      prisma.friendRequest!.findFirst!.mockResolvedValue(null);
       await expect(service.getProfileForViewer(2, 1)).rejects.toThrow(
         ForbiddenException,
       );
+    });
+
+    it('allows profile when users are friends without shared workspace', async () => {
+      const createdAt = new Date('2026-01-01T00:00:00.000Z');
+      prisma.user!.findUnique!
+        .mockResolvedValueOnce({ id: 2 })
+        .mockResolvedValueOnce({
+          id: 2,
+          name: 'Friend',
+          avatarPath: '/a.png',
+          createdAt,
+          character: { friendCode: 1111 },
+        });
+      prisma.workspaceMember!.findFirst!.mockResolvedValue(null);
+      prisma.friendRequest!.findFirst!.mockResolvedValue({ id: 9 });
+      userSettingsService.getPrivacySettings.mockResolvedValue({
+        allowCharacterView: true,
+        showAccountAvatarOnPublicProfile: true,
+      });
+
+      await expect(service.getProfileForViewer(2, 1)).resolves.toEqual({
+        id: 2,
+        name: 'Friend',
+        avatarPath: '/a.png',
+        createdAt,
+        allowCharacterView: true,
+        friendCode: 1111,
+      });
     });
   });
 
@@ -100,13 +143,33 @@ describe('UserService', () => {
     );
   });
 
-  it('getProfileForViewer returns user when shared workspace', async () => {
-    prisma.user!.findUnique!.mockResolvedValue({ id: 2, name: 'T' });
+  it('getProfileForViewer returns profile without email when shared workspace', async () => {
+    const createdAt = new Date('2026-01-01T00:00:00.000Z');
+    prisma.user!.findUnique!
+      .mockResolvedValueOnce({ id: 2 })
+      .mockResolvedValueOnce({
+        id: 2,
+        name: 'T',
+        avatarPath: '/a.png',
+        createdAt,
+        character: { friendCode: 1492 },
+      });
     prisma.workspaceMember!.findFirst!.mockResolvedValue({ id: 1 });
+    prisma.friendRequest!.findFirst!.mockResolvedValue(null);
+    userSettingsService.getPrivacySettings.mockResolvedValue({
+      allowCharacterView: false,
+      showAccountAvatarOnPublicProfile: false,
+    });
+
     await expect(service.getProfileForViewer(2, 1)).resolves.toEqual({
       id: 2,
       name: 'T',
+      avatarPath: null,
+      createdAt,
+      allowCharacterView: false,
+      friendCode: 1492,
     });
+    expect(userSettingsService.getPrivacySettings).toHaveBeenCalledWith(2);
   });
 
   it('createOAuthUser normalizes email', async () => {
@@ -120,6 +183,27 @@ describe('UserService', () => {
         }),
       }),
     );
+  });
+
+  it('deleteAccount removes user after password check', async () => {
+    prisma.user!.findUnique!.mockResolvedValue({
+      id: 1,
+      passwordHash: 'hash',
+    });
+    jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+    prisma.$transaction = jest.fn(async (fn) => {
+      const tx = {
+        workspaceInvite: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        workspaceActivity: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        workspaceMember: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
+        user: { delete: jest.fn().mockResolvedValue({ id: 1 }) },
+      };
+      return fn(tx);
+    });
+
+    await expect(service.deleteAccount(1, 'secret', undefined)).resolves.toEqual({
+      ok: true,
+    });
   });
 
   it('updateName updates user', async () => {

@@ -15,6 +15,7 @@ import { MailService } from '../mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 import { WorkspaceService } from '../workspace/workspace.service';
 import { WorkspaceActivityService } from '../workspace-activity/workspace-activity.service';
+import { UserSettingsService } from '../user-settings/user-settings.service';
 import { WorkspaceActivityType } from '../generated/prisma/enums';
 import { PaginationDto } from '../workspace/dto/pagination.dto';
 import type {
@@ -36,6 +37,7 @@ export class WorkspaceInviteService {
     private readonly configService: ConfigService,
     private readonly workspaceService: WorkspaceService,
     private readonly workspaceActivityService: WorkspaceActivityService,
+    private readonly userSettingsService: UserSettingsService,
   ) {}
 
   async sendInvite(
@@ -99,12 +101,18 @@ export class WorkspaceInviteService {
     const clientUrl = this.configService.get<string>('CLIENT_URL') || '';
     const inviteUrl = `${clientUrl}/invite?token=${token}`;
 
+    const shouldSendMail = await this.userSettingsService.allowsWorkspaceInviteEmailForAddress(
+      dto.email,
+    );
+
     try {
-      await this.mailService.sendWorkspaceInvite(
-        dto.email,
-        inviteUrl,
-        workspaceName,
-      );
+      if (shouldSendMail) {
+        await this.mailService.sendWorkspaceInvite(
+          dto.email,
+          inviteUrl,
+          workspaceName,
+        );
+      }
     } catch {
       await this.prisma.workspaceInvite
         .delete({ where: { id: invite.id } })

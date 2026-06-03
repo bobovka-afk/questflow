@@ -28,11 +28,24 @@ export class CardService {
     private readonly achievementService: AchievementService,
   ) {}
 
-  async getCards(listId: number): Promise<Card[]> {
-    return this.prisma.card.findMany({
+  async getCards(listId: number) {
+    const cards = await this.prisma.card.findMany({
       where: { listId },
       orderBy: { position: 'asc' },
+      include: {
+        labels: {
+          select: {
+            label: {
+              select: { id: true, name: true, colorPreset: true },
+            },
+          },
+        },
+      },
     });
+    return cards.map((c) => ({
+      ...c,
+      labels: c.labels.map((cl) => cl.label),
+    }));
   }
 
   async createCard(listId: number, dto: CreateCardDto): Promise<Card> {
@@ -54,13 +67,17 @@ export class CardService {
       dto.description === undefined &&
       dto.position === undefined &&
       dto.dueDate === undefined &&
-      dto.assigneeId === undefined
+      dto.assigneeId === undefined &&
+      dto.reminderMinutesBefore === undefined
     ) {
       throw new BadRequestException({
         code: 'CARD_UPDATE_FIELDS_REQUIRED',
         message: 'Provide at least one field to update',
       });
     }
+
+    const resetReminder =
+      dto.dueDate !== undefined || dto.reminderMinutesBefore !== undefined;
 
     return this.prisma.card.update({
       where: { id: cardId },
@@ -70,6 +87,8 @@ export class CardService {
         position: dto.position,
         dueDate: dto.dueDate,
         assigneeId: dto.assigneeId,
+        reminderMinutesBefore: dto.reminderMinutesBefore,
+        ...(resetReminder ? { reminderNotifiedAt: null } : {}),
       },
     });
   }

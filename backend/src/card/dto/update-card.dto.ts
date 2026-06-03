@@ -67,4 +67,15 @@ export class UpdateCardDto {
   @IsInt()
   @Min(1)
   assigneeId?: number | null;
+
+  @ApiPropertyOptional({
+    example: 1440,
+    description: 'Minutes before dueDate to send in-app reminder; null = off',
+    nullable: true,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  reminderMinutesBefore?: number | null;
 }

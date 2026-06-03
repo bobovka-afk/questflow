@@ -1,5 +1,5 @@
 import type { Request } from 'express';
 
-export type AuthedRequest = Request & { user: { id: number } };
+export type AuthedRequest = Request & { user: { id: number; sessionId?: string } };
 
 export type WorkspaceAuthedRequest = AuthedRequest & { workspaceId: number };

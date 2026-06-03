@@ -8,6 +8,7 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { UserEmailChangeService } from '../user/user-email-change.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { HttpCode } from '@nestjs/common';
@@ -42,8 +43,10 @@ import { REFRESH_TOKEN_COOKIE_NAME } from './constants/refresh-token.constants';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService,
+  constructor(
+    private readonly authService: AuthService,
     private readonly configService: ConfigService,
+    private readonly userEmailChangeService: UserEmailChangeService,
   ) {}
 
   @Post('register')
@@ -167,6 +170,29 @@ export class AuthController {
 			return;
 		}
 
+		res.json({ status });
+	}
+
+	@Get('email-change/confirm')
+	@ApiOperation({ summary: 'Confirm email change token (old or new inbox)' })
+	@ApiQuery({ name: 'token', required: true })
+	async confirmEmailChange(
+		@Query('token') token: string,
+		@Res() res: Response,
+	): Promise<void> {
+		let status = 'invalid';
+		try {
+			const result = await this.userEmailChangeService.confirmToken(token);
+			status = result.completed ? 'success' : 'pending';
+		} catch {
+			status = 'invalid';
+		}
+
+		const clientUrl = this.configService.get<string>('CLIENT_URL') || '';
+		if (clientUrl) {
+			res.redirect(`${clientUrl}/settings/account?emailChange=${status}`);
+			return;
+		}
 		res.json({ status });
 	}
 

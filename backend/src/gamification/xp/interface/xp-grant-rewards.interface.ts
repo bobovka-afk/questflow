@@ -2,6 +2,7 @@ export interface XpGrantRewards {
   taskXp: number;
   checkinXp: number;
   hpGained: number;
+  manaGained: number;
   checkinStreak: number;
   previousCheckinStreak: number;
   streakIncreased: boolean;

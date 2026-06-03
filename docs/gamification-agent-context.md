@@ -6,6 +6,7 @@
 
 - [gamification-roadmap.md](gamification-roadmap.md) — продуктовый план, фазы, баланс, квесты, сундуки
 - [gamification-assets.md](gamification-assets.md) — ТЗ на графику (размеры, ключи, папки)
+- [profile-settings-roadmap.md](profile-settings-roadmap.md) — профиль аккаунта, `/settings`, privacy (не геймификация)
 - [README.md](../README.md) — обзор приложения
 
 
@@ -22,6 +23,7 @@
 | 3 | **Done** — пыль (дубликаты + магазин 3 сундуков), achievements |
 | 4 | **In progress** — гайд «Как это работает» + intro ([`GamificationGuide.tsx`](../frontend/src/widgets/gamification-guide/GamificationGuide.tsx)); E2E и backlog (уведомления / battle pass / лидерборд) — [roadmap](gamification-roadmap.md#phase-4--e2e-и-гайд-по-игре-финал-v1) |
 | 4.social | **Done (MVP)** — друзья по `friendCode` (#1492), заявки accept/decline, DM 1:1 (REST + poll 5 с в открытом чате), коллеги из общего workspace могут писать без дружбы |
+| 5.party | **In progress** — рейд-боссы для пати друзей (2–8), мана за XP-карточки, урон в % HP, kick лидером / голосованием |
 
 **Суточный сброс:** cron `resetDailyTaskXpCounts` в `GamificationCronService` (00:00 `GAME_DAY_TZ`). Числа наград — `backend/src/gamification/config/rewards.ts`.
 
@@ -35,6 +37,12 @@
 | Дневной чекин | 100 | `XP_DAILY_CHECKIN` | `XP_DAILY_CHECKIN` |
 | Лимит XP-тасков / сутки | 5 | `DAILY_TASK_XP_COMPLETIONS_MAX` в `character.service` | `DAILY_TASK_XP_COMPLETIONS_MAX` |
 | HP за XP-событие | +5, max 100 | `HP_GAIN_PER_XP_EVENT` в `addExperience` | — |
+| Мана max | 100 | `MANA_MAX` в `rewards.ts` | `xpRewards.ts` |
+| Мана за XP-карточку | +5 (только с XP, cap) | `MANA_PER_TASK_COMPLETED` | `MANA_PER_TASK_COMPLETED` |
+| Удар по боссу | −5 маны | `BOSS_ATTACK_MANA_COST` | — |
+| Бюджет % HP пати / сутки | 40 | `BOSS_DAILY_PARTY_BUDGET_PCT` | — |
+| Пати рейда | 2–8 | `BOSS_MIN/MAX_PARTY_SIZE` | — |
+| Активных рейдов на игрока | 1 | `MAX_ACTIVE_RAIDS_PER_USER` | — |
 | Штраф за вчера без активности | −5 | `HP_INACTIVITY_PENALTY`, cron `applyInactivityHpPenalty` | — |
 | Grace period | 24 ч | `CHARACTER_GRACE_PERIOD_MS` | — |
 | Уровни | 1–100 | `character/config/level-curve.ts` | `lib/level-curve.ts` (дубль кривой) |
@@ -97,6 +105,11 @@ questflow/
 │   │   ├── social.service.ts
 │   │   ├── social.controller.ts       ← /social/*
 │   │   └── lib/friend-code.ts         ← 1000–9999, format #1492
+│   ├── src/party/                     ← party boss raids (Phase 5.party)
+│   │   ├── party.service.ts
+│   │   ├── party.controller.ts        ← /party/*
+│   │   ├── config/boss-templates.ts
+│   │   └── lib/boss-damage.ts
 ├── frontend/
 │   ├── src/ProfileCharacterPage.tsx   ← персонаж, streak, квесты
 │   ├── src/ProfileCharacterQuestsPanel.tsx
@@ -117,7 +130,7 @@ questflow/
 │   ├── src/lib/level-curve.ts         ← расчёт полоски XP
 │   ├── src/lib/character.ts           ← CharacterDto, portrait URLs (+ clear_man overrides для male)
 │   ├── src/lib/cosmetics.ts           ← URL рамок/фонов, portraitFrameFitVars()
-│   ├── src/lib/chestAssets.ts         ← tap-кадры common (chests/common/0.png…4.png), иконка
+│   ├── src/lib/chestAssets.ts         ← tap-кадры common (0–4), rare (1–5), иконка
 │   ├── src/ChestIcon.tsx              ← иконка сундука в квестах
 │   ├── src/ChestTapOpenModal.tsx      ← tap-to-open (Clash Royale), большой сундук
 │   ├── src/lib/dustAssets.ts          ← dust/dust.png
@@ -180,6 +193,25 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 **Правила:** `Character.friendCode` при create; писать можно друзьям (`ACCEPTED`) или при общем workspace (`UserService.getProfileForViewer` логика). Коды: `MESSAGE_NOT_ALLOWED`, `FRIEND_CODE_NOT_FOUND`, … — `shared/api/api.ts`.
 
 **Не в v1:** WebSocket, групповые чаты, блокировка, поиск по имени.
+
+### Party boss (Phase 5.party, JWT)
+
+| Method | Path | Назначение |
+|--------|------|------------|
+| GET | `/party/bosses` | Каталог боссов (3 шт.) |
+| POST | `/party/raids` | `{ bossKey, friendUserIds[] }` — создать рейд + инвайты |
+| GET | `/party/raids/mine` | Активный рейд / инвайты |
+| POST | `/party/raids/:id/accept` \| `decline` | Ответ на инвайт |
+| POST | `/party/raids/:id/start` | Старт (лидер, ≥2 ACTIVE) |
+| POST | `/party/raids/:id/attack` | Удар (−5 маны, −X% HP) |
+| POST | `/party/raids/:id/members/:userId/kick` | Исключить (лидер) |
+| POST | `/party/raids/:id/kick-votes` | `{ targetUserId }` — голосование |
+| POST | `/party/raids/:id/kick-votes/:voteId/vote` | Голос «за» исключение |
+| DELETE | `/party/raids/:id` | Отмена (лидер, только INVITING) |
+
+**Правила:** мана только при XP за карточку (5/сутки × 5 = 25/день, cap 100). Урон: `40 / (activeMembers × 5)` % за удар. При kick — пересчёт урона, вклад сохраняется. Лут: boss chest `source=BOSS:{bossKey}:{raidId}`, порог вклада ≥5%. Один рейд INVITING/ACTIVE на игрока.
+
+**Не в v1:** авто-кик по неактивности, второй параллельный рейд, пати >8, уникальный loot table (пока tier сундука по боссу).
 
 ---
 
@@ -324,6 +356,17 @@ cd backend && npx prisma migrate dev
 - [ ] При новых таблицах — миграция + пример в Phase-чеклисте roadmap
 - [ ] `cd backend && npm run test` проходит после изменений в `backend/src/`
 - [ ] E2E и полный гайд — только в [Phase 4](gamification-roadmap.md#phase-4--e2e-и-гайд-по-игре-финал-v1), не в PR фич
+
+---
+
+## Профиль аккаунта vs персонаж
+
+| Область | Документ | Маршруты |
+|---------|----------|----------|
+| Аккаунт, email, сессии, privacy, удаление | [profile-settings-roadmap.md](profile-settings-roadmap.md) | `/profile/me`, `/settings`, `/profile/:userId` |
+| RPG (XP, квесты, сундуки, рейд) | этот файл + [gamification-roadmap.md](gamification-roadmap.md) | `/profile/character`, `/profile/:userId/character` |
+
+Перед задачей по **настройкам или публичному профилю** читай `profile-settings-roadmap.md`, не дублируй план здесь.
 
 ---
 

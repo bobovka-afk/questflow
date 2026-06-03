@@ -19,6 +19,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { GamificationModule } from './gamification/gamification.module';
 import { UserSettingsModule } from './user-settings/user-settings.module';
 import { SocialModule } from './social/social.module';
+import { PartyModule } from './party/party.module';
+import { NotificationModule } from './notification/notification.module';
 
 
 @Module({
@@ -96,6 +98,8 @@ import { SocialModule } from './social/social.module';
     GamificationModule,
     UserSettingsModule,
     SocialModule,
+    PartyModule,
+    NotificationModule,
   ],
   controllers: [],
   providers: [ ],

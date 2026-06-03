@@ -5,6 +5,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { WorkspaceActivityService } from '../workspace-activity/workspace-activity.service';
 import { PaginationDto } from '../workspace/dto/pagination.dto';
 import type { WorkspaceMemberWithUser } from './interface';
+import {
+  hasWorkspacePermission,
+  parsePermissionsOverrides,
+  resolveMemberPermissions,
+  type WorkspacePermissions,
+} from '../workspace/lib/member-permissions';
+import { UpdateMemberPermissionsDto } from './dto/update-member-permissions.dto';
 
 @Injectable()
 export class WorkspaceMemberService {
@@ -17,7 +24,7 @@ export class WorkspaceMemberService {
     workspaceId: number,
     paginationDto: PaginationDto,
   ): Promise<WorkspaceMemberWithUser[]> {
-    return this.prisma.workspaceMember.findMany({
+    const rows = await this.prisma.workspaceMember.findMany({
       where: { workspaceId },
       include: {
         user: {
@@ -34,6 +41,46 @@ export class WorkspaceMemberService {
       take: paginationDto.limit,
       skip: paginationDto.offset,
     });
+    return rows.map((m) => ({
+      ...m,
+      permissions: resolveMemberPermissions(m.role, m.permissions),
+    }));
+  }
+
+  async updateMemberPermissions(
+    workspaceId: number,
+    targetUserId: number,
+    actorUserId: number,
+    dto: UpdateMemberPermissionsDto,
+  ): Promise<WorkspacePermissions> {
+    const actor = await this.getWorkspaceMemberOrThrow(workspaceId, actorUserId);
+    if (
+      !hasWorkspacePermission(actor.role, actor.permissions, 'manageMembers')
+    ) {
+      throw new ForbiddenException({
+        code: 'WORKSPACE_ACTION_FORBIDDEN',
+        message: 'You cannot manage member permissions in this workspace.',
+      });
+    }
+
+    const target = await this.getWorkspaceMemberOrThrow(workspaceId, targetUserId);
+    if (target.role === WorkspaceRole.OWNER) {
+      throw new ForbiddenException({
+        code: 'WORKSPACE_OWNER_PERMISSIONS_LOCKED',
+        message: 'Owner permissions cannot be changed.',
+      });
+    }
+
+    const current = parsePermissionsOverrides(target.permissions);
+    const merged = { ...current, ...dto };
+    await this.prisma.workspaceMember.update({
+      where: {
+        workspaceId_userId: { workspaceId, userId: targetUserId },
+      },
+      data: { permissions: merged },
+    });
+
+    return resolveMemberPermissions(target.role, merged);
   }
 
   async deleteWorkspaceMember(

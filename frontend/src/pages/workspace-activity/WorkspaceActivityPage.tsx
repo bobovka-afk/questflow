@@ -19,6 +19,18 @@ type ActivityRow = {
 
 const PAGE_SIZE = 25;
 
+const ACTIVITY_TYPES = [
+  '',
+  'WORKSPACE_CREATED',
+  'WORKSPACE_UPDATED',
+  'MEMBER_INVITED',
+  'INVITE_CANCELLED',
+  'INVITE_ACCEPTED',
+  'INVITE_DECLINED',
+  'MEMBER_REMOVED',
+  'MEMBER_LEFT',
+] as const;
+
 function formatError(e: unknown) {
   return formatApiError(e);
 }
@@ -97,6 +109,7 @@ export function WorkspaceActivityPage({ accessToken, workspaceId }: Props) {
   const [msg, setMsg] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadMoreBusy, setLoadMoreBusy] = useState(false);
+  const [typeFilter, setTypeFilter] = useState('');
 
   const load = useCallback(async () => {
     if (!accessToken) {
@@ -108,8 +121,9 @@ export function WorkspaceActivityPage({ accessToken, workspaceId }: Props) {
     setLoading(true);
     setMsg(null);
     try {
+      const typeQ = typeFilter ? `&type=${encodeURIComponent(typeFilter)}` : '';
       const data = await api<ActivityRow[]>(
-        `/workspace/${workspaceId}/activity?limit=${PAGE_SIZE}&offset=0`,
+        `/workspace/${workspaceId}/activity?limit=${PAGE_SIZE}&offset=0${typeQ}`,
         { method: 'GET', accessToken },
       );
       const list = Array.isArray(data) ? data : [];
@@ -122,7 +136,7 @@ export function WorkspaceActivityPage({ accessToken, workspaceId }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, workspaceId]);
+  }, [accessToken, workspaceId, typeFilter]);
 
   useEffect(() => {
     void load();
@@ -133,8 +147,9 @@ export function WorkspaceActivityPage({ accessToken, workspaceId }: Props) {
     setLoadMoreBusy(true);
     setMsg(null);
     try {
+      const typeQ = typeFilter ? `&type=${encodeURIComponent(typeFilter)}` : '';
       const data = await api<ActivityRow[]>(
-        `/workspace/${workspaceId}/activity?limit=${PAGE_SIZE}&offset=${rows.length}`,
+        `/workspace/${workspaceId}/activity?limit=${PAGE_SIZE}&offset=${rows.length}${typeQ}`,
         { method: 'GET', accessToken },
       );
       const list = Array.isArray(data) ? data : [];
@@ -145,7 +160,7 @@ export function WorkspaceActivityPage({ accessToken, workspaceId }: Props) {
     } finally {
       setLoadMoreBusy(false);
     }
-  }, [accessToken, workspaceId, rows.length, hasMore, loadMoreBusy]);
+  }, [accessToken, workspaceId, rows.length, hasMore, loadMoreBusy, typeFilter]);
 
   return (
     <div className="trello-app-shell">
@@ -189,6 +204,24 @@ export function WorkspaceActivityPage({ accessToken, workspaceId }: Props) {
             {msg}
           </div>
         )) || null}
+
+        <div className="trello-activity-filters">
+          <label className="trello-field trello-field--inline">
+            <span className="trello-label">Тип события</span>
+            <select
+              className="trello-input"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
+              <option value="">Все</option>
+              {ACTIVITY_TYPES.filter(Boolean).map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
         <div className="trello-members-table-block">
           {loading ? (

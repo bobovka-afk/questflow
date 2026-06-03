@@ -6,9 +6,16 @@ import { WorkspaceModule } from '../workspace/workspace.module';
 import { RedisModule } from '../redis/redis.module';
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 import { GamificationModule } from '../gamification/gamification.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [PrismaModule, WorkspaceModule, RedisModule, GamificationModule],
+  imports: [
+    PrismaModule,
+    WorkspaceModule,
+    RedisModule,
+    GamificationModule,
+    NotificationModule,
+  ],
   controllers: [CommentController],
   providers: [CommentService, RateLimitGuard],
 })

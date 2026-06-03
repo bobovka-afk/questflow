@@ -4,7 +4,7 @@ docker compose up -d --build postgres redis app frontend
 
 Документ для продукта и разработки: что уже сделано, куда движемся, обязательные принципы и черновые числа баланса. Сервер — источник истины; все начисления должны быть идемпотентны и аудируемы в PostgreSQL.
 
-**Связанные файлы:** [README.md](../README.md), [gamification-agent-context.md](gamification-agent-context.md) (контекст для AI), [backend/prisma/schema.prisma](../backend/prisma/schema.prisma), [backend/src/character/](../backend/src/character/), [frontend/src/pages/profile-character/ProfileCharacterPage.tsx](../frontend/src/pages/profile-character/ProfileCharacterPage.tsx).
+**Связанные файлы:** [README.md](../README.md), [gamification-agent-context.md](gamification-agent-context.md) (контекст для AI), [profile-settings-roadmap.md](profile-settings-roadmap.md) (аккаунт и `/settings`, не RPG), [backend/prisma/schema.prisma](../backend/prisma/schema.prisma), [backend/src/character/](../backend/src/character/), [frontend/src/pages/profile-character/ProfileCharacterPage.tsx](../frontend/src/pages/profile-character/ProfileCharacterPage.tsx).
 
 > **Для AI-агента:** перед задачей по геймификации читай [gamification-agent-context.md](gamification-agent-context.md). Не использовать `GAMIFICATION_ROADMAP (1).md` в корне — устаревший черновик.
 
@@ -440,6 +440,25 @@ model InventoryItem {
 
 ---
 
+## Phase 5.party — рейд-боссы с друзьями (v1)
+
+| Что | Решение |
+|-----|---------|
+| Пати | 2–8 друзей; инвайт только из списка друзей (`ACCEPTED`) |
+| Рейдов на игрока | 1 в статусе `INVITING` или `ACTIVE` |
+| HP босса | 0–100 %; kill при `remainingPct ≤ 0` |
+| Время kill | ~2.5–3 дня при полной активности (бюджет **40 %/сутки** на пати) |
+| Урон за удар | `BOSS_DAILY_PARTY_BUDGET_PCT / (activeMembers × 5)` |
+| Мана | cap **100**; **+5** только там же, где XP за карточку; атака **−5** |
+| Kick | лидер вручную **или** голосование большинством активных |
+| После kick | `activeMembers` ↓ → урон/удар ↑; % HP босса не откатывается |
+| Награда | Boss chest по tier босса; `contributionPct ≥ 5%`; kicked — без сундука |
+| Боссы (v1) | 3 шаблона в `party/config/boss-templates.ts` |
+
+**Отложено:** авто-кик 2 дня AFK, второй параллельный рейд, пати >8, отдельные loot tables на босса.
+
+---
+
 ## Phase 4 — E2E и гайд по игре (финал v1)
 
 **Когда:** после завершения механик Phase 0–2 (и опционально выбранных пунктов Phase 3). Не блокирует разработку фич — сводит правила и регрессию в одном месте.
@@ -472,6 +491,8 @@ model InventoryItem {
 | **2a** | Quest templates + progress hooks | Phase 1, card/comment/checkin |
 | **2b** | Chests, inventory, equip cosmetic | Phase 2a |
 | **3** | Dust, achievements, notifications | optional |
+| **4.social** | Друзья, DM | **Done** |
+| **5.party** | Party boss raids, мана, kick | Phase 4.social |
 | **4** | E2E regression, полный гайд по игре | Phase 0–2 (механики) |
 
 ---

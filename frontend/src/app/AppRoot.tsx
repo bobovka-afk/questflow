@@ -17,6 +17,7 @@ import {
   InviteAcceptPage,
   parseSettingsTabFromRoute,
   ProfileCharacterPage,
+  ProfileMePage,
   SettingsPage,
   UserCharacterPage,
   UserProfilePage,
@@ -25,9 +26,10 @@ import {
   WorkspaceMembersPage,
   WorkspacesPage,
 } from '@pages/index';
-import { AlertModal, GamificationIntroModal, ProfileInvitesSection } from '@widgets/index';
+import { GamificationIntroModal, ProfileInvitesSection } from '@widgets/index';
 import { navigate, openSpaInNewTab, SpaLink } from '@shared/lib';
 import { ProfileToolbarAnchor, ProfileToolbarOutletProvider } from '@shared/ui/profile-toolbar';
+import { NotificationBell } from '@widgets/notifications/NotificationBell';
 import { useProfileToolbarOutlet } from '@shared/ui/profile-toolbar';
 import '../index.css';
 
@@ -602,547 +604,6 @@ function Home(props: { onAuthed: (token: string, options?: AuthedOptions) => voi
   );
 }
 
-function ProfileMePage(props: {
-  accessToken: string | null;
-  onUserUpdated?: (user: UserSafe) => void;
-}) {
-  const [user, setUser] = useState<UserSafe | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [avatarError, setAvatarError] = useState(false);
-  const [avatarEditMenuOpen, setAvatarEditMenuOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [nameEditing, setNameEditing] = useState(false);
-  const [nameDraft, setNameDraft] = useState('');
-  const [nameBusy, setNameBusy] = useState(false);
-  const nameInputRef = useRef<HTMLInputElement | null>(null);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [passwordBusy, setPasswordBusy] = useState(false);
-  const [passwordFormOpen, setPasswordFormOpen] = useState(false);
-  const [passwordSetupSuccessOpen, setPasswordSetupSuccessOpen] = useState(false);
-  const [passwordErrorModalMessage, setPasswordErrorModalMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function load() {
-      setMsg(null);
-      if (!props.accessToken) {
-        setMsg('Пожалуйста, сначала выполните вход.');
-        return;
-      }
-
-      try {
-        const res = await api<UserSafe>('/user/me', {
-          method: 'GET',
-          accessToken: props.accessToken,
-        });
-        setUser(res);
-      } catch (e) {
-        setMsg(formatError(e));
-      }
-    }
-
-    void load();
-  }, [props.accessToken]);
-
-  useEffect(() => {
-    if (window.location.hash === '#password') {
-      setPasswordFormOpen(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
-
-  useEffect(() => {
-    setAvatarError(false);
-  }, [user?.avatarPath, previewUrl]);
-
-  const avatarSrc = useMemo(() => {
-    if (!user) return '';
-    const p = previewUrl || user.avatarPath || '';
-    if (!p) return '';
-    if (p.startsWith('data:')) return p;
-    if (p.startsWith('http://') || p.startsWith('https://')) return p;
-    if (p.startsWith('//')) return `https:${p}`;
-    if (p.startsWith('/')) return `${API_URL}${p}`;
-    return `${API_URL}/${p}`;
-  }, [previewUrl, user]);
-
-  async function uploadAvatar(fileToUpload: File) {
-    if (!props.accessToken) return;
-
-    setBusy(true);
-    setMsg(null);
-    try {
-      const form = new FormData();
-      form.append('file', fileToUpload);
-
-      const updated = await api<UserSafe>('/user/update-avatar', {
-        method: 'PATCH',
-        accessToken: props.accessToken,
-        body: form,
-      });
-      setUser(updated);
-      props.onUserUpdated?.(updated);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    } catch (e) {
-      setMsg(formatError(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function onPickFile(file: File | null) {
-    setMsg(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(null);
-    if (!file) return;
-
-    // Чтобы не упираться в MaxLength на бэке (и не отправлять огромные строки).
-    const MAX_BYTES = 50 * 1024; // ~50 KB
-    if (file.size > MAX_BYTES) {
-      setMsg('Файл слишком большой. Максимум ~50 KB.');
-      return;
-    }
-
-    const nextPreview = URL.createObjectURL(file);
-    setPreviewUrl(nextPreview);
-    void uploadAvatar(file);
-  }
-
-  function triggerPick() {
-    setMsg(null);
-    fileInputRef.current?.click();
-  }
-
-  async function removeAvatar() {
-    if (!props.accessToken) return;
-
-    setBusy(true);
-    setMsg(null);
-    try {
-      const updated = await api<UserSafe>('/user/remove-avatar', {
-        method: 'DELETE',
-        accessToken: props.accessToken,
-      });
-      setUser(updated);
-      props.onUserUpdated?.(updated);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-      setMsg('Аватар удалён.');
-    } catch (e) {
-      setMsg(formatError(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function beginEditName() {
-    if (!user || nameBusy || busy) return;
-    setNameDraft(user.name);
-    setNameEditing(true);
-    setMsg(null);
-    queueMicrotask(() => nameInputRef.current?.focus());
-  }
-
-  function cancelEditName() {
-    setNameEditing(false);
-    setNameDraft('');
-  }
-
-  async function saveName() {
-    if (!props.accessToken || !user) return;
-    const next = nameDraft.trim();
-    if (next.length < 3 || next.length > 18) {
-      setMsg('Имя: от 3 до 18 символов.');
-      return;
-    }
-    if (next === user.name) {
-      setNameEditing(false);
-      return;
-    }
-    setNameBusy(true);
-    setMsg(null);
-    try {
-      const updated = await api<UserSafe>('/user/me', {
-        method: 'PATCH',
-        accessToken: props.accessToken,
-        json: { name: next },
-      });
-      setUser(updated);
-      props.onUserUpdated?.(updated);
-      setNameEditing(false);
-    } catch (e) {
-      setMsg(formatError(e));
-    } finally {
-      setNameBusy(false);
-    }
-  }
-
-  async function changePassword() {
-    if (!props.accessToken) return;
-    const settingInitialPassword = !user?.hasPassword;
-    if (!newPassword) {
-      setPasswordErrorModalMessage('Введите новый пароль.');
-      return;
-    }
-    if (newPassword.length < 6 || newPassword.length > 72) {
-      setPasswordErrorModalMessage('Новый пароль: от 6 до 72 символов.');
-      return;
-    }
-    if (newPassword !== confirmNewPassword) {
-      setPasswordErrorModalMessage('Подтверждение нового пароля не совпадает.');
-      return;
-    }
-    if (user?.hasPassword && !currentPassword) {
-      setPasswordErrorModalMessage('Введите текущий пароль.');
-      return;
-    }
-    if (user?.hasPassword && currentPassword === newPassword) {
-      setPasswordErrorModalMessage('Новый пароль должен отличаться от текущего.');
-      return;
-    }
-
-    setPasswordBusy(true);
-    setMsg(null);
-    setPasswordErrorModalMessage(null);
-    try {
-      await api<{ ok: boolean }>('/auth/password/change', {
-        method: 'POST',
-        accessToken: props.accessToken,
-        json: user?.hasPassword
-          ? { currentPassword, newPassword }
-          : { newPassword },
-      });
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmNewPassword('');
-      setPasswordFormOpen(false);
-      if (settingInitialPassword) {
-        setMsg(null);
-        setPasswordSetupSuccessOpen(true);
-        setUser((prev) => (prev ? { ...prev, hasPassword: true } : prev));
-      } else {
-        setMsg('Пароль успешно изменён.');
-      }
-    } catch (e) {
-      setPasswordErrorModalMessage(formatError(e));
-    } finally {
-      setPasswordBusy(false);
-    }
-  }
-
-  function formatRegisteredRU(isoDate: string) {
-    const d = new Date(isoDate);
-    const day = d.getDate();
-    // Месяц в родительном падеже (например: 20 марта, 5 апреля)
-    const monthGenitive = [
-      'января',
-      'февраля',
-      'марта',
-      'апреля',
-      'мая',
-      'июня',
-      'июля',
-      'августа',
-      'сентября',
-      'октября',
-      'ноября',
-      'декабря',
-    ];
-    const month = monthGenitive[d.getMonth()] ?? '';
-    const year = d.getFullYear();
-    return `${day} ${month} ${year}`;
-  }
-
-  const isErrorMsg =
-    typeof msg === 'string' &&
-    (msg.toLowerCase().includes('ошиб') || msg.toLowerCase().includes('error'));
-  const isRateLimitMsg = isRateLimitMessage(msg);
-
-  return (
-    <div className="trello-app-shell">
-      <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
-          <div className="trello-topbar-stripe-left">
-            <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-              <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">Questflow</span>
-            </SpaLink>
-          </div>
-          <h1 className="trello-topbar-stripe-center">Профиль</h1>
-          <div className="trello-topbar-actions">
-            <SpaLink className="trello-btn trello-btn-ghost" to="/profile/character">
-              Персонаж
-            </SpaLink>
-            <SpaLink className="trello-btn trello-btn-ghost" to="/workspaces">
-              Назад
-            </SpaLink>
-            <ProfileToolbarAnchor />
-          </div>
-        </header>
-
-        {msg && (
-          <div
-            className={
-              isRateLimitMsg
-                ? 'trello-banner trello-banner-rate-limit'
-                : isErrorMsg
-                  ? 'trello-banner trello-banner-error'
-                  : 'trello-banner trello-banner-warn'
-            }
-          >
-            {msg}
-          </div>
-        )}
-
-        <section className="trello-panel">
-          <div className="trello-profile-body">
-            <div className="trello-profile-body-row">
-              <div className="trello-profile-avatar-col">
-                <div className="avatarWrap">
-                  {previewUrl || user?.avatarPath ? (
-                    !avatarError ? (
-                      <img
-                        className="avatarImg"
-                        src={avatarSrc}
-                        alt=""
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                        crossOrigin="anonymous"
-                        onError={() => setAvatarError(true)}
-                      />
-                    ) : (
-                      <div className="trello-cell-meta trello-profile-avatar-fallback">Не удалось загрузить аватар</div>
-                    )
-                  ) : (
-                    <div className="trello-cell-meta trello-profile-avatar-fallback">Нет аватара</div>
-                  )}
-
-                  <button
-                    type="button"
-                    className="avatar-edit-toggle"
-                    onClick={() => setAvatarEditMenuOpen((o) => !o)}
-                    disabled={busy}
-                    aria-label="Изменить аватар"
-                  >
-                    <span className="avatar-edit-toggle-icon" aria-hidden>
-                      ✎
-                    </span>
-                    <span className="avatar-edit-toggle-text">Изменить</span>
-                  </button>
-
-                  {avatarEditMenuOpen && (
-                    <div className="avatar-edit-menu" role="menu" aria-label="Действия с аватаром">
-                      <button
-                        type="button"
-                        className="trello-btn trello-btn-primary trello-btn-sm avatar-edit-menu-btn"
-                        disabled={busy}
-                        onClick={() => {
-                          setAvatarEditMenuOpen(false);
-                          triggerPick();
-                        }}
-                      >
-                        {busy ? '…' : 'Загрузить фото'}
-                      </button>
-                      <button
-                        type="button"
-                        className="trello-btn trello-btn-danger-ghost trello-btn-sm avatar-edit-menu-btn"
-                        disabled={busy || !user?.avatarPath}
-                        onClick={() => {
-                          setAvatarEditMenuOpen(false);
-                          void removeAvatar();
-                        }}
-                      >
-                        {busy ? '…' : 'Удалить фото'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
-                  disabled={busy}
-                />
-
-                <button
-                  type="button"
-                  className="trello-btn trello-btn-primary trello-btn-sm"
-                  style={{ marginTop: 14, width: '100%' }}
-                  onClick={() => setPasswordFormOpen((v) => !v)}
-                  disabled={passwordBusy}
-                >
-                  Сменить пароль
-                </button>
-              </div>
-
-              <div className="trello-profile-fields-col">
-                <div className="trello-profile-name-block">
-                  {nameEditing ? (
-                    <div className="trello-profile-name-edit">
-                      <input
-                        ref={nameInputRef}
-                        className="trello-input trello-profile-name-input"
-                        value={nameDraft}
-                        onChange={(e) => setNameDraft(e.target.value)}
-                        maxLength={18}
-                        disabled={nameBusy}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            void saveName();
-                          }
-                          if (e.key === 'Escape') {
-                            e.preventDefault();
-                            cancelEditName();
-                          }
-                        }}
-                        aria-label="Имя"
-                      />
-                      <div className="trello-profile-name-edit-actions">
-                        <button type="button" className="trello-btn trello-btn-primary trello-btn-sm" disabled={nameBusy} onClick={() => void saveName()}>
-                          {nameBusy ? '…' : 'Сохранить'}
-                        </button>
-                        <button type="button" className="trello-btn trello-btn-ghost trello-btn-sm" disabled={nameBusy} onClick={() => cancelEditName()}>
-                          Отмена
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      className="trello-profile-display-name"
-                      onClick={() => beginEditName()}
-                      disabled={!user || busy || nameBusy}
-                      title="Нажмите, чтобы изменить имя"
-                    >
-                      {user?.name ?? '—'}
-                    </button>
-                  )}
-                </div>
-
-                <div className="trello-label">Почта</div>
-                <div style={{ marginBottom: 12 }}>{user?.email ?? '—'}</div>
-
-                <div className="trello-label">Зарегистрирован</div>
-                <div style={{ marginBottom: 0 }}>{user?.createdAt ? formatRegisteredRU(user.createdAt) : '—'}</div>
-
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {passwordFormOpen && (
-          <div className="trello-modal-backdrop" role="presentation" onClick={() => !passwordBusy && setPasswordFormOpen(false)}>
-            <div className="trello-modal trello-modal-narrow" role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
-              <div className="trello-modal-head">
-                <h2 className="trello-modal-title">{user?.hasPassword ? 'Смена пароля' : 'Установка пароля'}</h2>
-                <button type="button" className="trello-modal-close" onClick={() => !passwordBusy && setPasswordFormOpen(false)} aria-label="Закрыть">
-                  ×
-                </button>
-              </div>
-              <div className="trello-modal-body">
-                {user?.hasPassword && (
-                  <label className="trello-field">
-                    <span className="trello-label">Текущий пароль</span>
-                    <input
-                      className="trello-input"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      type="password"
-                      autoComplete="current-password"
-                      disabled={passwordBusy}
-                    />
-                  </label>
-                )}
-                <label className="trello-field">
-                  <span className="trello-label">Новый пароль</span>
-                  <input
-                    className="trello-input"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    type="password"
-                    autoComplete="new-password"
-                    disabled={passwordBusy}
-                    autoFocus
-                  />
-                </label>
-                <label className="trello-field">
-                  <span className="trello-label">Подтверждение нового пароля</span>
-                  <input
-                    className="trello-input"
-                    value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    type="password"
-                    autoComplete="new-password"
-                    disabled={passwordBusy}
-                  />
-                </label>
-              </div>
-              <div className="trello-modal-foot">
-                <button type="button" className="trello-btn trello-btn-ghost" onClick={() => !passwordBusy && setPasswordFormOpen(false)}>
-                  Отмена
-                </button>
-                <button
-                  type="button"
-                  className="trello-btn trello-btn-primary"
-                  onClick={() => void changePassword()}
-                  disabled={
-                    passwordBusy ||
-                    !newPassword ||
-                    !confirmNewPassword ||
-                    (user?.hasPassword ? !currentPassword : false)
-                  }
-                >
-                  {passwordBusy ? '…' : user?.hasPassword ? 'Изменить пароль' : 'Установить пароль'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {passwordSetupSuccessOpen && (
-          <div className="trello-modal-backdrop" role="presentation" onClick={() => setPasswordSetupSuccessOpen(false)}>
-            <div className="trello-modal trello-modal-narrow" role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
-              <div className="trello-modal-head">
-                <h2 className="trello-modal-title">Пароль установлен</h2>
-                <button type="button" className="trello-modal-close" onClick={() => setPasswordSetupSuccessOpen(false)} aria-label="Закрыть">
-                  ×
-                </button>
-              </div>
-              <div className="trello-modal-body">
-                <div className="trello-confirm-text">Пароль успешно установлен.</div>
-              </div>
-              <div className="trello-modal-foot">
-                <button type="button" className="trello-btn trello-btn-primary" onClick={() => setPasswordSetupSuccessOpen(false)}>
-                  Ок
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        <AlertModal
-          open={passwordErrorModalMessage != null}
-          title="Ошибка"
-          message={passwordErrorModalMessage ?? ''}
-          onClose={() => setPasswordErrorModalMessage(null)}
-        />
-      </div>
-    </div>
-  );
-}
-
 function MyInvitesPage(props: {
   accessToken: string | null;
   onInvitesCountChange?: (count: number) => void;
@@ -1431,8 +892,11 @@ function AppContent() {
   const boardsListMatch = route.match(/^\/workspaces\/(\d+)\/boards\/?$/);
   const activityRouteMatch = route.match(/^\/workspaces\/(\d+)\/activity\/?$/);
   const memberRouteMatch = route.match(/^\/workspaces\/(\d+)\/members$/);
-  const profileUserCharacterMatch = route.match(/^\/profile\/user\/(\d+)\/character\/?$/);
-  const profileUserMatch = route.match(/^\/profile\/user\/(\d+)$/);
+  const profileUserCharacterMatch =
+    route.match(/^\/profile\/(\d+)\/character\/?$/) ??
+    route.match(/^\/profile\/user\/(\d+)\/character\/?$/);
+  const profileUserMatch =
+    route.match(/^\/profile\/(\d+)$/) ?? route.match(/^\/profile\/user\/(\d+)$/);
   const characterGateLoading =
     Boolean(accessToken) &&
     characterLoadState === 'loading' &&
@@ -1491,7 +955,11 @@ function AppContent() {
       !accessToken ? (
         <Home onAuthed={handleAuthed} hasSession={false} />
       ) : (
-        <SettingsPage accessToken={accessToken} initialTab={parseSettingsTabFromRoute(route)} />
+        <SettingsPage
+          accessToken={accessToken}
+          initialTab={parseSettingsTabFromRoute(route)}
+          onAccountDeleted={() => void handleLogout()}
+        />
       );
   } else if (route.startsWith('/profile')) {
     page =
@@ -1514,8 +982,6 @@ function AppContent() {
           userId={Number(profileUserMatch[1])}
           currentUserId={toolbarUser?.id ?? null}
         />
-      ) : route === '/profile/me' || route.startsWith('/profile/me/') ? (
-        <ProfileMePage accessToken={accessToken} onUserUpdated={(u) => setToolbarUser(u)} />
       ) : (
         <ProfileMePage accessToken={accessToken} onUserUpdated={(u) => setToolbarUser(u)} />
       );
@@ -1571,7 +1037,9 @@ function AppContent() {
         </div>
       )}
       {accessToken && (
-        <div className="trello-profile-dropdown" ref={profileMenuRef}>
+        <>
+          <NotificationBell accessToken={accessToken} />
+          <div className="trello-profile-dropdown" ref={profileMenuRef}>
           <div className="trello-toolbar-avatar-wrap">
             <button
               type="button"
@@ -1680,6 +1148,7 @@ function AppContent() {
             </div>
           )}
         </div>
+        </>
       )}
     </div>
   );

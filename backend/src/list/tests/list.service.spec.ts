@@ -12,9 +12,37 @@ describe('ListService', () => {
     service = new ListService(prisma as unknown as PrismaService);
   });
 
-  it('getLists and createList call prisma', async () => {
+  it('getLists excludes archived by default', async () => {
     prisma.list!.findMany!.mockResolvedValue([]);
     await service.getLists(1);
+    expect(prisma.list!.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ archivedAt: null }),
+      }),
+    );
+  });
+
+  it('getArchivedLists returns archived only', async () => {
+    prisma.list!.findMany!.mockResolvedValue([]);
+    await service.getArchivedLists(1);
+    expect(prisma.list!.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ archivedAt: { not: null } }),
+      }),
+    );
+  });
+
+  it('updateList can archive', async () => {
+    prisma.list!.update!.mockResolvedValue({ id: 1, archivedAt: new Date() });
+    await service.updateList(1, { archived: true });
+    expect(prisma.list!.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ archivedAt: expect.any(Date) }),
+      }),
+    );
+  });
+
+  it('createList call prisma', async () => {
     prisma.list!.create!.mockResolvedValue({ id: 1 });
     await service.createList(1, { name: 'Todo', position: 0 });
     expect(prisma.list!.create).toHaveBeenCalled();

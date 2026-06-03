@@ -32,9 +32,13 @@ export class WorkspaceActivityService {
   async listByWorkspace(
     workspaceId: number,
     pagination: PaginationDto,
+    type?: WorkspaceActivityType,
   ): Promise<WorkspaceActivityListItem[]> {
     return this.prisma.workspaceActivity.findMany({
-      where: { workspaceId },
+      where: {
+        workspaceId,
+        ...(type ? { type } : {}),
+      },
       select: {
         id: true,
         type: true,

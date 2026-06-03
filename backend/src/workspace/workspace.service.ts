@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { PaginationDto } from './dto/pagination.dto';
 import { WorkspaceRole } from '../generated/prisma/enums';
+import { resolveMemberPermissions } from './lib/member-permissions';
 import type {
     WorkspaceCreated,
     WorkspaceIdRef,
@@ -88,11 +89,14 @@ export class WorkspaceService {
                     userId,
                 },
             },
-            select: { role: true },
+            select: { role: true, permissions: true },
         });
         return {
             ...workspace,
             myRole: member?.role ?? null,
+            myPermissions: member
+              ? resolveMemberPermissions(member.role, member.permissions)
+              : null,
         };
     }
 

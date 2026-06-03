@@ -3396,6 +3396,131 @@
   flex-shrink: 0;
 }
 
+.trello-character-stats-panel {
+  width: 100%;
+}
+
+.trello-character-stats-panel .trello-character-stat-row {
+  margin: 0;
+}
+
+.trello-character-stat-pill--mana {
+  background: linear-gradient(180deg, #ece8ff 0%, #d8d0f5 100%);
+  border-color: rgba(91, 76, 175, 0.22);
+}
+
+.trello-character-stat-pill--mana .trello-character-stat-meter {
+  background: rgba(91, 76, 175, 0.2);
+}
+
+.trello-character-stat-bar-fill--mana {
+  background: linear-gradient(90deg, #5b7cff, #8b5cf6);
+}
+
+.trello-character-stat-pill--dust {
+  background: linear-gradient(180deg, #f3f0ea 0%, #e5ddd0 100%);
+  border-color: rgba(120, 90, 40, 0.2);
+}
+
+.trello-character-stat-meter--dust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(120, 90, 40, 0.12);
+}
+
+.trello-character-stat-meter-value--dust {
+  position: static;
+  font-weight: 700;
+  font-size: 15px;
+  color: #5c4520;
+}
+
+.trello-social-friends-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.trello-social-friend-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(92, 74, 50, 0.08);
+}
+
+.theme-dark .trello-social-friend-card {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.trello-social-friend-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 8px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+
+.trello-social-friend-link:hover {
+  background: rgba(92, 74, 50, 0.1);
+}
+
+.theme-dark .trello-social-friend-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.trello-social-friend-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(92, 74, 50, 0.15);
+}
+
+.trello-social-friend-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.trello-social-friend-avatar-fallback {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.65);
+}
+
+.trello-social-friend-name {
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trello-social-friend-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
 .trello-social-messages-layout {
   display: grid;
   grid-template-columns: minmax(140px, 200px) 1fr;

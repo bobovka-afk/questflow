@@ -7,6 +7,7 @@ import { WorkspaceModule } from '../workspace/workspace.module';
 import { WorkspaceActivityModule } from '../workspace-activity/workspace-activity.module';
 import { RedisModule } from '../redis/redis.module';
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
+import { UserSettingsModule } from '../user-settings/user-settings.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { RateLimitGuard } from '../common/guards/rate-limit.guard';
     WorkspaceModule,
     WorkspaceActivityModule,
     RedisModule,
+    UserSettingsModule,
   ],
   controllers: [WorkspaceInviteController],
   providers: [WorkspaceInviteService, RateLimitGuard],

@@ -42,7 +42,25 @@ import { SpaLink } from '@shared/lib/navigation'
 import { handleSpaTileAuxClick, handleSpaTileClick } from '@shared/lib/navigation-core'
 import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar'
 import type { BoardRow } from '@pages/workspace-boards/WorkspaceBoardsPage'
-import { canManageWorkspace } from '@entities/workspace'
+import {
+	canArchiveBoards,
+	canManageBoards,
+	canManageLabels,
+	canManageWorkspace,
+	type WorkspacePermissions,
+} from '@entities/workspace'
+import {
+	filterBoardCards,
+	CARD_REMINDER_OPTIONS,
+	formatMentionToken,
+	type BoardCardFilter,
+	type WorkspaceLabelRow,
+} from '@features/board/lib/boardCardFilters'
+import { CardLabelStrip } from '@features/board/ui/CardLabelStrip'
+import { CommentBodyText } from '@features/board/ui/CommentBodyText'
+import { WorkspaceSearchModal } from '@widgets/workspace-search/WorkspaceSearchModal'
+import { WorkspaceLabelsModal } from '@widgets/workspace-labels/WorkspaceLabelsModal'
+import { useWorkspaceSearchHotkey } from '@shared/lib/useWorkspaceSearchHotkey'
 import { LIST_COLOR_PRESET_KEYS, listHeaderColor } from '@entities/board'
 
 type ListRow = {
@@ -61,9 +79,11 @@ export type CardRow = {
 	title: string
 	description: string | null
 	dueDate: string | null
+	reminderMinutesBefore?: number | null
 	position: number
 	assigneeId: number | null
 	isCompleted?: boolean
+	labels?: WorkspaceLabelRow[]
 	createdAt: string
 	updatedAt: string
 }
@@ -326,6 +346,8 @@ export function BoardPage({
 		Record<number, CardRow[]>
 	>({})
 	const [myRole, setMyRole] = useState<string | null>(null)
+	const [myPermissions, setMyPermissions] =
+		useState<WorkspacePermissions | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [msg, setMsg] = useState<string | null>(null)
 	const [alertOpen, setAlertOpen] = useState(false)
@@ -366,7 +388,28 @@ export function BoardPage({
 	const [editCardAssigneeId, setEditCardAssigneeId] = useState<number | null>(
 		null
 	)
+	const [editCardReminder, setEditCardReminder] = useState('')
+	const [editCardLabelIds, setEditCardLabelIds] = useState<number[]>([])
 	const [editCardBusy, setEditCardBusy] = useState(false)
+	const [wsLabels, setWsLabels] = useState<WorkspaceLabelRow[]>([])
+	const [boardFilter, setBoardFilter] = useState<BoardCardFilter>('all')
+	const [labelFilterId, setLabelFilterId] = useState<number | null>(null)
+	const [searchOpen, setSearchOpen] = useState(false)
+	const [labelsModalOpen, setLabelsModalOpen] = useState(false)
+	const [archivedLists, setArchivedLists] = useState<ListRow[]>([])
+	const [archivedListsOpen, setArchivedListsOpen] = useState(false)
+	const [archiveListBusyId, setArchiveListBusyId] = useState<number | null>(
+		null
+	)
+
+	const canManageLists =
+		canManageBoards(myPermissions) || canManageWorkspace(myRole)
+	const canArchiveLists =
+		canArchiveBoards(myPermissions) || canManageWorkspace(myRole)
+	const canManageLabelsPerm =
+		canManageLabels(myPermissions) || canManageWorkspace(myRole)
+
+	useWorkspaceSearchHotkey(() => setSearchOpen(true), Boolean(accessToken))
 
 	const [comments, setComments] = useState<CommentRow[]>([])
 	const [commentsLoading, setCommentsLoading] = useState(false)
@@ -539,23 +582,60 @@ export function BoardPage({
 					`/workspace/${workspaceId}/board/${boardId}/lists`,
 					{ method: 'GET', accessToken }
 				),
-				api<{ myRole: string | null }>(
-					`/workspace/${workspaceId}/summary`,
-					{ method: 'GET', accessToken }
-				)
+				api<{
+					myRole: string | null
+					myPermissions: WorkspacePermissions | null
+				}>(`/workspace/${workspaceId}/summary`, {
+					method: 'GET',
+					accessToken,
+				}),
 			])
 			setBoard(b)
 			setLists(Array.isArray(ls) ? ls : [])
 			setMyRole(summary.myRole ?? null)
+			setMyPermissions(summary.myPermissions ?? null)
 		} catch (e) {
 			setMsg(formatError(e))
 			setBoard(null)
 			setLists([])
 			setMyRole(null)
+			setMyPermissions(null)
 		} finally {
 			setLoading(false)
 		}
 	}, [accessToken, workspaceId, boardId])
+
+	const reloadWsLabels = useCallback(async () => {
+		if (!accessToken) {
+			setWsLabels([])
+			return
+		}
+		try {
+			const raw = await api<WorkspaceLabelRow[]>(
+				`/workspace/${workspaceId}/labels`,
+				{ method: 'GET', accessToken }
+			)
+			setWsLabels(Array.isArray(raw) ? raw : [])
+		} catch {
+			setWsLabels([])
+		}
+	}, [accessToken, workspaceId])
+
+	const loadArchivedLists = useCallback(async () => {
+		if (!accessToken || !canArchiveLists) {
+			setArchivedLists([])
+			return
+		}
+		try {
+			const raw = await api<ListRow[]>(
+				`/workspace/${workspaceId}/board/${boardId}/lists/archived`,
+				{ method: 'GET', accessToken }
+			)
+			setArchivedLists(Array.isArray(raw) ? raw : [])
+		} catch {
+			setArchivedLists([])
+		}
+	}, [accessToken, workspaceId, boardId, canArchiveLists])
 
 	const loadCards = useCallback(async () => {
 		if (!accessToken || lists.length === 0) {
@@ -607,6 +687,14 @@ export function BoardPage({
 	useEffect(() => {
 		void loadCards()
 	}, [loadCards])
+
+	useEffect(() => {
+		void reloadWsLabels()
+	}, [reloadWsLabels])
+
+	useEffect(() => {
+		if (archivedListsOpen) void loadArchivedLists()
+	}, [archivedListsOpen, loadArchivedLists])
 
 	useEffect(() => {
 		setEditingCommentId(null)
@@ -799,6 +887,44 @@ export function BoardPage({
 		}
 	}
 
+	async function archiveListById(list: ListRow) {
+		if (!accessToken) return
+		setArchiveListBusyId(list.id)
+		setActiveListMenuId(null)
+		try {
+			await api(`/workspace/${workspaceId}/lists/${list.id}/archive`, {
+				method: 'PATCH',
+				accessToken,
+			})
+			if (editList?.id === list.id) setEditList(null)
+			await load()
+			if (archivedListsOpen) await loadArchivedLists()
+		} catch (e) {
+			setAlertText(formatError(e))
+			setAlertOpen(true)
+		} finally {
+			setArchiveListBusyId(null)
+		}
+	}
+
+	async function restoreArchivedList(list: ListRow) {
+		if (!accessToken) return
+		setArchiveListBusyId(list.id)
+		try {
+			await api(`/workspace/${workspaceId}/lists/${list.id}/unarchive`, {
+				method: 'PATCH',
+				accessToken,
+			})
+			await load()
+			await loadArchivedLists()
+		} catch (e) {
+			setAlertText(formatError(e))
+			setAlertOpen(true)
+		} finally {
+			setArchiveListBusyId(null)
+		}
+	}
+
 	async function submitEditList() {
 		if (!accessToken || !editList) return
 		const name = editName.trim()
@@ -871,6 +997,12 @@ export function BoardPage({
 		setEditCardDesc(card.description ?? '')
 		setEditCardDue(dueDateToInputValue(card.dueDate))
 		setEditCardAssigneeId(card.assigneeId)
+		setEditCardReminder(
+			card.reminderMinutesBefore != null
+				? String(card.reminderMinutesBefore)
+				: ''
+		)
+		setEditCardLabelIds((card.labels ?? []).map(l => l.id))
 		setCardTitleEditing(false)
 	}
 
@@ -1018,6 +1150,8 @@ export function BoardPage({
 		setEditCardBusy(true)
 		try {
 			const dueIso = inputValueToIsoOrNull(editCardDue)
+			const reminderMinutesBefore =
+				editCardReminder === '' ? null : Number(editCardReminder)
 			await api(`/workspace/${workspaceId}/cards/${editCard.id}`, {
 				method: 'PATCH',
 				accessToken,
@@ -1025,8 +1159,14 @@ export function BoardPage({
 					title,
 					description: editCardDesc.trim() || null,
 					dueDate: dueIso,
-					assigneeId: editCardAssigneeId
+					assigneeId: editCardAssigneeId,
+					reminderMinutesBefore
 				}
+			})
+			await api(`/workspace/${workspaceId}/cards/${editCard.id}/labels`, {
+				method: 'PATCH',
+				accessToken,
+				json: { labelIds: editCardLabelIds }
 			})
 			setEditCard(null)
 			await loadCards()
@@ -1155,7 +1295,12 @@ export function BoardPage({
 							className='trello-board-lists-droppable'
 						>
 							{lists.map((list, listIndex) => {
-								const cards = cardsByListId[list.id] ?? []
+								const cards = filterBoardCards(
+									cardsByListId[list.id] ?? [],
+									boardFilter,
+									labelFilterId,
+									currentUserId
+								)
 								return (
 									<Draggable
 										key={list.id}
@@ -1193,9 +1338,7 @@ export function BoardPage({
 														<span className='trello-list-header-title'>
 															{list.name}
 														</span>
-														{canManageWorkspace(
-															myRole
-														) ? (
+														{canManageLists ? (
 															<div
 																className='trello-list-menu-wrap'
 																onMouseEnter={() =>
@@ -1237,6 +1380,23 @@ export function BoardPage({
 																		>
 																			Редактировать
 																		</button>
+																		{canArchiveLists ? (
+																			<button
+																				type='button'
+																				className='trello-list-menu-item'
+																				disabled={
+																					archiveListBusyId ===
+																					list.id
+																				}
+																				onClick={() =>
+																					void archiveListById(
+																						list
+																					)
+																				}
+																			>
+																				В архив
+																			</button>
+																		) : null}
 																		<button
 																			type='button'
 																			className='trello-list-menu-item trello-list-menu-item-danger'
@@ -1333,6 +1493,11 @@ export function BoardPage({
 																						)}
 																				>
 																					<div className='trello-card-inner'>
+																						<CardLabelStrip
+																							labels={
+																								card.labels
+																							}
+																						/>
 																						<div className='trello-card-complete-slot'>
 																							<button
 																								type='button'
@@ -1430,6 +1595,36 @@ export function BoardPage({
 						</div>
 					)}
 				</Droppable>
+				{archivedListsOpen && canArchiveLists ? (
+					<div className='trello-archived-lists-panel'>
+						<h3 className='trello-archived-lists-title'>
+							Архив колонок
+						</h3>
+						{archivedLists.length === 0 ? (
+							<p className='trello-settings-card-hint'>
+								Нет архивных колонок.
+							</p>
+						) : (
+						<ul className='trello-archived-lists'>
+							{archivedLists.map(list => (
+								<li key={list.id}>
+									<span>{list.name}</span>
+									<button
+										type='button'
+										className='trello-btn trello-btn-sm trello-btn-ghost'
+										disabled={archiveListBusyId === list.id}
+										onClick={() =>
+											void restoreArchivedList(list)
+										}
+									>
+										Восстановить
+									</button>
+								</li>
+							))}
+						</ul>
+						)}
+					</div>
+				) : null}
 				<div className='trello-list-wrap trello-add-list-wrap trello-add-list-wrap--inline'>
 					<button
 						type='button'
@@ -1480,6 +1675,76 @@ export function BoardPage({
 					{accessToken ? <ProfileToolbarAnchor /> : null}
 				</div>
 			</header>
+
+			{accessToken && (
+				<nav className='trello-board-toolbar' aria-label='Фильтры и действия доски'>
+					<div className='trello-board-toolbar-filters'>
+						{(['all', 'mine', 'overdue', 'unassigned'] as BoardCardFilter[]).map(
+							f => (
+								<button
+									key={f}
+									type='button'
+									className={`trello-btn trello-btn-sm ${boardFilter === f ? 'trello-btn-primary' : 'trello-btn-ghost'}`}
+									onClick={() => setBoardFilter(f)}
+								>
+									{f === 'all'
+										? 'Все'
+										: f === 'mine'
+											? 'Мои'
+											: f === 'overdue'
+												? 'Просрочено'
+												: 'Без исполнителя'}
+								</button>
+							)
+						)}
+						{wsLabels.length > 0 && (
+							<select
+								className='trello-input trello-board-filter-select'
+								value={labelFilterId ?? ''}
+								onChange={e =>
+									setLabelFilterId(
+										e.target.value === '' ? null : Number(e.target.value)
+									)
+								}
+								aria-label='Фильтр по метке'
+							>
+								<option value=''>Все метки</option>
+								{wsLabels.map(l => (
+									<option key={l.id} value={l.id}>
+										{l.name}
+									</option>
+								))}
+							</select>
+						)}
+					</div>
+					<div className='trello-board-toolbar-tools'>
+						<button
+							type='button'
+							className='trello-btn trello-btn-sm trello-btn-ghost'
+							onClick={() => setSearchOpen(true)}
+							title='Поиск (⌘K / Ctrl+K)'
+						>
+							Поиск
+						</button>
+						<button
+							type='button'
+							className='trello-btn trello-btn-sm trello-btn-ghost'
+							onClick={() => setLabelsModalOpen(true)}
+						>
+							Метки
+						</button>
+						{canArchiveLists ? (
+							<button
+								type='button'
+								className={`trello-btn trello-btn-sm trello-btn-ghost${archivedListsOpen ? ' trello-btn-primary' : ''}`}
+								onClick={() => setArchivedListsOpen(o => !o)}
+							>
+								Архив колонок
+							</button>
+						) : null}
+					</div>
+				</nav>
+			)}
 
 			{!accessToken && (
 				<div className='trello-board-banner'>
@@ -1821,6 +2086,55 @@ export function BoardPage({
 										}
 									/>
 								</label>
+								<label className='trello-field'>
+									<span className='trello-label'>
+										Напоминание (in-app)
+									</span>
+									<select
+										className='trello-input'
+										value={editCardReminder}
+										onChange={e =>
+											setEditCardReminder(e.target.value)
+										}
+										disabled={editCardBusy || !editCardDue}
+									>
+										{CARD_REMINDER_OPTIONS.map(o => (
+											<option key={o.value} value={o.value}>
+												{o.label}
+											</option>
+										))}
+									</select>
+								</label>
+								{wsLabels.length > 0 && (
+									<div className='trello-field'>
+										<span className='trello-label'>Метки</span>
+										<div className='trello-card-label-picks'>
+											{wsLabels.map(l => {
+												const on = editCardLabelIds.includes(
+													l.id
+												)
+												return (
+													<button
+														key={l.id}
+														type='button'
+														className={`trello-label-chip${on ? ' trello-label-chip--on' : ''}`}
+														onClick={() =>
+															setEditCardLabelIds(prev =>
+																on
+																	? prev.filter(
+																			id => id !== l.id
+																		)
+																	: [...prev, l.id]
+															)
+														}
+													>
+														{l.name}
+													</button>
+												)
+											})}
+										</div>
+									</div>
+								)}
 								<div className='trello-card-detail-aside-block trello-card-detail-meta-in-main'>
 									<h3 className='trello-card-detail-aside-heading-plain'>
 										Исполнитель
@@ -1903,6 +2217,25 @@ export function BoardPage({
 								{accessToken ? (
 									<>
 										<div className='trello-card-comments-compose'>
+											{workspaceMembers.length > 0 && (
+												<div className='trello-mention-picks'>
+													{workspaceMembers.map(m => (
+														<button
+															key={m.user.id}
+															type='button'
+															className='trello-btn trello-btn-sm trello-btn-ghost'
+															onClick={() =>
+																setCommentDraft(
+																	prev =>
+																		`${prev}${prev.endsWith(' ') || prev === '' ? '' : ' '}${formatMentionToken(m.user.id)} `
+																)
+															}
+														>
+															@{m.user.name}
+														</button>
+													))}
+												</div>
+											)}
 											<textarea
 												className='trello-textarea trello-card-comments-textarea'
 												value={commentDraft}
@@ -2073,11 +2406,12 @@ export function BoardPage({
 																	</div>
 																) : (
 																	<>
-																		<p className='trello-card-comment-text'>
-																			{
-																				c.body
+																		<CommentBodyText
+																			body={c.body}
+																			members={
+																				workspaceMembers
 																			}
-																		</p>
+																		/>
 																		{(showEdit ||
 																			canDelete) && (
 																			<div className='trello-card-comment-actions'>
@@ -2452,6 +2786,29 @@ export function BoardPage({
 						</div>
 					</div>
 				</div>
+			)}
+
+			{accessToken && (
+				<WorkspaceSearchModal
+					accessToken={accessToken}
+					workspaceId={workspaceId}
+					open={searchOpen}
+					onClose={() => setSearchOpen(false)}
+				/>
+			)}
+			{accessToken && (
+				<WorkspaceLabelsModal
+					open={labelsModalOpen}
+					accessToken={accessToken}
+					workspaceId={workspaceId}
+					labels={wsLabels}
+					canManage={canManageLabelsPerm}
+					onClose={() => setLabelsModalOpen(false)}
+					onLabelsChange={() => {
+						void reloadWsLabels()
+						void loadCards()
+					}}
+				/>
 			)}
 		</div>
 	)

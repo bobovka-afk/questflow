@@ -3,7 +3,7 @@
 Спецификация ассетов для текущих механик: квесты, сундуки, косметика, пыль, достижения, персонаж.  
 Для продукта и художника/AI-генерации; при подключении в коде ориентир — **имя файла = `CosmeticItem.key`** (где применимо).
 
-**Связанные документы:** [gamification-roadmap.md](gamification-roadmap.md), [gamification-agent-context.md](gamification-agent-context.md).
+**Связанные документы:** [gamification-roadmap.md](gamification-roadmap.md), [gamification-agent-context.md](gamification-agent-context.md), [promt.md](promt.md) (AI-промты, 1 абзац = 1 файл).
 
 **Статус кода (на момент документа):** `CharacterPortraitWithFrame` — слои в квадрате портрета: **`PROFILE_BACKGROUND`** → персонаж → **`PORTRAIT_FRAME`**. Значки титула (`TITLE_BADGE`) в v1 **не используются** — блок снят с ТЗ на арт.
 
@@ -31,7 +31,12 @@ backend/uploads/
 │   ├── portraits/              # PORTRAIT_FRAME: bronze, silver, gold, mystic (+ квестовые AVATAR_PRESET)
 │   └── backgrounds/            # PROFILE_BACKGROUND
 ├── chests/                     # tier-иконки и кадры открытия
-│   └── common/                 # COMMON: 0.png … 4.png (tap-to-open)
+│   ├── common/                 # COMMON: 0.png … 4.png (tap-to-open)
+│   ├── rare/                   # RARE: 0.png … 4.png (0 = иконка + кадр 0)
+│   ├── epic/                   # EPIC: 0.png … 4.png
+│   └── boss/                   # boss/{nasadka|borovik|mukhomor}/0–4.png
+├── bosses/                     # иконки боссов для UI рейда (≠ boss-сундуки)
+├── ui/                         # mana, checkin, social, …
 ├── dust/                       # пыль
 └── achievements/               # иконки достижений
 ```
@@ -232,14 +237,18 @@ frame:   trello-character-profile-portrait-frame
 
 ## Блок 4. Сундуки (tier)
 
-Замена эмодзи 🎁 в квестах, магазине пыли, модалке открытия. Три уровня = три файла.
+Замена эмодзи 🎁 в квестах, магазине пыли, модалке открытия. **Отдельных `chest_rare.png` / `chest_epic.png` нет** — закрытый сундук tier = **`{tier}/0.png`** (иконка и первый кадр tap, как у Common). По **5 кадров** на tier (`0`–`4`).
 
 | Назначение | Файл | Tier | Размер | Описание |
 |------------|------|------|--------|----------|
 | Обычный сундук (иконка + кадр 0) | `chests/common/0.png` | Common | **1024×1024** (в UI 32–128 px) | Закрытый сундук, первый кадр tap-последовательности |
-| Обычный сундук (тапы 1–4) | `chests/common/1.png` … `chests/common/4.png` | Common | **1024×1024** | Отдельный PNG на каждый тап (вариант B, без spritesheet) |
-| Редкий сундук | `chests/chest_rare.png` | Rare | 256×256 | Пока 🎁 в UI; арт по мере готовности |
-| Эпический сундук | `chests/chest_epic.png` | Epic | 256×256 | Пока 🎁 в UI |
+| Обычный сундук (тапы 1–4) | `chests/common/1.png` … `chests/common/4.png` | Common | **1024×1024** | Отдельный PNG на каждый тап |
+| Редкий сундук (иконка + закрытый кадр) | `chests/rare/1.png` | Rare | **1024×1024** | Закрытый rare, первый кадр tap (аналог `common/0.png`) |
+| Редкий сундук (тапы 2–5) | `chests/rare/2.png` … `chests/rare/5.png` | Rare | **1024×1024** | Отдельный PNG на каждый тап; **4 тапа**, как у Common |
+| Эпический сундук (иконка + кадр 0) | `chests/epic/0.png` | Epic | **1024×1024** | Закрытый epic |
+| Эпический сундук (тапы 1–4) | `chests/epic/1.png` … `chests/epic/4.png` | Epic | **1024×1024** | Tap-to-open |
+
+**Party boss (Phase 5.party):** иконки существ — `bosses/{nasadka|borovik|mukhomor}.png` (**512×512**); boss-сундуки награды — `chests/boss/{key}/0–4.png` (**1024×1024**, отдельно от tier-сундуков и от иконки босса). Промты: [promt.md](promt.md).
 
 **Использование в UI:**
 
@@ -268,7 +277,7 @@ frame:   trello-character-profile-portrait-frame
 | Шаг | Файл |
 |-----|------|
 | URL кадров по `ChestTier` | `frontend/src/entities/chest/lib/chestAssets.ts` |
-| Иконка в квесте | `ChestIcon.tsx` (`chests/common/0.png`) |
+| Иконка в квесте | `ChestIcon.tsx` (`chests/common/0.png`, `chests/rare/1.png`) |
 | Tap-модалка | `ChestTapOpenModal.tsx` + `ProfileCharacterQuestsPanel` |
 | API | без изменений |
 
@@ -312,9 +321,9 @@ frame:   trello-character-profile-portrait-frame
 |---------|--------|----------|
 | Иллюстрация intro-модалки | **800×450 px** | «Доска + герой», для `GamificationIntroModal`; лёгкий, без мелких деталей |
 | Иконка XP (toast на доске) | **32×32** | Звезда/молния опыта, золотая |
-| Иконка чекина (toast) | 32×32 | Пламя дня |
+| Иконка чекина (toast, счётчик) | **64×64** → `ui/checkin/check.png` | Пламя дня; перерисовка placeholder на месте |
 | Иконка HP +5 | 32×32 | Сердце/крест здоровья, зелёный |
-| Медали серии 7 / 14 / 30 | **48×48** каждая | Для модалки порогов серии (сейчас текст); согласовать с `CHECKIN_STREAK_MILESTONES` |
+| Медали порогов серии **7 / 14 / 30** | **48×48** в модалке | **7** и **30** — те же файлы, что `achievements/streak_7.png` и `streak_30.png`; **14** — только `achievements/streak_14.png` (в сиде achievement нет). Папки `ui/streak/` не создавать |
 | Логотип Questflow | **32×32**, **180×40** | Если заменить CSS `.trello-logo` на PNG/SVG |
 
 ---
@@ -379,8 +388,9 @@ frame:   trello-character-profile-portrait-frame
 
 | key | Файл | Описание |
 |-----|------|----------|
-| `streak_7` | `achievements/streak_7.png` | Пламя + цифра 7 (цифра крупно и читаемо на 48 px) |
-| `streak_30` | `achievements/streak_30.png` | Сильное пламя / корона огня + 30 |
+| `streak_7` | `achievements/streak_7.png` | Пламя + цифра 7; тот же файл — milestone **7** дней в модалке серии |
+| `streak_30` | `achievements/streak_30.png` | Сильное пламя / корона огня + 30; тот же файл — milestone **30** дней |
+| *(milestone only)* | `achievements/streak_14.png` | Milestone **14** дней (`CHECKIN_STREAK_MILESTONES`); ключа achievement в сиде нет |
 
 ### 10.4 Уровень персонажа
 
@@ -410,7 +420,7 @@ frame:   trello-character-profile-portrait-frame
 | `dust_100` | `achievements/dust_100.png` | Мешочек/куча кристаллов пыли (не копия `dust.png` 1:1 — крупнее сюжет) |
 | `cosmetics_5` | `achievements/cosmetics_5.png` | Вешалка/манекен или 5 звёзд в ряд — «коллекционер» |
 
-**Заблокированное состояние:** отдельные файлы `achievements/{key}_locked.png` **или** один CSS-фильтр `grayscale` на цветную иконку — на выбор разработки.
+**Заблокированное состояние:** **CSS `grayscale`** на цветной иконке; отдельные `achievements/{key}_locked.png` **не генерировать**.
 
 ---
 

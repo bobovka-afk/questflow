@@ -1,14 +1,16 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { PassportStrategy } from '@nestjs/passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { UserService } from '../../user/user.service'
+import { UserSettingsService } from '../../user-settings/user-settings.service'
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
 	constructor(
 		private configService: ConfigService,
-		private userService: UserService
+		private userService: UserService,
+		private userSettingsService: UserSettingsService,
 	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -17,7 +19,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		})
 	}
 
-	async validate({ id }: { id: string }) {
-		return this.userService.getById(id)
+	async validate(payload: { id: string; sid?: string }) {
+		const user = await this.userService.getById(payload.id)
+		if (!user) return null
+
+		if (payload.sid) {
+			const active = await this.userSettingsService.isSessionActive(user.id, payload.sid)
+			if (!active) {
+				throw new UnauthorizedException({
+					code: 'SESSION_REVOKED',
+					message: 'Session has been revoked',
+				})
+			}
+		}
+
+		return { ...user, sessionId: payload.sid }
 	}
 }

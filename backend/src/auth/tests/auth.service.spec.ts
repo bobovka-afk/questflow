@@ -35,6 +35,7 @@ describe('AuthService', () => {
       | 'revokeAllSessions'
       | 'logPasswordChanged'
       | 'logPasswordReset'
+      | 'allowsSecurityEmail'
     >
   >;
 
@@ -73,6 +74,7 @@ describe('AuthService', () => {
       revokeAllSessions: jest.fn().mockResolvedValue(undefined),
       logPasswordChanged: jest.fn().mockResolvedValue(undefined),
       logPasswordReset: jest.fn().mockResolvedValue(undefined),
+      allowsSecurityEmail: jest.fn().mockResolvedValue(true),
     };
     service = new AuthService(
       userService as unknown as UserService,
@@ -121,7 +123,7 @@ describe('AuthService', () => {
 
   describe('issueTokens', () => {
     it('signs access and refresh tokens', () => {
-      const tokens = service.issueTokens(42);
+      const tokens = service.issueTokens(42, 'session-1');
       expect(tokens).toEqual({
         accessToken: 'token',
         refreshToken: 'token',
@@ -310,6 +312,7 @@ describe('AuthService', () => {
       expect(userSettingsService.revokeAllOtherSessions).toHaveBeenCalledWith(
         1,
         'refresh-current',
+        undefined,
         { ipAddress: '127.0.0.1' },
       );
     });

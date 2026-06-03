@@ -111,8 +111,8 @@
 /* Верхняя полоска — стекло, без «доски Trello» */
 .trello-boards-topbar,
 .trello-board-topbar {
-  /* Справа — место под фиксированный тулбар (~58px) + отступ, без лишней «пустой полосы» до аватара */
-  padding: 20px max(20px, calc(env(safe-area-inset-right, 0px) + 72px)) 20px 48px;
+  /* Справа — колокол + аватар в fixed toolbar */
+  padding: 20px max(20px, calc(env(safe-area-inset-right, 0px) + var(--qf-topbar-toolbar-gutter, 124px))) 20px 48px;
   box-sizing: border-box;
   background: var(--qf-topbar-glass);
   border-bottom: 1px solid var(--qf-topbar-glass-border);
@@ -324,6 +324,20 @@ header.trello-boards-topbar.trello-boards-topbar--sticky {
   justify-content: flex-end;
   justify-self: end;
   min-width: 0;
+  max-width: 100%;
+  padding-right: 4px;
+}
+
+.trello-topbar-actions .trello-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .trello-topbar-actions .trello-btn-ghost:not(.trello-topbar-back-btn) {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
 }
 
 .trello-topbar-stripe-spacer {
@@ -1848,6 +1862,61 @@ html:not(.theme-dark) .trello-board-viewport .trello-board-loading {
 
 .trello-board-topbar-spacer {
   flex: 1;
+}
+
+/* Панель фильтров и действий доски — под шапкой, без наложения на fixed toolbar */
+.trello-board-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin: 0 16px 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--qf-panel-bg-muted);
+  border: 1px solid var(--qf-panel-border);
+  box-shadow: var(--qf-panel-shadow);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.trello-board-toolbar-filters,
+.trello-board-toolbar-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.trello-board-toolbar-tools {
+  margin-left: auto;
+}
+
+.trello-board-toolbar .trello-board-filter-select {
+  min-width: 140px;
+  max-width: 200px;
+}
+
+.theme-dark .trello-board-toolbar {
+  color: var(--qf-text);
+}
+
+.theme-dark .trello-board-toolbar .trello-btn-ghost {
+  color: var(--qf-text);
+  border-color: var(--qf-panel-border);
+}
+
+.theme-dark .trello-board-toolbar .trello-input {
+  background: rgba(0, 0, 0, 0.22);
+  border-color: var(--qf-panel-border);
+  color: var(--qf-text);
+}
+
+.theme-dark .trello-board-toolbar .trello-input option {
+  background: #1e2430;
+  color: var(--qf-text);
 }
 
 .trello-board-banner {
@@ -3393,22 +3462,22 @@ a.trello-profile-menu-item {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.trello-user-profile-avatar-wrap .avatarImg {
-  width: 96px;
-  height: 96px;
-  border-radius: 12px;
-  object-fit: cover;
-}
-
-.trello-user-profile-avatar-fallback {
-  width: 96px;
-  height: 96px;
-  border-radius: 12px;
+.trello-profile-avatar-initials {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 48px;
   font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #44546f;
+  background: #f4f5f7;
+}
+
+.theme-dark .trello-profile-avatar-initials {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .trello-user-profile-name {

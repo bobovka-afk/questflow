@@ -1,14 +1,32 @@
 import {
   DEFAULT_GAMIFICATION_SETTINGS,
+  DEFAULT_NOTIFICATION_SETTINGS,
+  DEFAULT_PRIVACY_SETTINGS,
   DEFAULT_SECURITY_SETTINGS,
   DEFAULT_SITE_SETTINGS,
   type GamificationSettingsJson,
+  type NotificationSettingsJson,
+  type PrivacySettingsJson,
   type SecuritySettingsJson,
   type SiteSettingsJson,
 } from '../config/default-user-settings';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function parsePrivacySettings(raw: unknown): PrivacySettingsJson {
+  if (!isRecord(raw)) return { ...DEFAULT_PRIVACY_SETTINGS };
+  return {
+    allowCharacterView:
+      typeof raw.allowCharacterView === 'boolean'
+        ? raw.allowCharacterView
+        : DEFAULT_PRIVACY_SETTINGS.allowCharacterView,
+    showAccountAvatarOnPublicProfile:
+      typeof raw.showAccountAvatarOnPublicProfile === 'boolean'
+        ? raw.showAccountAvatarOnPublicProfile
+        : DEFAULT_PRIVACY_SETTINGS.showAccountAvatarOnPublicProfile,
+  };
 }
 
 export function parseGamificationSettings(raw: unknown): GamificationSettingsJson {
@@ -25,12 +43,36 @@ export function parseGamificationSettings(raw: unknown): GamificationSettingsJso
   };
 }
 
+export function parseNotificationSettings(raw: unknown): NotificationSettingsJson {
+  if (!isRecord(raw)) return { ...DEFAULT_NOTIFICATION_SETTINGS };
+  return {
+    emailSecurity:
+      typeof raw.emailSecurity === 'boolean'
+        ? raw.emailSecurity
+        : DEFAULT_NOTIFICATION_SETTINGS.emailSecurity,
+    emailWorkspaceInvites:
+      typeof raw.emailWorkspaceInvites === 'boolean'
+        ? raw.emailWorkspaceInvites
+        : DEFAULT_NOTIFICATION_SETTINGS.emailWorkspaceInvites,
+  };
+}
+
 export function parseSiteSettings(raw: unknown): SiteSettingsJson {
-  return isRecord(raw) ? { ...raw } : { ...DEFAULT_SITE_SETTINGS };
+  if (!isRecord(raw)) return { ...DEFAULT_SITE_SETTINGS };
+  const { notifications: notificationsRaw, ...rest } = raw;
+  return {
+    ...rest,
+    notifications: parseNotificationSettings(notificationsRaw),
+  };
 }
 
 export function parseSecuritySettings(raw: unknown): SecuritySettingsJson {
-  return isRecord(raw) ? { ...raw } : { ...DEFAULT_SECURITY_SETTINGS };
+  if (!isRecord(raw)) return { ...DEFAULT_SECURITY_SETTINGS };
+  const { privacy: privacyRaw, ...rest } = raw;
+  return {
+    ...rest,
+    privacy: parsePrivacySettings(privacyRaw),
+  };
 }
 
 export function deviceLabelFromUserAgent(userAgent: string | undefined): string | undefined {

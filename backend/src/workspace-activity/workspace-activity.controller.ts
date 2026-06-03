@@ -10,6 +10,7 @@ import {
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -17,7 +18,7 @@ import { JwtAuthGuard } from '../auth/guards/auth.guard';
 import { WorkspaceAccessGuard } from '../common/guards/workspace-access.guard';
 import { WorkspaceRoleGuard } from '../common/guards/workspace-role.guard';
 import { WorkspaceRoles } from '../common/decorators/workspace-roles.decorator';
-import { WorkspaceRole } from '../generated/prisma/enums';
+import { WorkspaceActivityType, WorkspaceRole } from '../generated/prisma/enums';
 import { PaginationDto } from '../workspace/dto/pagination.dto';
 import { WorkspaceActivityService } from './workspace-activity.service';
 import type { WorkspaceActivityListItem } from './interface';
@@ -39,13 +40,16 @@ export class WorkspaceActivityController {
   @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
   @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN'" })
   @ApiResponse({ status: 404, description: "code: 'WORKSPACE_NOT_FOUND'" })
+  @ApiQuery({ name: 'type', required: false, enum: WorkspaceActivityType })
   async listWorkspaceActivity(
     @Param('workspaceId', ParseIntPipe) workspaceId: number,
     @Query() paginationDto: PaginationDto,
+    @Query('type') type?: WorkspaceActivityType,
   ): Promise<WorkspaceActivityListItem[]> {
     return this.workspaceActivityService.listByWorkspace(
       workspaceId,
       paginationDto,
+      type,
     );
   }
 }

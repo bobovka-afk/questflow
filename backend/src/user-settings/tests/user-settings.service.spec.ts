@@ -30,7 +30,82 @@ describe('UserSettingsService', () => {
         checkinAnimationOnCardClose: true,
         xpGainNotifications: true,
       });
+      expect(result.privacy).toEqual({
+        allowCharacterView: true,
+        showAccountAvatarOnPublicProfile: true,
+      });
       expect(result.updatedAt).toBe('2026-05-28T12:00:00.000Z');
+    });
+  });
+
+  describe('email notification preferences', () => {
+    it('allowsSecurityEmail respects stored settings', async () => {
+      prisma.userSettings.upsert.mockResolvedValue({
+        userId: 1,
+        gamification: {},
+        site: { notifications: { emailSecurity: false, emailWorkspaceInvites: true } },
+        security: {},
+        updatedAt: new Date(),
+      });
+      await expect(service.allowsSecurityEmail(1)).resolves.toBe(false);
+    });
+
+    it('allowsWorkspaceInviteEmailForAddress is true for unknown email', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      await expect(
+        service.allowsWorkspaceInviteEmailForAddress('new@b.com'),
+      ).resolves.toBe(true);
+    });
+
+    it('allowsWorkspaceInviteEmailForAddress respects user settings', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 9 });
+      prisma.userSettings.upsert.mockResolvedValue({
+        userId: 9,
+        gamification: {},
+        site: { notifications: { emailSecurity: true, emailWorkspaceInvites: false } },
+        security: {},
+        updatedAt: new Date(),
+      });
+      await expect(
+        service.allowsWorkspaceInviteEmailForAddress('off@b.com'),
+      ).resolves.toBe(false);
+    });
+  });
+
+  describe('updatePrivacySettings', () => {
+    it('updates privacy and logs security event', async () => {
+      prisma.userSettings.upsert.mockResolvedValue({
+        userId: 1,
+        gamification: {},
+        site: {},
+        security: { privacy: { allowCharacterView: true, showAccountAvatarOnPublicProfile: true } },
+        updatedAt: new Date(),
+      });
+      prisma.userSettings.update.mockResolvedValue({
+        userId: 1,
+        gamification: {},
+        site: {},
+        security: {
+          privacy: { allowCharacterView: false, showAccountAvatarOnPublicProfile: true },
+        },
+        updatedAt: new Date('2026-05-28T12:00:00.000Z'),
+      });
+      prisma.userSecurityEvent.create.mockResolvedValue({ id: 1 });
+
+      const result = await service.updatePrivacySettings(
+        1,
+        { allowCharacterView: false },
+        { ipAddress: '127.0.0.1' },
+      );
+
+      expect(result.privacy.allowCharacterView).toBe(false);
+      expect(prisma.userSecurityEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            type: UserSecurityEventType.SECURITY_SETTINGS_CHANGED,
+          }),
+        }),
+      );
     });
   });
 
@@ -147,14 +222,11 @@ describe('UserSettingsService', () => {
       await expect(service.resolveRefreshSession('token', 3)).resolves.toBeNull();
     });
 
-    it('registers legacy session when hash is missing', async () => {
+    it('returns null when refresh hash is unknown', async () => {
       prisma.userSession.findUnique.mockResolvedValue(null);
-      prisma.userSession.create.mockResolvedValue({ id: 'session-new' });
-      prisma.userSecurityEvent.create.mockResolvedValue({ id: 1 });
 
-      const session = await service.resolveRefreshSession('legacy-token', 3);
-      expect(session).toEqual(expect.objectContaining({ id: 'session-new' }));
-      expect(prisma.userSession.create).toHaveBeenCalled();
+      await expect(service.resolveRefreshSession('unknown-token', 3)).resolves.toBeNull();
+      expect(prisma.userSession.create).not.toHaveBeenCalled();
     });
   });
 
@@ -216,14 +288,19 @@ describe('UserSettingsService', () => {
       prisma.userSession.updateMany.mockResolvedValue({ count: 2 });
       prisma.userSecurityEvent.create.mockResolvedValue({ id: 1 });
 
-      await service.revokeAllOtherSessions(4, 'current-refresh');
+      await service.revokeAllOtherSessions(4, 'current-refresh', 'session-current');
 
       expect(prisma.userSession.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             userId: 4,
             revokedAt: null,
-            NOT: { refreshTokenHash: service.hashRefreshToken('current-refresh') },
+            NOT: {
+              OR: [
+                { refreshTokenHash: service.hashRefreshToken('current-refresh') },
+                { id: 'session-current' },
+              ],
+            },
           }),
         }),
       );
@@ -233,18 +310,19 @@ describe('UserSettingsService', () => {
   describe('listSessions', () => {
     it('marks current session by refresh token hash', async () => {
       const hash = service.hashRefreshToken('current');
+      const sessionA = {
+        id: 'a',
+        deviceLabel: 'macOS',
+        userAgent: 'ua',
+        ipAddress: '1.1.1.1',
+        lastSeenAt: new Date('2026-05-28T10:00:00.000Z'),
+        createdAt: new Date('2026-05-28T09:00:00.000Z'),
+        expiresAt: new Date('2026-06-04T10:00:00.000Z'),
+        refreshTokenHash: hash,
+        revokedAt: null,
+      };
       prisma.userSession.findMany.mockResolvedValue([
-        {
-          id: 'a',
-          deviceLabel: 'macOS',
-          userAgent: 'ua',
-          ipAddress: '1.1.1.1',
-          lastSeenAt: new Date('2026-05-28T10:00:00.000Z'),
-          createdAt: new Date('2026-05-28T09:00:00.000Z'),
-          expiresAt: new Date('2026-06-04T10:00:00.000Z'),
-          refreshTokenHash: hash,
-          revokedAt: null,
-        },
+        sessionA,
         {
           id: 'b',
           deviceLabel: 'Windows',
@@ -254,15 +332,55 @@ describe('UserSettingsService', () => {
           createdAt: new Date('2026-05-27T09:00:00.000Z'),
           expiresAt: new Date('2026-06-03T10:00:00.000Z'),
           refreshTokenHash: 'other',
-          revokedAt: new Date(),
+          revokedAt: null,
         },
       ]);
+      prisma.userSession.update.mockResolvedValue(sessionA);
 
-      const rows = await service.listSessions(1, 'current');
+      const rows = await service.listSessions(1, 'current', 'a');
+      expect(rows).toHaveLength(2);
       expect(rows[0]?.isCurrent).toBe(true);
-      expect(rows[0]?.isRevoked).toBe(false);
       expect(rows[1]?.isCurrent).toBe(false);
-      expect(rows[1]?.isRevoked).toBe(true);
+      expect(rows[0]?.isRevoked).toBe(false);
+      expect(prisma.userSession.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 1, revokedAt: null },
+        }),
+      );
+      expect(rows[0]?.isExpired).toBe(false);
+    });
+
+    it('materializes session from refresh cookie when list is empty', async () => {
+      prisma.userSession.findMany.mockResolvedValue([]);
+      prisma.userSession.findUnique.mockResolvedValue(null);
+      prisma.userSession.create.mockResolvedValue({
+        id: 'session-new',
+        deviceLabel: 'macOS',
+        userAgent: 'ua',
+        ipAddress: '1.1.1.1',
+        lastSeenAt: new Date(),
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 86_400_000),
+        refreshTokenHash: service.hashRefreshToken('refresh-1'),
+        revokedAt: null,
+      });
+      prisma.userSecurityEvent.create.mockResolvedValue({ id: 1 });
+      prisma.userSession.update.mockImplementation(async ({ where }) => ({
+        id: where.id,
+        deviceLabel: 'macOS',
+        userAgent: 'ua',
+        ipAddress: '1.1.1.1',
+        lastSeenAt: new Date(),
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 86_400_000),
+        refreshTokenHash: service.hashRefreshToken('refresh-1'),
+        revokedAt: null,
+      }));
+
+      const rows = await service.listSessions(1, 'refresh-1', undefined);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.isCurrent).toBe(true);
+      expect(prisma.userSession.create).toHaveBeenCalled();
     });
   });
 

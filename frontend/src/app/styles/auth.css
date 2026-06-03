@@ -129,10 +129,10 @@
 
 /* Якорь для портала меню профиля: резервируем место в шапке, сам тулбар — fixed справа как раньше */
 .trello-topbar-profile-toolbar-host {
-  width: 48px;
-  min-width: 48px;
+  width: var(--qf-topbar-toolbar-gutter, 124px);
+  min-width: var(--qf-topbar-toolbar-gutter, 124px);
   min-height: 48px;
-  flex: 0 0 48px;
+  flex: 0 0 var(--qf-topbar-toolbar-gutter, 124px);
   flex-shrink: 0;
   pointer-events: none;
 }

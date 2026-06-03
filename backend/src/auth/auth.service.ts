@@ -96,7 +96,7 @@ export class AuthService {
           })
         }
 
-        const tokens = this.issueTokens(user.id)
+        const tokens = this.issueTokens(user.id, session.id)
         await this.userSettingsService.rotateRefreshSession(
           session.id,
           tokens.refreshToken,
@@ -114,14 +114,15 @@ export class AuthService {
 }
 
 
-  issueTokens(userId: number): AuthTokens {
-    const data = { id: String(userId) }
+  issueTokens(userId: number, sessionId: string): AuthTokens {
+    const refreshData = { id: String(userId) }
+    const accessData = { id: String(userId), sid: sessionId }
 
-    const accessToken = this.jwtService.sign(data, {
+    const accessToken = this.jwtService.sign(accessData, {
         expiresIn: '1h'
     })
 
-    const refreshToken = this.jwtService.sign(data, {
+    const refreshToken = this.jwtService.sign(refreshData, {
         expiresIn: '7d'
     })
 
@@ -151,10 +152,18 @@ export class AuthService {
         data: { emailVerifiedAt: new Date() },
       });
     }
-    const tokens = this.issueTokens(user!.id);
-    await this.userSettingsService.registerSession(user!.id, tokens.refreshToken, meta);
+    const refreshToken = this.jwtService.sign(
+      { id: String(user!.id) },
+      { expiresIn: '7d' },
+    );
+    const session = await this.userSettingsService.registerSession(
+      user!.id,
+      refreshToken,
+      meta,
+    );
+    const accessToken = this.issueTokens(user!.id, session.id).accessToken;
 
-    return { user: user!, ...tokens };
+    return { user: user!, accessToken, refreshToken };
   }
 
   addRefreshTokenToResponse(res: Response, refreshToken: string): void {
@@ -203,7 +212,9 @@ export class AuthService {
     const serverUrl = this.configService.get<string>('SERVER_URL') || '';
     const verificationUrl = `${serverUrl}/auth/email/verification/confirm?token=${token}`;
 
-    await this.mailService.sendEmailVerification(user.email, verificationUrl);
+    if (await this.userSettingsService.allowsSecurityEmail(user.id)) {
+      await this.mailService.sendEmailVerification(user.email, verificationUrl);
+    }
     return { ok: true };
   }
 
@@ -271,7 +282,9 @@ export class AuthService {
     const clientUrl = this.configService.get<string>('CLIENT_URL') || '';
     const resetUrl = `${clientUrl}/reset-password?token=${token}`;
 
-    await this.mailService.sendPasswordReset(user.email, resetUrl);
+    if (await this.userSettingsService.allowsSecurityEmail(user.id)) {
+      await this.mailService.sendPasswordReset(user.email, resetUrl);
+    }
     return { ok: true };
   }
 
@@ -395,6 +408,7 @@ export class AuthService {
     await this.userSettingsService.revokeAllOtherSessions(
       userId,
       currentRefreshToken,
+      undefined,
       meta,
     );
 
@@ -410,9 +424,17 @@ export class AuthService {
     meta?: SessionRequestMeta,
   ): Promise<LoginResult> {
     const user = await this.validateUser(loginDto);
-    const tokens = this.issueTokens(user.id);
-    await this.userSettingsService.registerSession(user.id, tokens.refreshToken, meta);
-    return { user, ...tokens };
+    const refreshToken = this.jwtService.sign(
+      { id: String(user.id) },
+      { expiresIn: '7d' },
+    );
+    const session = await this.userSettingsService.registerSession(
+      user.id,
+      refreshToken,
+      meta,
+    );
+    const { accessToken } = this.issueTokens(user.id, session.id);
+    return { user, accessToken, refreshToken };
   }
 
   private async validateUser(loginDto: LoginDto): Promise<AuthUserSnippet> {

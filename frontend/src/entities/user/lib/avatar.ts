@@ -22,11 +22,11 @@ export function avatarInitials(name: string): string {
 }
 
 export function userProfilePath(userId: number): string {
-  return `/profile/user/${userId}`;
+  return `/profile/${userId}`;
 }
 
 export function userCharacterPath(userId: number): string {
-  return `/profile/user/${userId}/character`;
+  return `/profile/${userId}/character`;
 }
 
 export function openUserProfile(userId: number, currentUserId: number | null | undefined) {

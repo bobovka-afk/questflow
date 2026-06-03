@@ -15,8 +15,10 @@ import { CreateListDto } from './dto/create-list.dto';
 import { MoveListDto } from './dto/move-list.dto';
 import { UpdateListDto } from './dto/update-list.dto';
 import { WorkspaceAccessGuard } from '../common/guards/workspace-access.guard';
-import { WorkspaceRoleGuard } from '../common/guards/workspace-role.guard';
+import { WorkspacePermissionGuard } from '../common/guards/workspace-permission.guard';
 import { WorkspaceResourceGuard } from '../common/guards/workspace-resource.guard';
+import { WorkspacePermission } from '../common/decorators/workspace-permission.decorator';
+import { WorkspaceRoleGuard } from '../common/guards/workspace-role.guard';
 import { WorkspaceRoles } from '../common/decorators/workspace-roles.decorator';
 import { WorkspaceRole } from '../generated/prisma/enums';
 import {
@@ -38,11 +40,6 @@ export class ListController {
 
     @Get('board/:boardId/lists')
     @ApiOperation({ summary: 'Get board lists' })
-    @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })
-    @ApiParam({ name: 'boardId', example: 7, description: 'Board id' })
-    @ApiResponse({ status: 200, description: 'Board lists returned successfully.' })
-    @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
-    @ApiResponse({ status: 403, description: "code: 'WORKSPACE_MEMBER_REQUIRED' | code: 'WORKSPACE_ACTION_FORBIDDEN' | code: 'RESOURCE_WORKSPACE_MISMATCH'" })
     async getLists(
         @Param('boardId', ParseIntPipe) boardId: number,
     ): Promise<List[]> {
@@ -51,6 +48,16 @@ export class ListController {
 
     @UseGuards(WorkspaceRoleGuard)
     @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+    @Get('board/:boardId/lists/archived')
+    @ApiOperation({ summary: 'Archived lists (owner/admin)' })
+    async getArchivedLists(
+        @Param('boardId', ParseIntPipe) boardId: number,
+    ): Promise<List[]> {
+        return this.listService.getArchivedLists(boardId);
+    }
+
+    @UseGuards(WorkspacePermissionGuard)
+    @WorkspacePermission('manageBoards')
     @Post('board/:boardId/lists')
     @ApiOperation({ summary: 'Create list' })
     @ApiBody({ type: CreateListDto, description: 'List creation payload' })
@@ -87,8 +94,8 @@ export class ListController {
         return this.listService.moveList(listId, dto);
     }
 
-    @UseGuards(WorkspaceRoleGuard)
-    @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+    @UseGuards(WorkspacePermissionGuard)
+    @WorkspacePermission('manageBoards')
     @Patch('lists/:listId')
     @ApiOperation({ summary: 'Update list' })
     @ApiBody({ type: UpdateListDto, description: 'List update payload' })
@@ -109,8 +116,26 @@ export class ListController {
         );
     }
 
-    @UseGuards(WorkspaceRoleGuard)
-    @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+    @UseGuards(WorkspacePermissionGuard)
+    @WorkspacePermission('archiveBoards')
+    @Patch('lists/:listId/archive')
+    async archiveList(
+        @Param('listId', ParseIntPipe) listId: number,
+    ): Promise<List> {
+        return this.listService.updateList(listId, { archived: true });
+    }
+
+    @UseGuards(WorkspacePermissionGuard)
+    @WorkspacePermission('archiveBoards')
+    @Patch('lists/:listId/unarchive')
+    async unarchiveList(
+        @Param('listId', ParseIntPipe) listId: number,
+    ): Promise<List> {
+        return this.listService.updateList(listId, { archived: false });
+    }
+
+    @UseGuards(WorkspacePermissionGuard)
+    @WorkspacePermission('manageBoards')
     @Delete('lists/:listId')
     @ApiOperation({ summary: 'Delete list' })
     @ApiParam({ name: 'workspaceId', example: 1, description: 'Workspace id' })

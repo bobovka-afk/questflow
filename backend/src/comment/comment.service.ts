@@ -11,6 +11,9 @@ import { WorkspaceRole } from '../generated/prisma/enums';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment-dto';
 import type { CommentWithUser } from './interface';
+import { NotificationService } from '../notification/notification.service';
+import { UserNotificationType } from '../generated/prisma/enums';
+import { extractMentionedUserIds } from '../workspace/lib/mention-parse';
 
 @Injectable()
 export class CommentService {
@@ -18,6 +21,7 @@ export class CommentService {
     private readonly prisma: PrismaService,
     private readonly questProgressService: QuestProgressService,
     private readonly achievementService: AchievementService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async getComments(cardId: number): Promise<CommentWithUser[]> {
@@ -37,6 +41,27 @@ export class CommentService {
     userId: number,
     dto: CreateCommentDto,
   ) {
+    const cardCtx = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      select: {
+        id: true,
+        title: true,
+        list: {
+          select: {
+            board: {
+              select: { id: true, name: true, workspaceId: true },
+            },
+          },
+        },
+      },
+    });
+    if (!cardCtx) {
+      throw new NotFoundException({
+        code: 'CARD_NOT_FOUND',
+        message: 'Card not found',
+      });
+    }
+
     const comment = await this.prisma.comment.create({
       data: {
         cardId,
@@ -49,6 +74,38 @@ export class CommentService {
         },
       },
     });
+
+    const workspaceId = cardCtx.list.board.workspaceId;
+    const mentionedIds = extractMentionedUserIds(dto.body).filter(
+      (id) => id !== userId,
+    );
+    if (mentionedIds.length > 0) {
+      const members = await this.prisma.workspaceMember.findMany({
+        where: {
+          workspaceId,
+          userId: { in: mentionedIds },
+        },
+        select: { userId: true },
+      });
+      const allowed = new Set(members.map((m) => m.userId));
+      for (const targetId of mentionedIds) {
+        if (!allowed.has(targetId)) continue;
+        await this.notificationService.create(
+          targetId,
+          UserNotificationType.MENTION,
+          {
+            cardId,
+            cardTitle: cardCtx.title,
+            boardId: cardCtx.list.board.id,
+            boardName: cardCtx.list.board.name,
+            workspaceId,
+            commentId: comment.id,
+            authorUserId: userId,
+            authorName: comment.user.name,
+          },
+        );
+      }
+    }
 
     await this.questProgressService.recordCommentCreated(userId);
     await this.achievementService.recordIncrement(

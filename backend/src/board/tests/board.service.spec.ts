@@ -28,15 +28,29 @@ describe('BoardService', () => {
     await expect(service.deleteBoard(1)).resolves.toEqual({ ok: true });
   });
 
-  it('createBoard delegates to prisma', async () => {
-    prisma.board!.create!.mockResolvedValue({ id: 1, name: 'B' });
-    await service.createBoard(10, { name: 'B', position: 0 });
-    expect(prisma.board!.create).toHaveBeenCalled();
+  it('createBoard creates lists from template', async () => {
+    prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<unknown>) => {
+      const tx = {
+        board: { create: jest.fn().mockResolvedValue({ id: 1, name: 'B' }) },
+        list: { create: jest.fn().mockResolvedValue({}) },
+      };
+      return fn(tx as never);
+    });
+    await service.createBoard(10, {
+      name: 'B',
+      position: 0,
+      template: 'kanban-dev',
+    });
+    expect(prisma.$transaction).toHaveBeenCalled();
   });
 
-  it('getBoards returns boards', async () => {
+  it('getBoards excludes archived by default', async () => {
     prisma.board!.findMany!.mockResolvedValue([]);
-    await service.getBoards(10);
-    expect(prisma.board!.findMany).toHaveBeenCalled();
+    await service.getBoards(10, false);
+    expect(prisma.board!.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ archivedAt: null }),
+      }),
+    );
   });
 });

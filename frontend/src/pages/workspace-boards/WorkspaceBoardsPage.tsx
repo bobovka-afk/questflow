@@ -5,8 +5,16 @@ import {
   SpaLink,
 } from '@shared/lib/navigation';
 import { handleSpaTileAuxClick, handleSpaTileClick, navigate } from '@shared/lib/navigation-core';
-import { canManageWorkspace } from '@entities/workspace';
+import {
+  canArchiveBoards,
+  canManageBoards,
+  canManageWorkspaceLegacy,
+  type WorkspacePermissions,
+} from '@entities/workspace';
 import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
+import { WorkspaceOnboardingBanner } from '@widgets/workspace-onboarding/WorkspaceOnboardingBanner';
+import { WorkspaceSearchModal } from '@widgets/workspace-search/WorkspaceSearchModal';
+import { useWorkspaceSearchHotkey } from '@shared/lib/useWorkspaceSearchHotkey';
 
 export type BoardRow = {
   id: number;
@@ -14,9 +22,16 @@ export type BoardRow = {
   name: string;
   description: string | null;
   position: number;
+  archivedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
+
+const BOARD_TEMPLATES = [
+  { id: 'empty', label: 'Пустая' },
+  { id: 'kanban-dev', label: 'Kanban (разработка)' },
+  { id: 'backlog', label: 'Бэклог' },
+] as const;
 
 type Props = {
   accessToken: string | null;
@@ -51,6 +66,13 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
   const [boards, setBoards] = useState<BoardRow[]>([]);
   const [workspaceTitle, setWorkspaceTitle] = useState<string>('');
   const [myRole, setMyRole] = useState<string | null>(null);
+  const [myPermissions, setMyPermissions] = useState<WorkspacePermissions | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [createTemplate, setCreateTemplate] = useState<string>('kanban-dev');
+  const [archivedBoards, setArchivedBoards] = useState<BoardRow[]>([]);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+
+  useWorkspaceSearchHotkey(() => setSearchOpen(true), Boolean(accessToken));
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
   const [alertOpen, setAlertOpen] = useState(false);
@@ -76,14 +98,30 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
         name: string;
         description: string | null;
         myRole: string | null;
+        myPermissions: WorkspacePermissions | null;
       }>(`/workspace/${workspaceId}/summary`, { method: 'GET', accessToken });
       setWorkspaceTitle(formatWorkspaceNameForUI(data.name));
       setMyRole(data.myRole ?? null);
+      setMyPermissions(data.myPermissions ?? null);
     } catch {
       setWorkspaceTitle(`Workspace ${workspaceId}`);
       setMyRole(null);
+      setMyPermissions(null);
     }
   }, [accessToken, workspaceId]);
+
+  const loadArchivedBoards = useCallback(async () => {
+    if (!accessToken || !canArchiveBoards(myPermissions) && !canManageWorkspaceLegacy(myRole)) return;
+    try {
+      const data = await api<BoardRow[]>(
+        `/workspace/${workspaceId}/boards/archived/list`,
+        { method: 'GET', accessToken },
+      );
+      setArchivedBoards(Array.isArray(data) ? data : []);
+    } catch {
+      setArchivedBoards([]);
+    }
+  }, [accessToken, workspaceId, myPermissions, myRole]);
 
   const loadBoards = useCallback(async () => {
     if (!accessToken) {
@@ -115,6 +153,10 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
     void loadBoards();
   }, [loadBoards]);
 
+  useEffect(() => {
+    if (archiveOpen) void loadArchivedBoards();
+  }, [archiveOpen, loadArchivedBoards]);
+
   async function submitCreate() {
     if (!accessToken) return;
     const name = createName.trim();
@@ -126,7 +168,7 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
       await api(`/workspace/${workspaceId}/boards`, {
         method: 'POST',
         accessToken,
-        json: { name, position },
+        json: { name, position, template: createTemplate },
       });
       setCreateOpen(false);
       setCreateName('');
@@ -157,6 +199,45 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
       setMsg(formatError(e));
     } finally {
       setEditBusy(false);
+    }
+  }
+
+  const canManage = canManageBoards(myPermissions) || canManageWorkspaceLegacy(myRole);
+  const canArchive = canArchiveBoards(myPermissions) || canManageWorkspaceLegacy(myRole);
+
+  async function archiveBoardFromEdit() {
+    if (!accessToken || !editBoard) return;
+    await archiveBoardRow(editBoard);
+    setEditBoard(null);
+  }
+
+  async function archiveBoardRow(b: BoardRow) {
+    if (!accessToken) return;
+    try {
+      await api(`/workspace/${workspaceId}/boards/${b.id}/archive`, {
+        method: 'PATCH',
+        accessToken,
+      });
+      await loadBoards();
+      await loadArchivedBoards();
+    } catch (e) {
+      setAlertText(formatError(e));
+      setAlertOpen(true);
+    }
+  }
+
+  async function restoreBoardRow(b: BoardRow) {
+    if (!accessToken) return;
+    try {
+      await api(`/workspace/${workspaceId}/boards/${b.id}/unarchive`, {
+        method: 'PATCH',
+        accessToken,
+      });
+      await loadBoards();
+      await loadArchivedBoards();
+    } catch (e) {
+      setAlertText(formatError(e));
+      setAlertOpen(true);
     }
   }
 
@@ -197,7 +278,28 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
             >
               ← Рабочие пространства
             </SpaLink>
-            {accessToken ? <ProfileToolbarAnchor /> : null}
+            {accessToken ? (
+              <>
+                <button
+                  type="button"
+                  className="trello-btn trello-btn-ghost"
+                  onClick={() => setSearchOpen(true)}
+                  title="Поиск (⌘K / Ctrl+K)"
+                >
+                  Поиск
+                </button>
+                {canArchive ? (
+                  <button
+                    type="button"
+                    className="trello-btn trello-btn-ghost"
+                    onClick={() => setArchiveOpen((o) => !o)}
+                  >
+                    Архив
+                  </button>
+                ) : null}
+                <ProfileToolbarAnchor />
+              </>
+            ) : null}
           </div>
         </header>
 
@@ -214,6 +316,8 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
 
         {loading ? (
           <div className="trello-empty">Загрузка досок…</div>
+        ) : boards.length === 0 && accessToken ? (
+          <WorkspaceOnboardingBanner onCreateBoard={() => setCreateOpen(true)} />
         ) : (
           <div className="trello-boards-grid">
             {boards.map((b, i) => (
@@ -236,7 +340,7 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
                   }
                 }}
               >
-                {canManageWorkspace(myRole) ? (
+                {canManage ? (
                   <button
                     type="button"
                     className="trello-board-tile-menu"
@@ -269,7 +373,41 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
             )}
           </div>
         )}
+
+        {archiveOpen && canArchive && (
+          <section className="trello-ws-archived" aria-live="polite">
+            <h2 className="trello-ws-archived-title">Архив досок</h2>
+            {archivedBoards.length === 0 ? (
+              <p className="trello-settings-card-hint">Архив пуст.</p>
+            ) : null}
+            {archivedBoards.length > 0 ? (
+              <ul className="trello-ws-archived-list">
+                {archivedBoards.map((b) => (
+                  <li key={b.id}>
+                    <span>{b.name}</span>
+                    <button
+                      type="button"
+                      className="trello-btn trello-btn-sm trello-btn-ghost"
+                      onClick={() => void restoreBoardRow(b)}
+                    >
+                      Восстановить
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </section>
+        )}
       </div>
+
+      {accessToken && (
+        <WorkspaceSearchModal
+          accessToken={accessToken}
+          workspaceId={workspaceId}
+          open={searchOpen}
+          onClose={() => setSearchOpen(false)}
+        />
+      )}
 
       {createOpen && (
         <div
@@ -304,6 +442,20 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
                   maxLength={50}
                   autoFocus
                 />
+              </label>
+              <label className="trello-field">
+                <span className="trello-label">Шаблон</span>
+                <select
+                  className="trello-input"
+                  value={createTemplate}
+                  onChange={(e) => setCreateTemplate(e.target.value)}
+                >
+                  {BOARD_TEMPLATES.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
             <div className="trello-modal-foot">
@@ -362,18 +514,30 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
               </label>
             </div>
             <div className="trello-modal-foot trello-modal-foot-split">
-              <button
-                type="button"
-                className="trello-btn trello-btn-danger"
-                disabled={editBusy || deleteBoardBusy}
-                onClick={() => {
-                  if (!editBoard || editBusy) return;
-                  setBoardToDelete(editBoard);
-                  setEditBoard(null);
-                }}
-              >
-                Удалить
-              </button>
+              <div className="trello-modal-foot-danger-group">
+                {canArchive && (
+                  <button
+                    type="button"
+                    className="trello-btn trello-btn-ghost"
+                    disabled={editBusy || deleteBoardBusy}
+                    onClick={() => void archiveBoardFromEdit()}
+                  >
+                    В архив
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="trello-btn trello-btn-danger"
+                  disabled={editBusy || deleteBoardBusy}
+                  onClick={() => {
+                    if (!editBoard || editBusy) return;
+                    setBoardToDelete(editBoard);
+                    setEditBoard(null);
+                  }}
+                >
+                  Удалить
+                </button>
+              </div>
               <div className="trello-modal-foot-actions">
                 <button
                   type="button"

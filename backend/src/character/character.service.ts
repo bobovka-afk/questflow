@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -19,6 +20,8 @@ import {
   CHARACTER_HEALTH_MAX,
   DAILY_TASK_XP_COMPLETIONS_MAX,
   HP_GAIN_PER_XP_EVENT,
+  MANA_MAX,
+  MANA_PER_TASK_COMPLETED,
   XP_DAILY_CHECKIN,
 } from '../gamification/config/rewards';
 import {
@@ -46,6 +49,8 @@ import type {
   XpGrantTransaction,
 } from '../gamification/xp/interface';
 import { SocialService } from '../social/social.service';
+import { UserService } from '../user/user.service';
+import { UserSettingsService } from '../user-settings/user-settings.service';
 
 @Injectable()
 export class CharacterService {
@@ -55,6 +60,8 @@ export class CharacterService {
     private questProgressService: QuestProgressService,
     private achievementService: AchievementService,
     private socialService: SocialService,
+    private userService: UserService,
+    private userSettingsService: UserSettingsService,
   ) {}
 
   async getCharacter(userId: number): Promise<Character> {
@@ -68,6 +75,26 @@ export class CharacterService {
       });
     }
     return character;
+  }
+
+  async getCharacterForViewerByUserId(
+    targetUserId: number,
+    viewerUserId: number,
+  ): Promise<Character> {
+    if (targetUserId === viewerUserId) {
+      return this.getCharacter(viewerUserId);
+    }
+
+    await this.userService.assertProfileAccess(targetUserId, viewerUserId);
+    const privacy = await this.userSettingsService.getPrivacySettings(targetUserId);
+    if (!privacy.allowCharacterView) {
+      throw new ForbiddenException({
+        code: 'CHARACTER_VIEW_DISABLED',
+        message: 'This user has disabled character viewing',
+      });
+    }
+
+    return this.getCharacter(targetUserId);
   }
 
   async getCharacterForViewer(targetCharacterId: number): Promise<Character> {
@@ -185,6 +212,7 @@ export class CharacterService {
           level: true,
           dailyTaskXpCount: true,
           health: true,
+          manaCurrent: true,
           checkinStreak: true,
           lastCheckinDayKey: true,
         },
@@ -207,6 +235,7 @@ export class CharacterService {
         taskXp: 0,
         checkinXp: 0,
         hpGained: 0,
+        manaGained: 0,
         checkinStreak: userStats.checkinStreak,
         previousCheckinStreak: userStats.checkinStreak,
         streakIncreased: false,
@@ -233,6 +262,10 @@ export class CharacterService {
 
       if (eventType === XpEventType.TASK_COMPLETED) {
         rewards.taskXp = xpAmount;
+        const manaRoom = Math.max(0, MANA_MAX - stats.manaCurrent);
+        const manaGained = Math.min(MANA_PER_TASK_COMPLETED, manaRoom);
+        stats.manaCurrent += manaGained;
+        rewards.manaGained = manaGained;
       } else if (eventType === XpEventType.DAILY_CHECKIN) {
         rewards.checkinXp = xpAmount;
         stats = await this.applyCheckinStreakAndMilestones(
@@ -265,6 +298,7 @@ export class CharacterService {
         currentXp: stats.currentXp,
         level: stats.level,
         health: stats.health,
+        manaCurrent: stats.manaCurrent,
         checkinStreak: stats.checkinStreak,
         lastCheckinDayKey: stats.lastCheckinDayKey,
       };

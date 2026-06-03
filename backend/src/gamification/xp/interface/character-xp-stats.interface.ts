@@ -3,6 +3,7 @@ export interface CharacterXpStats {
   level: number;
   dailyTaskXpCount: number;
   health: number;
+  manaCurrent: number;
   checkinStreak: number;
   lastCheckinDayKey: Date | null;
 }

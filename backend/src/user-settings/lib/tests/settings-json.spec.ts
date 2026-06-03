@@ -1,5 +1,6 @@
 import {
   DEFAULT_GAMIFICATION_SETTINGS,
+  DEFAULT_PRIVACY_SETTINGS,
   DEFAULT_SECURITY_SETTINGS,
   DEFAULT_SITE_SETTINGS,
 } from '../../config/default-user-settings';
@@ -7,6 +8,8 @@ import {
   clientIpFromForwarded,
   deviceLabelFromUserAgent,
   parseGamificationSettings,
+  parseNotificationSettings,
+  parsePrivacySettings,
   parseSecuritySettings,
   parseSiteSettings,
 } from '../settings-json';
@@ -31,19 +34,69 @@ describe('settings-json', () => {
     });
   });
 
+  describe('parseNotificationSettings', () => {
+    it('returns defaults for invalid payload', () => {
+      expect(parseNotificationSettings(null)).toEqual({
+        emailSecurity: true,
+        emailWorkspaceInvites: true,
+      });
+    });
+  });
+
   describe('parseSiteSettings', () => {
-    it('returns empty object for invalid payload', () => {
+    it('returns defaults for invalid payload', () => {
       expect(parseSiteSettings(undefined)).toEqual(DEFAULT_SITE_SETTINGS);
     });
 
-    it('copies record fields', () => {
-      expect(parseSiteSettings({ theme: 'dark' })).toEqual({ theme: 'dark' });
+    it('parses notifications nested field', () => {
+      expect(
+        parseSiteSettings({
+          notifications: { emailSecurity: false },
+        }),
+      ).toEqual({
+        notifications: {
+          emailSecurity: false,
+          emailWorkspaceInvites: true,
+        },
+      });
+    });
+  });
+
+  describe('parsePrivacySettings', () => {
+    it('returns defaults for invalid payload', () => {
+      expect(parsePrivacySettings(null)).toEqual(DEFAULT_PRIVACY_SETTINGS);
+    });
+
+    it('merges known boolean fields', () => {
+      expect(
+        parsePrivacySettings({
+          allowCharacterView: false,
+          showAccountAvatarOnPublicProfile: 'no',
+        }),
+      ).toEqual({
+        allowCharacterView: false,
+        showAccountAvatarOnPublicProfile:
+          DEFAULT_PRIVACY_SETTINGS.showAccountAvatarOnPublicProfile,
+      });
     });
   });
 
   describe('parseSecuritySettings', () => {
-    it('returns empty object for invalid payload', () => {
+    it('returns defaults with privacy for invalid payload', () => {
       expect(parseSecuritySettings(42)).toEqual(DEFAULT_SECURITY_SETTINGS);
+    });
+
+    it('parses nested privacy', () => {
+      expect(
+        parseSecuritySettings({
+          privacy: { allowCharacterView: false },
+        }),
+      ).toEqual({
+        privacy: {
+          allowCharacterView: false,
+          showAccountAvatarOnPublicProfile: true,
+        },
+      });
     });
   });
 

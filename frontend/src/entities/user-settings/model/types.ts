@@ -3,10 +3,22 @@ export type GamificationUserSettings = {
   xpGainNotifications: boolean;
 };
 
+export type PrivacyUserSettings = {
+  allowCharacterView: boolean;
+  showAccountAvatarOnPublicProfile: boolean;
+};
+
+export type NotificationUserSettings = {
+  emailSecurity: boolean;
+  emailWorkspaceInvites: boolean;
+};
+
 export type UserSettingsDto = {
   gamification: GamificationUserSettings;
   site: Record<string, unknown>;
   security: Record<string, unknown>;
+  privacy: PrivacyUserSettings;
+  notifications: NotificationUserSettings;
   updatedAt: string;
 };
 
@@ -20,6 +32,7 @@ export type UserSessionDto = {
   expiresAt: string;
   isCurrent: boolean;
   isRevoked: boolean;
+  isExpired?: boolean;
 };
 
 export type UserSecurityEventDto = {

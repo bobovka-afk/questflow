@@ -16,16 +16,33 @@ describe('CommentService', () => {
     const questProgressService = {
       recordCommentCreated: jest.fn().mockResolvedValue([]),
     };
+    const achievementService = {
+      recordIncrement: jest.fn().mockResolvedValue(undefined),
+    };
+    const notificationService = {
+      create: jest.fn().mockResolvedValue(undefined),
+    };
     service = new CommentService(
       prisma as unknown as PrismaService,
       questProgressService as never,
+      achievementService as never,
+      notificationService as never,
     );
   });
 
   it('getComments and createComment', async () => {
     prisma.comment!.findMany!.mockResolvedValue([]);
     await service.getComments(1);
-    prisma.comment!.create!.mockResolvedValue({ id: 1, body: 'hi' });
+    prisma.card!.findUnique!.mockResolvedValue({
+      id: 1,
+      title: 'T',
+      list: { board: { id: 2, name: 'B', workspaceId: 10 } },
+    });
+    prisma.comment!.create!.mockResolvedValue({
+      id: 1,
+      body: 'hi',
+      user: { id: 2, name: 'A', avatarPath: null },
+    });
     await service.createComment(1, 2, { body: 'hi' });
     expect(prisma.comment!.create).toHaveBeenCalled();
   });

@@ -10,10 +10,19 @@ const CHEST_TAP_FRAMES: Partial<Record<ChestTier, string[]>> = {
     'chests/common/3.png',
     'chests/common/4.png',
   ],
+  /** Закрытый кадр — `1.png` (аналог `common/0.png`), тапы `2`–`5`. */
+  RARE: [
+    'chests/rare/1.png',
+    'chests/rare/2.png',
+    'chests/rare/3.png',
+    'chests/rare/4.png',
+    'chests/rare/5.png',
+  ],
 };
 
 const CHEST_TAPS_REQUIRED: Partial<Record<ChestTier, number>> = {
   COMMON: 4,
+  RARE: 4,
 };
 
 function uploadsUrl(rel: string): string {

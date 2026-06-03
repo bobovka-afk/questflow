@@ -18,6 +18,8 @@ import { CreateCardDto } from './dto/create-card.dto';
 import { MoveCardDto } from './dto/move-card.dto';
 import { SetCardCompletionDto } from './dto/set-card-completion.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
+import { SetCardLabelsDto } from './dto/set-card-labels.dto';
+import { WorkspaceLabelService } from '../workspace/workspace-label.service';
 import {
   ApiBody,
   ApiBearerAuth,
@@ -34,7 +36,10 @@ import type { Card } from '../generated/prisma/client';
 @UseGuards(JwtAuthGuard, WorkspaceAccessGuard, WorkspaceResourceGuard)
 @Controller('workspace/:workspaceId')
 export class CardController {
-  constructor(private readonly cardService: CardService) {}
+  constructor(
+    private readonly cardService: CardService,
+    private readonly labelService: WorkspaceLabelService,
+  ) {}
 
   @Get('lists/:listId/cards')
   @ApiOperation({ summary: 'Get cards for a list' })
@@ -119,6 +124,15 @@ export class CardController {
     return this.cardService.updateCard(cardId, dto);
   }
 
+  @Patch('cards/:cardId/labels')
+  @ApiOperation({ summary: 'Set labels on card' })
+  async setCardLabels(
+    @Param('cardId', ParseIntPipe) cardId: number,
+    @Body() dto: SetCardLabelsDto,
+  ): Promise<{ ok: boolean }> {
+    await this.labelService.setCardLabels(cardId, dto.labelIds);
+    return { ok: true };
+  }
 
   @Delete('cards/:cardId')
   @ApiOperation({ summary: 'Delete card' })

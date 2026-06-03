@@ -1,5 +1,7 @@
 import type {
   GamificationSettingsJson,
+  NotificationSettingsJson,
+  PrivacySettingsJson,
   SecuritySettingsJson,
   SiteSettingsJson,
 } from '../config/default-user-settings';
@@ -8,6 +10,8 @@ export type UserSettingsView = {
   gamification: GamificationSettingsJson;
   site: SiteSettingsJson;
   security: SecuritySettingsJson;
+  privacy: PrivacySettingsJson;
+  notifications: NotificationSettingsJson;
   updatedAt: string;
 };
 
@@ -21,6 +25,7 @@ export type UserSessionView = {
   expiresAt: string;
   isCurrent: boolean;
   isRevoked: boolean;
+  isExpired: boolean;
 };
 
 export type UserSecurityEventView = {

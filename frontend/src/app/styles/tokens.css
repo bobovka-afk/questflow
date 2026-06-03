@@ -32,6 +32,12 @@
   --qf-nav-active-border: rgba(79, 70, 229, 0.35);
 
   --trello-list-chrome: #e4e9f1;
+
+  --qf-panel-bg: rgba(255, 255, 255, 0.92);
+  --qf-panel-bg-muted: rgba(248, 250, 252, 0.88);
+  --qf-panel-border: rgba(15, 23, 42, 0.1);
+  --qf-panel-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+  --qf-topbar-toolbar-gutter: 124px;
 }
 
 html.theme-dark {
@@ -64,4 +70,10 @@ html.theme-dark {
   --qf-nav-active-border: rgba(165, 180, 252, 0.45);
 
   --trello-list-chrome: #262f3d;
+
+  --qf-panel-bg: rgba(30, 36, 48, 0.94);
+  --qf-panel-bg-muted: rgba(22, 28, 38, 0.92);
+  --qf-panel-border: rgba(255, 255, 255, 0.1);
+  --qf-panel-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  --qf-topbar-toolbar-gutter: 124px;
 }

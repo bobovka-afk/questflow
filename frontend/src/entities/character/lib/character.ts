@@ -11,6 +11,7 @@ export type CharacterDto = {
   currentXp: number;
   level: number;
   health: number;
+  manaCurrent?: number;
   dust: number;
   checkinStreak: number;
   lastCheckinDayKey?: string | null;

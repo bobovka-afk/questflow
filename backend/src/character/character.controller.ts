@@ -56,11 +56,13 @@ export class CharacterController {
   @ApiOperation({ summary: 'Get character by user id (any authenticated user)' })
   @ApiResponse({ status: 200, description: 'Character returned.' })
   @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 403, description: "code: 'ACCESS_DENIED' | 'CHARACTER_VIEW_DISABLED'" })
   @ApiResponse({ status: 404, description: "code: 'CHARACTER_NOT_FOUND'" })
   async getCharacterByUserId(
+    @Req() req: AuthedRequest,
     @Param('userId', ParseIntPipe) userId: number,
   ): Promise<Character> {
-    return this.characterService.getCharacter(userId);
+    return this.characterService.getCharacterForViewerByUserId(userId, req.user.id);
   }
 
 

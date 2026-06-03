@@ -9,8 +9,15 @@ import {
   SpaLink,
 } from '@shared/lib/navigation';
 import { handleSpaTileAuxClick, handleSpaTileClick, navigate } from '@shared/lib/navigation-core';
-import { formatWorkspaceRole } from '@entities/workspace';
+import {
+  canInviteMembers,
+  canManageMembers,
+  canManageWorkspaceLegacy,
+  formatWorkspaceRole,
+  type WorkspacePermissions,
+} from '@entities/workspace';
 import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
+import { MemberPermissionsModal } from '@widgets/workspace-members/MemberPermissionsModal';
 
 type Props = {
   accessToken: string | null;
@@ -32,6 +39,7 @@ type WorkspaceMemberRow = {
     name: string;
     avatarPath: string | null;
   };
+  permissions: WorkspacePermissions;
 };
 
 type WorkspaceInviteRow = {
@@ -133,6 +141,10 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
   );
   const [deleteInviteBusy, setDeleteInviteBusy] = useState(false);
 
+  const [myPermissions, setMyPermissions] = useState<WorkspacePermissions | null>(null);
+  const [permMember, setPermMember] = useState<WorkspaceMemberRow | null>(null);
+  const [permSaveBusy, setPermSaveBusy] = useState(false);
+
   const currentUserId = currentUser?.id ?? null;
 
   const currentMember = useMemo(() => {
@@ -140,7 +152,30 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
     return rows.find((r) => r.userId === currentUserId) ?? null;
   }, [currentUserId, rows]);
 
-  const canManageWorkspace = currentMember?.role === 'OWNER' || currentMember?.role === 'ADMIN';
+  const canManageWorkspace =
+    canManageWorkspaceLegacy(currentMember?.role) ||
+    canInviteMembers(myPermissions) ||
+    canManageMembers(myPermissions);
+
+  const canEditPermissions =
+    canManageMembers(myPermissions) || currentMember?.role === 'OWNER';
+
+  const loadSummary = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const s = await api<{ myPermissions: WorkspacePermissions | null }>(
+        `/workspace/${workspaceId}/summary`,
+        { method: 'GET', accessToken },
+      );
+      setMyPermissions(s.myPermissions ?? null);
+    } catch {
+      setMyPermissions(null);
+    }
+  }, [accessToken, workspaceId]);
+
+  useEffect(() => {
+    void loadSummary();
+  }, [loadSummary]);
 
   const loadCurrentUser = useCallback(async () => {
     if (!accessToken) return;
@@ -381,7 +416,7 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
                 Приглашения
               </button>
             )}
-            {canManageWorkspace && (
+            {(canInviteMembers(myPermissions) || canManageWorkspaceLegacy(currentMember?.role)) && (
               <button
                 type="button"
                 className="trello-btn trello-btn-primary"
@@ -427,6 +462,8 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
                   {rows.map((member) => {
                     const isMe = member.userId === currentUserId;
                     const deleteAllowed = canManageWorkspace && !isMe && member.role !== 'OWNER';
+                    const canOpenPerms =
+                      canEditPermissions && !isMe && member.role !== 'OWNER';
                     return (
                       <tr key={member.id}>
                         <td>
@@ -434,12 +471,17 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
                             <button
                               type="button"
                               className="trello-member-user-link"
-                              onClick={(e) =>
+                              onClick={(e) => {
+                                if (canOpenPerms) {
+                                  e.preventDefault();
+                                  setPermMember(member);
+                                  return;
+                                }
                                 handleSpaTileClick(
                                   e,
                                   isMe ? '/profile/me' : userProfilePath(member.userId),
-                                )
-                              }
+                                );
+                              }}
                               onAuxClick={(e) =>
                                 handleSpaTileAuxClick(
                                   e,
@@ -816,6 +858,32 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
               </div>
             </div>
           </div>
+        )}
+
+        {permMember && (
+          <MemberPermissionsModal
+            memberName={permMember.user.name}
+            permissions={permMember.permissions}
+            saving={permSaveBusy}
+            onClose={() => !permSaveBusy && setPermMember(null)}
+            onSave={async (next) => {
+              if (!accessToken) return;
+              setPermSaveBusy(true);
+              try {
+                await api(`/workspace/${workspaceId}/members/${permMember.userId}/permissions`, {
+                  method: 'PATCH',
+                  accessToken,
+                  json: next,
+                });
+                setPermMember(null);
+                await loadMembers();
+              } catch (e) {
+                showAlert(formatError(e));
+              } finally {
+                setPermSaveBusy(false);
+              }
+            }}
+          />
         )}
 
         {alertModal && (

@@ -15,10 +15,20 @@ export class ListService {
 
 
 
-    async getLists(boardId: number): Promise<List[]> {
+    async getLists(boardId: number, includeArchived = false): Promise<List[]> {
         return this.prisma.list.findMany({
-            where: { boardId },
+            where: {
+                boardId,
+                ...(includeArchived ? {} : { archivedAt: null }),
+            },
             orderBy: { position: 'asc' },
+        });
+    }
+
+    async getArchivedLists(boardId: number): Promise<List[]> {
+        return this.prisma.list.findMany({
+            where: { boardId, archivedAt: { not: null } },
+            orderBy: { archivedAt: 'desc' },
         });
     }
 
@@ -33,19 +43,30 @@ export class ListService {
     }
 
     async updateList(listId: number, dto: UpdateListDto): Promise<List> {
-        if (dto.name === undefined && dto.colorPreset === undefined) {
+        if (
+            dto.name === undefined &&
+            dto.colorPreset === undefined &&
+            dto.archived === undefined
+        ) {
             throw new BadRequestException({
                 code: 'LIST_UPDATE_FIELDS_REQUIRED',
-                message: 'Provide at least one field: name or colorPreset',
+                message: 'Provide at least one field: name, colorPreset, or archived',
             });
         }
 
+        const data: {
+            name?: string;
+            colorPreset?: typeof dto.colorPreset;
+            archivedAt?: Date | null;
+        } = {};
+        if (dto.name !== undefined) data.name = dto.name;
+        if (dto.colorPreset !== undefined) data.colorPreset = dto.colorPreset;
+        if (dto.archived === true) data.archivedAt = new Date();
+        if (dto.archived === false) data.archivedAt = null;
+
         return this.prisma.list.update({
             where: { id: listId },
-            data: {
-                name: dto.name,
-                colorPreset: dto.colorPreset,
-            },
+            data,
         });
     }
 

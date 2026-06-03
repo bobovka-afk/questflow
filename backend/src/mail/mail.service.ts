@@ -36,6 +36,31 @@ export class MailService {
 		return this.sendOutgoing(to, subject, text, html);
 	}
 
+	async sendEmailChangeConfirmOld(
+		to: string,
+		confirmUrl: string,
+		newEmail: string,
+	) {
+		const subject = 'Подтвердите смену email';
+		const text = `Запрошена смена email на ${newEmail}. Подтвердите со старого адреса: ${confirmUrl}`;
+		const html = `
+      <p>Запрошена смена адреса на <strong>${this.escapeHtml(newEmail)}</strong>.</p>
+      <p>Если это вы, подтвердите со <a href="${confirmUrl}">старого email</a>.</p>
+      <p>Если нет — проигнорируйте письмо.</p>
+    `;
+		return this.sendOutgoing(to, subject, text, html);
+	}
+
+	async sendEmailChangeConfirmNew(to: string, confirmUrl: string) {
+		const subject = 'Подтвердите новый email';
+		const text = `Подтвердите новый адрес: ${confirmUrl}`;
+		const html = `
+      <p>Подтвердите новый email: <a href="${confirmUrl}">перейти</a>.</p>
+      <p>Если вы не запрашивали смену, проигнорируйте письмо.</p>
+    `;
+		return this.sendOutgoing(to, subject, text, html);
+	}
+
 	async sendWorkspaceInvite(
 		to: string,
 		inviteUrl: string,

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatApiError } from '@shared/api';
+import { avatarInitials, avatarSrcFromPath, userProfilePath } from '@entities/user';
+import { SpaLink } from '@shared/lib';
 import {
   acceptFriendRequest,
   cancelFriendRequest,
@@ -271,17 +273,33 @@ export function FriendsPanel({ accessToken, onMessagePeer, onInboxChange }: Prop
         {friends.length === 0 ? (
           <p className="trello-muted">Пока нет друзей.</p>
         ) : (
-          <ul className="trello-social-list">
+          <ul className="trello-social-friends-grid">
             {friends.map((f) => {
               const label = displayName(f.user);
+              const avatarSrc = avatarSrcFromPath(f.user.avatarPath);
               return (
-                <li key={f.user.userId} className="trello-social-list-row">
-                  <span className="trello-social-list-name">{label}</span>
-                  <span className="trello-social-list-actions">
+                <li key={f.user.userId} className="trello-social-friend-card">
+                  <SpaLink
+                    className="trello-social-friend-link"
+                    to={userProfilePath(f.user.userId)}
+                    title={`Профиль: ${label}`}
+                  >
+                    <span className="trello-social-friend-avatar" aria-hidden>
+                      {avatarSrc ? (
+                        <img src={avatarSrc} alt="" className="trello-social-friend-avatar-img" />
+                      ) : (
+                        <span className="trello-social-friend-avatar-fallback">
+                          {avatarInitials(label)}
+                        </span>
+                      )}
+                    </span>
+                    <span className="trello-social-friend-name">{label}</span>
+                  </SpaLink>
+                  <span className="trello-social-friend-actions">
                     {onMessagePeer && (
                       <button
                         type="button"
-                        className="trello-btn trello-btn-primary trello-btn-sm"
+                        className="trello-btn trello-btn-ghost trello-btn-sm"
                         onClick={() => onMessagePeer(f.user.userId)}
                       >
                         Написать

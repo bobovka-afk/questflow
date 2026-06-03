@@ -14,6 +14,8 @@ import { AcceptInviteTokenDto } from './dto/accept-invite-token.dto';
 import { JwtAuthGuard } from '../auth/guards/auth.guard';
 import { PaginationDto } from '../workspace/dto/pagination.dto';
 import { WorkspaceAccessGuard } from '../common/guards/workspace-access.guard';
+import { WorkspacePermissionGuard } from '../common/guards/workspace-permission.guard';
+import { WorkspacePermission } from '../common/decorators/workspace-permission.decorator';
 import { WorkspaceRoleGuard } from '../common/guards/workspace-role.guard';
 import { WorkspaceRoles } from '../common/decorators/workspace-roles.decorator';
 import { WorkspaceRole } from '../generated/prisma/enums';
@@ -73,8 +75,8 @@ export class WorkspaceInviteController {
     return this.workspaceInviteService.getWorkspaceInvites(workspaceId, paginationDto);
   }
 
-  @UseGuards(WorkspaceAccessGuard, WorkspaceRoleGuard)
-  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  @UseGuards(WorkspaceAccessGuard, WorkspacePermissionGuard)
+  @WorkspacePermission('inviteMembers')
   @Post('create/:workspaceId')
   @UseGuards(RateLimitGuard)
   @RateLimit({ key: 'workspace-invite:create', limit: 5, windowSec: 300 })

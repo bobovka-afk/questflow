@@ -8,6 +8,7 @@ import {
   sendDirectMessage,
   useMessagePolling,
   type DirectMessageView,
+  type MessageReadReceipt,
   type SocialUserSummary,
 } from '@entities/social';
 import { applyMessageReceipts } from '@entities/social/lib/applyMessageReceipts';

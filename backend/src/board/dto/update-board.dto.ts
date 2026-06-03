@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateBoardDto {
@@ -26,4 +26,9 @@ export class UpdateBoardDto {
   @MinLength(3)
   @MaxLength(255)
   description?: string | null;
+
+  @ApiPropertyOptional({ description: 'true = archive, false = restore' })
+  @IsOptional()
+  @IsBoolean()
+  archived?: boolean;
 }

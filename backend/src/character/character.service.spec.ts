@@ -15,6 +15,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { createPrismaMock } from '../testing/prisma-mock';
 import { QuestProgressService } from '../gamification/quest/quest-progress.service';
 import { SocialService } from '../social/social.service';
+import { UserService } from '../user/user.service';
+import { UserSettingsService } from '../user-settings/user-settings.service';
+import { ForbiddenException } from '@nestjs/common';
 import {
   CHARACTER_HEALTH_MAX,
   DAILY_TASK_XP_COMPLETIONS_MAX,
@@ -29,6 +32,7 @@ const baseXpStats = {
   level: 1,
   dailyTaskXpCount: 0,
   health: 100,
+  manaCurrent: 0,
   checkinStreak: 0,
   lastCheckinDayKey: null as Date | null,
 };
@@ -52,12 +56,23 @@ describe('CharacterService', () => {
     const socialService = {
       generateUniqueFriendCode: jest.fn().mockResolvedValue(1492),
     } as unknown as SocialService;
+    const userService = {
+      assertProfileAccess: jest.fn().mockResolvedValue(undefined),
+    } as unknown as UserService;
+    const userSettingsService = {
+      getPrivacySettings: jest.fn().mockResolvedValue({
+        allowCharacterView: true,
+        showAccountAvatarOnPublicProfile: true,
+      }),
+    } as unknown as UserSettingsService;
     service = new CharacterService(
       prisma as unknown as PrismaService,
       configService as unknown as ConfigService,
       questProgressService,
       achievementService as never,
       socialService,
+      userService,
+      userSettingsService,
     );
   });
 
@@ -120,6 +135,26 @@ describe('CharacterService', () => {
       const character = { id: 3, userId: 2 };
       prisma.character!.findUnique!.mockResolvedValue(character);
       await expect(service.getCharacterForViewer(3)).resolves.toEqual(character);
+    });
+  });
+
+  describe('getCharacterForViewerByUserId', () => {
+    it('returns own character without privacy checks', async () => {
+      const character = { id: 1, userId: 5 };
+      prisma.character!.findUnique!.mockResolvedValue(character);
+      await expect(service.getCharacterForViewerByUserId(5, 5)).resolves.toEqual(character);
+    });
+
+    it('throws when character view disabled', async () => {
+      const userSettingsService = (service as unknown as { userSettingsService: UserSettingsService })
+        .userSettingsService;
+      jest
+        .spyOn(userSettingsService, 'getPrivacySettings')
+        .mockResolvedValue({ allowCharacterView: false, showAccountAvatarOnPublicProfile: true });
+
+      await expect(service.getCharacterForViewerByUserId(2, 1)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 

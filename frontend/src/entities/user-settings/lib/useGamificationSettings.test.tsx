@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGamificationSettings } from './useGamificationSettings';
 import * as userSettingsApi from '../api/userSettingsApi';
 import { DEFAULT_GAMIFICATION_USER_SETTINGS } from './gamificationSettings';
+import { mockUserSettingsDto } from './testFixtures';
 
 vi.mock('../api/userSettingsApi', () => ({
   fetchUserSettings: vi.fn(),
@@ -21,15 +22,14 @@ describe('useGamificationSettings', () => {
   });
 
   it('loads settings from API when access token is present', async () => {
-    vi.mocked(userSettingsApi.fetchUserSettings).mockResolvedValue({
-      gamification: {
-        checkinAnimationOnCardClose: false,
-        xpGainNotifications: true,
-      },
-      site: {},
-      security: {},
-      updatedAt: '2026-05-28T12:00:00.000Z',
-    });
+    vi.mocked(userSettingsApi.fetchUserSettings).mockResolvedValue(
+      mockUserSettingsDto({
+        gamification: {
+          checkinAnimationOnCardClose: false,
+          xpGainNotifications: true,
+        },
+      }),
+    );
 
     const { result } = renderHook(() => useGamificationSettings('token-1'));
 
@@ -57,21 +57,16 @@ describe('useGamificationSettings', () => {
   });
 
   it('optimistically updates and persists gamification patch', async () => {
-    vi.mocked(userSettingsApi.fetchUserSettings).mockResolvedValue({
-      gamification: DEFAULT_GAMIFICATION_USER_SETTINGS,
-      site: {},
-      security: {},
-      updatedAt: '2026-05-28T12:00:00.000Z',
-    });
-    vi.mocked(userSettingsApi.patchGamificationSettings).mockResolvedValue({
-      gamification: {
-        checkinAnimationOnCardClose: true,
-        xpGainNotifications: false,
-      },
-      site: {},
-      security: {},
-      updatedAt: '2026-05-28T12:01:00.000Z',
-    });
+    vi.mocked(userSettingsApi.fetchUserSettings).mockResolvedValue(mockUserSettingsDto());
+    vi.mocked(userSettingsApi.patchGamificationSettings).mockResolvedValue(
+      mockUserSettingsDto({
+        gamification: {
+          checkinAnimationOnCardClose: true,
+          xpGainNotifications: false,
+        },
+        updatedAt: '2026-05-28T12:01:00.000Z',
+      }),
+    );
 
     const { result } = renderHook(() => useGamificationSettings('token-1'));
 
@@ -96,12 +91,7 @@ describe('useGamificationSettings', () => {
   });
 
   it('rolls back optimistic update when patch fails', async () => {
-    vi.mocked(userSettingsApi.fetchUserSettings).mockResolvedValue({
-      gamification: DEFAULT_GAMIFICATION_USER_SETTINGS,
-      site: {},
-      security: {},
-      updatedAt: '2026-05-28T12:00:00.000Z',
-    });
+    vi.mocked(userSettingsApi.fetchUserSettings).mockResolvedValue(mockUserSettingsDto());
     vi.mocked(userSettingsApi.patchGamificationSettings).mockRejectedValue(new Error('fail'));
 
     const { result } = renderHook(() => useGamificationSettings('token-1'));

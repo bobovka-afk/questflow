@@ -8,6 +8,13 @@ import { ConfigService } from '@nestjs/config';
 import { WorkspaceService } from '../../workspace/workspace.service';
 import { WorkspaceActivityService } from '../../workspace-activity/workspace-activity.service';
 import { createPrismaMock } from '../../testing/prisma-mock';
+import { UserSettingsService } from '../../user-settings/user-settings.service';
+
+function mockUserSettings(allowsInvite = true) {
+  return {
+    allowsWorkspaceInviteEmailForAddress: jest.fn().mockResolvedValue(allowsInvite),
+  } as unknown as UserSettingsService;
+}
 
 describe('WorkspaceInviteService', () => {
   let service: WorkspaceInviteService;
@@ -21,6 +28,7 @@ describe('WorkspaceInviteService', () => {
       { get: jest.fn().mockReturnValue('http://app.test') } as unknown as ConfigService,
       {} as unknown as WorkspaceService,
       { record: jest.fn() } as unknown as WorkspaceActivityService,
+      mockUserSettings(),
     );
   });
 
@@ -64,6 +72,7 @@ describe('WorkspaceInviteService', () => {
       { get: jest.fn().mockReturnValue('http://app.test') } as unknown as ConfigService,
       {} as unknown as WorkspaceService,
       activity as unknown as WorkspaceActivityService,
+      mockUserSettings(),
     );
     await expect(
       svc.sendInvite(
@@ -73,6 +82,25 @@ describe('WorkspaceInviteService', () => {
       ),
     ).resolves.toEqual({ id: 99 });
     expect(mail.sendWorkspaceInvite).toHaveBeenCalled();
+  });
+
+  it('sendInvite skips mail when recipient disabled workspace invite emails', async () => {
+    prisma.user!.findUnique!.mockResolvedValue({ id: 5 });
+    prisma.workspaceInvite!.create!.mockResolvedValue({ id: 99 });
+    prisma.workspace!.findUnique!.mockResolvedValue({ name: 'Team' });
+    const mail = { sendWorkspaceInvite: jest.fn() };
+    const svc = new WorkspaceInviteService(
+      prisma as unknown as PrismaService,
+      mail as unknown as MailService,
+      { get: jest.fn().mockReturnValue('http://app.test') } as unknown as ConfigService,
+      {} as unknown as WorkspaceService,
+      { record: jest.fn() } as unknown as WorkspaceActivityService,
+      mockUserSettings(false),
+    );
+    await expect(
+      svc.sendInvite({ email: 'off@b.com', role: WorkspaceRole.MEMBER }, 1, 10),
+    ).resolves.toEqual({ id: 99 });
+    expect(mail.sendWorkspaceInvite).not.toHaveBeenCalled();
   });
 
   it('getWorkspaceInvites lists pending invites', async () => {

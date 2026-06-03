@@ -1,9 +1,11 @@
 import {
   Controller,
+  Body,
   Delete,
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Query,
   Req,
   UseGuards,
@@ -25,6 +27,7 @@ import {
 } from '@nestjs/swagger';
 import type { WorkspaceMemberWithUser } from './interface';
 import type { AuthedRequest } from '../common/type';
+import { UpdateMemberPermissionsDto } from './dto/update-member-permissions.dto';
 
 @ApiTags('workspace-members')
 @ApiBearerAuth()
@@ -51,6 +54,24 @@ export class WorkspaceMemberController {
       workspaceId,
       paginationDto,
     );
+  }
+
+  @UseGuards(WorkspaceAccessGuard)
+  @Patch(':memberId/permissions')
+  @ApiOperation({ summary: 'Update member permission overrides' })
+  async updateMemberPermissions(
+    @Req() req: AuthedRequest,
+    @Param('workspaceId', ParseIntPipe) workspaceId: number,
+    @Param('memberId', ParseIntPipe) memberId: number,
+    @Body() dto: UpdateMemberPermissionsDto,
+  ) {
+    const permissions = await this.workspaceMemberService.updateMemberPermissions(
+      workspaceId,
+      memberId,
+      req.user.id,
+      dto,
+    );
+    return { permissions };
   }
 
   @UseGuards(WorkspaceAccessGuard, WorkspaceRoleGuard)

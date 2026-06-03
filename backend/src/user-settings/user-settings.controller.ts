@@ -13,6 +13,8 @@ import type { AuthedRequest } from '../common/type';
 import { JwtAuthGuard } from '../auth/guards/auth.guard';
 import { REFRESH_TOKEN_COOKIE_NAME } from '../auth/constants/refresh-token.constants';
 import { UpdateGamificationSettingsDto } from './dto/update-gamification-settings.dto';
+import { UpdatePrivacySettingsDto } from './dto/update-privacy-settings.dto';
+import { UpdateNotificationSettingsDto } from './dto/update-notification-settings.dto';
 import type {
   UserSecurityEventView,
   UserSessionView,
@@ -72,6 +74,34 @@ export class UserSettingsController {
     );
   }
 
+  @Patch('settings/privacy')
+  @ApiOperation({ summary: 'Update privacy settings' })
+  @ApiResponse({ status: 200, description: 'Privacy settings updated successfully.' })
+  updatePrivacySettings(
+    @Req() req: AuthedRequest & { ip?: string },
+    @Body() body: UpdatePrivacySettingsDto,
+  ): Promise<UserSettingsView> {
+    return this.userSettingsService.updatePrivacySettings(
+      req.user.id,
+      body,
+      sessionMetaFromRequest(req),
+    );
+  }
+
+  @Patch('settings/notifications')
+  @ApiOperation({ summary: 'Update notification settings' })
+  @ApiResponse({ status: 200, description: 'Notification settings updated successfully.' })
+  updateNotificationSettings(
+    @Req() req: AuthedRequest & { ip?: string },
+    @Body() body: UpdateNotificationSettingsDto,
+  ): Promise<UserSettingsView> {
+    return this.userSettingsService.updateNotificationSettings(
+      req.user.id,
+      body,
+      sessionMetaFromRequest(req),
+    );
+  }
+
   @Get('sessions')
   @ApiOperation({ summary: 'List user sessions / devices' })
   @ApiResponse({ status: 200, description: 'User sessions returned successfully.' })
@@ -79,6 +109,8 @@ export class UserSettingsController {
     return this.userSettingsService.listSessions(
       req.user.id,
       refreshTokenFromRequest(req),
+      req.user.sessionId,
+      sessionMetaFromRequest(req),
     );
   }
 
@@ -107,6 +139,7 @@ export class UserSettingsController {
     await this.userSettingsService.revokeAllOtherSessions(
       req.user.id,
       refreshTokenFromRequest(req),
+      req.user.sessionId,
       sessionMetaFromRequest(req),
     );
     return { ok: true };

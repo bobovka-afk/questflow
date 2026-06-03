@@ -4,6 +4,7 @@ import {
   Get,
   Delete,
   Patch,
+  Post,
   Param,
   ParseIntPipe,
   Req,
@@ -11,14 +12,20 @@ import {
   UseGuards,
   UseInterceptors,
   BadRequestException,
+  HttpCode,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import type { UserPublic, UserProfileView } from './interface';
 import type { AuthedRequest } from '../common/type';
 import type { File as MulterFile } from 'multer';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/auth.guard';
 import { UserService } from './user.service';
+import { UserEmailChangeService } from './user-email-change.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { RequestEmailChangeDto } from './dto/request-email-change.dto';
+import { DeleteAccountDto } from './dto/delete-account.dto';
+import { clientIpFromForwarded } from '../user-settings/lib/settings-json';
 import * as fs from 'fs';
 import { diskStorage } from 'multer';
 import * as path from 'path';
@@ -35,12 +42,28 @@ import {
 } from '@nestjs/swagger';
 import sharp from 'sharp';
 
+function sessionMetaFromRequest(req: Request) {
+  const userAgent = req.headers['user-agent'];
+  const ipAddress =
+    clientIpFromForwarded(req.headers['x-forwarded-for']) ??
+    req.ip ??
+    req.socket.remoteAddress ??
+    undefined;
+  return {
+    userAgent: typeof userAgent === 'string' ? userAgent : undefined,
+    ipAddress,
+  };
+}
+
 @ApiTags('user')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly userEmailChangeService: UserEmailChangeService,
+  ) {}
 
   @Get('me')
   @ApiOperation({ summary: 'Get current user profile' })
@@ -164,6 +187,41 @@ export class UserController {
     const baseUrl = process.env.SERVER_URL ?? 'http://localhost:3000';
     const avatarUrl = `${baseUrl}/uploads/user-avatars/${finalFilename}`;
     return this.userService.updateAvatar(req.user.id, avatarUrl);
+  }
+
+  @Post('me/email-change/request')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ key: 'user:email-change', limit: 3, windowSec: 300 })
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Request email change (confirm old + new inbox)' })
+  requestEmailChange(
+    @Req() req: AuthedRequest & Request,
+    @Body() body: RequestEmailChangeDto,
+  ) {
+    return this.userEmailChangeService.requestChange(
+      req.user.id,
+      body.newEmail,
+      body.currentPassword,
+      sessionMetaFromRequest(req),
+    );
+  }
+
+  @Get('me/email-change/pending')
+  @ApiOperation({ summary: 'Pending email change status' })
+  getPendingEmailChange(@Req() req: AuthedRequest) {
+    return this.userEmailChangeService.getPendingStatus(req.user.id);
+  }
+
+  @Delete('me')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ key: 'user:delete-account', limit: 3, windowSec: 300 })
+  @ApiOperation({ summary: 'Delete current user account' })
+  deleteAccount(@Req() req: AuthedRequest, @Body() body: DeleteAccountDto) {
+    return this.userService.deleteAccount(
+      req.user.id,
+      body.password,
+      body.confirmPhrase,
+    );
   }
 
   @Delete('remove-avatar')

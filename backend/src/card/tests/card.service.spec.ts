@@ -20,10 +20,14 @@ describe('CardService', () => {
     const questProgressService = {
       recordCardCompleted: jest.fn().mockResolvedValue([]),
     };
+    const achievementService = {
+      recordIncrement: jest.fn().mockResolvedValue([]),
+    };
     service = new CardService(
       prisma as unknown as PrismaService,
       characterService as unknown as CharacterService,
       questProgressService as never,
+      achievementService as never,
     );
   });
 
@@ -47,6 +51,8 @@ describe('CardService', () => {
       prisma.card!.findUnique!.mockResolvedValue({
         assigneeId: 5,
         isCompleted: false,
+        dueDate: null,
+        list: { board: { workspaceId: 1 } },
       });
       prisma.card!.update!.mockResolvedValue({});
       characterService.addExperience.mockResolvedValue({
@@ -68,6 +74,8 @@ describe('CardService', () => {
       prisma.card!.findUnique!.mockResolvedValue({
         assigneeId: null,
         isCompleted: false,
+        dueDate: null,
+        list: { board: { workspaceId: 1 } },
       });
       prisma.card!.update!.mockResolvedValue({});
       characterService.addExperience.mockResolvedValue({

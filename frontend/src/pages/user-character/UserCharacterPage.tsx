@@ -62,6 +62,12 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
           setLoadPhase('missing');
           return;
         }
+        if (err.status === 403 && err.code === 'CHARACTER_VIEW_DISABLED') {
+          setCharacter(null);
+          setLoadPhase('error');
+          setLoadError(formatApiError(e));
+          return;
+        }
         setLoadPhase('error');
         setLoadError(formatApiError(e));
       }
