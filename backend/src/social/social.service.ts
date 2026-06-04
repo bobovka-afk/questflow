@@ -6,6 +6,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { FriendRequestStatus, Prisma } from '../generated/prisma/client';
+import { UserNotificationType } from '../generated/prisma/enums';
+import { NotificationService } from '../notification/notification.service';
+import { UserBlockService } from '../user/user-block.service';
+import { UserSettingsService } from '../user-settings/user-settings.service';
+
+const ONLINE_WINDOW_MS = 5 * 60 * 1000;
 import { PrismaService } from '../prisma/prisma.service';
 import {
   formatFriendCode,
@@ -29,6 +35,7 @@ const userWithCharacterSelect = {
   id: true,
   name: true,
   avatarPath: true,
+  lastActiveAt: true,
   character: {
     select: { name: true, friendCode: true },
   },
@@ -36,7 +43,12 @@ const userWithCharacterSelect = {
 
 @Injectable()
 export class SocialService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+    private readonly userBlockService: UserBlockService,
+    private readonly userSettingsService: UserSettingsService,
+  ) {}
 
   async generateUniqueFriendCode(): Promise<number> {
     for (let attempt = 0; attempt < 50; attempt++) {
@@ -93,6 +105,7 @@ export class SocialService {
     }
 
     const addresseeId = targetCharacter.userId;
+    await this.userBlockService.assertNotBlocked(requesterId, addresseeId);
     if (addresseeId === requesterId) {
       throw new BadRequestException({
         code: 'FRIEND_REQUEST_SELF',
@@ -140,9 +153,22 @@ export class SocialService {
         respondedAt: null,
       },
       include: {
+        requester: { select: userWithCharacterSelect },
         addressee: { select: userWithCharacterSelect },
       },
     });
+
+    if (row.status === FriendRequestStatus.PENDING) {
+      await this.notificationService.create(
+        addresseeId,
+        UserNotificationType.FRIEND_REQUEST,
+        {
+          requestId: row.id,
+          requesterId,
+          requesterName: row.requester?.name ?? 'Пользователь',
+        },
+      );
+    }
 
     return this.toFriendRequestView(row, requesterId);
   }
@@ -160,14 +186,73 @@ export class SocialService {
       orderBy: { respondedAt: 'desc' },
     });
 
-    return rows.map((row) => {
+    const friends: FriendView[] = [];
+    for (const row of rows) {
       const peer =
         row.requesterId === userId ? row.addressee : row.requester;
-      return {
-        user: this.toSocialUserSummary(peer),
+      const presence = await this.presenceForFriend(userId, peer.id, peer.lastActiveAt);
+      friends.push({
+        user: { ...this.toSocialUserSummary(peer), ...presence },
         friendsSince: row.respondedAt ?? row.createdAt,
-      };
+      });
+    }
+    return friends;
+  }
+
+  async searchFriendsByCharacterName(
+    viewerId: number,
+    query: string,
+  ): Promise<SocialUserSummary[]> {
+    const q = query.trim();
+    if (q.length < 2) {
+      return [];
+    }
+    const rows = await this.prisma.character.findMany({
+      where: {
+        name: { contains: q, mode: 'insensitive' },
+        userId: { not: viewerId },
+      },
+      take: 20,
+      include: { user: { select: userWithCharacterSelect } },
     });
+    const results: SocialUserSummary[] = [];
+    for (const row of rows) {
+      const privacy = await this.userSettingsService.getPrivacySettings(row.userId);
+      if (!privacy.allowFindByCharacterName) continue;
+      if (await this.userBlockService.areUsersBlocked(viewerId, row.userId)) {
+        continue;
+      }
+      results.push(this.toSocialUserSummary(row.user));
+    }
+    return results;
+  }
+
+  async blockUser(blockerId: number, blockedId: number): Promise<void> {
+    await this.userBlockService.blockUser(blockerId, blockedId);
+  }
+
+  async unblockUser(blockerId: number, blockedId: number): Promise<void> {
+    await this.userBlockService.unblockUser(blockerId, blockedId);
+  }
+
+  private async presenceForFriend(
+    viewerId: number,
+    peerId: number,
+    lastActiveAt: Date,
+  ): Promise<{ isOnline: boolean; lastSeenAt: string | null }> {
+    const privacy = await this.userSettingsService.getPrivacySettings(peerId);
+    if (!privacy.showOnlineStatusToFriends) {
+      return { isOnline: false, lastSeenAt: null };
+    }
+    const isFriend = await this.areFriends(viewerId, peerId);
+    if (!isFriend) {
+      return { isOnline: false, lastSeenAt: null };
+    }
+    const isOnline = Date.now() - lastActiveAt.getTime() < ONLINE_WINDOW_MS;
+    return {
+      isOnline,
+      lastSeenAt: lastActiveAt.toISOString(),
+    };
   }
 
   async listIncomingRequests(userId: number): Promise<FriendRequestView[]> {
@@ -263,13 +348,22 @@ export class SocialService {
         canMessage: false,
         incomingRequestId: null,
         outgoingRequestId: null,
+        blockedByMe: false,
+        blockedByThem: false,
       };
     }
+
+    const [blockedByMe, blockedByThem] = await Promise.all([
+      this.userBlockService.hasBlocked(viewerId, targetUserId),
+      this.userBlockService.hasBlocked(targetUserId, viewerId),
+    ]);
+    const interactionBlocked = blockedByMe || blockedByThem;
 
     const pair = await this.findFriendshipPair(viewerId, targetUserId);
     const isFriend = pair?.status === FriendRequestStatus.ACCEPTED;
     const canMessage =
-      isFriend || (await this.shareWorkspace(viewerId, targetUserId));
+      !interactionBlocked &&
+      (isFriend || (await this.shareWorkspace(viewerId, targetUserId)));
 
     let incomingRequestId: number | null = null;
     let outgoingRequestId: number | null = null;
@@ -287,6 +381,8 @@ export class SocialService {
       canMessage,
       incomingRequestId,
       outgoingRequestId,
+      blockedByMe,
+      blockedByThem,
     };
   }
 
@@ -475,6 +571,7 @@ export class SocialService {
   }
 
   private async assertCanMessage(viewerId: number, targetUserId: number): Promise<void> {
+    await this.userBlockService.assertNotBlocked(viewerId, targetUserId);
     const allowed = await this.canMessage(viewerId, targetUserId);
     if (!allowed) {
       throw new ForbiddenException({

@@ -26,6 +26,28 @@ export function fetchFriends(accessToken: string) {
   return api<FriendView[]>('/social/friends', { method: 'GET', accessToken });
 }
 
+export function searchFriendsByCharacterName(accessToken: string, query: string) {
+  const q = encodeURIComponent(query.trim());
+  return api<import('../model/types').SocialUserSummary[]>(
+    `/social/friends/search?q=${q}`,
+    { method: 'GET', accessToken },
+  );
+}
+
+export function blockUser(accessToken: string, userId: number) {
+  return api<{ ok: boolean }>(`/social/block/${userId}`, {
+    method: 'POST',
+    accessToken,
+  });
+}
+
+export function unblockUser(accessToken: string, userId: number) {
+  return api<{ ok: boolean }>(`/social/block/${userId}`, {
+    method: 'DELETE',
+    accessToken,
+  });
+}
+
 export function fetchIncomingFriendRequests(accessToken: string) {
   return api<FriendRequestView[]>('/social/friends/requests/incoming', {
     method: 'GET',

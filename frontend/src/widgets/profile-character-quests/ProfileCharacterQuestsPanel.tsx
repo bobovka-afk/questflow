@@ -674,6 +674,12 @@ export function ProfileCharacterQuestsPanel(props: Props) {
               onOpenChest={(id, tier) => void handleOpenChest(id, tier)}
               openingChestId={openingChestId}
             />
+            <QuestGroup
+              title="За месяц"
+              group={quests.monthly}
+              onOpenChest={(id, tier) => void handleOpenChest(id, tier)}
+              openingChestId={openingChestId}
+            />
           </>
         )}
 

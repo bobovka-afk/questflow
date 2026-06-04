@@ -29,6 +29,7 @@ import { RaidPanel } from '@widgets/party-raid/RaidPanel';
 import { useSocialInboxSummary } from '@entities/social';
 import { CharacterPortraitWithFrame } from '@widgets/character-portrait/CharacterPortraitWithFrame';
 import { CharacterStatsPanel } from '@widgets/character-stats/CharacterStatsPanel';
+import { GameDayHint } from '@widgets/game-day-hint/GameDayHint';
 
 type Props = {
   accessToken: string;
@@ -74,12 +75,22 @@ export function ProfileCharacterPage(props: Props) {
     loadPhase === 'ready',
   );
 
+  const [partyInviteToast, setPartyInviteToast] = useState<string | null>(null);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const withUser = params.get('with');
     if (withUser && /^\d+$/.test(withUser)) {
       setActivePanelTab('messages');
       setMessagePeerUserId(Number(withUser));
+    }
+    const partyRaid = params.get('partyRaid');
+    if (partyRaid && /^\d+$/.test(partyRaid)) {
+      setActivePanelTab('raid');
+      setPartyInviteToast('Приглашение в рейд — откройте вкладку «Рейд» и примите или отклоните.');
+      params.delete('partyRaid');
+      const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}`;
+      window.history.replaceState(null, '', next);
     }
   }, []);
 
@@ -395,6 +406,19 @@ export function ProfileCharacterPage(props: Props) {
               ))}
             </div>
 
+            {partyInviteToast ? (
+              <p className="trello-character-party-invite-toast" role="status">
+                {partyInviteToast}
+                <button
+                  type="button"
+                  className="trello-btn trello-btn-ghost trello-btn-sm"
+                  onClick={() => setPartyInviteToast(null)}
+                >
+                  Закрыть
+                </button>
+              </p>
+            ) : null}
+
             <div className="trello-character-profile-hero trello-character-profile-hero--rpg-grid">
               <div className="trello-character-profile-portrait-column">
                 <div className="trello-character-profile-portrait-wrap trello-character-profile-portrait-wrap--square">
@@ -418,7 +442,10 @@ export function ProfileCharacterPage(props: Props) {
               <div className="trello-character-profile-info-col trello-character-profile-info-col--rpg">
               <div className="trello-character-rpg-inline-panel">
                 {activePanelTab === 'character' ? (
-                  <CharacterStatsPanel character={character} xpToward={xpToward} />
+                  <>
+                    <CharacterStatsPanel character={character} xpToward={xpToward} />
+                    <GameDayHint />
+                  </>
                 ) : activePanelTab === 'friends' ? (
                   <FriendsPanel
                     accessToken={props.accessToken}

@@ -12,6 +12,7 @@ export type UserSettingsView = {
   security: SecuritySettingsJson;
   privacy: PrivacySettingsJson;
   notifications: NotificationSettingsJson;
+  displayTimezone: string | null;
   updatedAt: string;
 };
 
@@ -33,6 +34,7 @@ export type UserSecurityEventView = {
   type: string;
   metadata: Record<string, unknown> | null;
   ipAddress: string | null;
+  deviceLabel: string | null;
   createdAt: string;
 };
 

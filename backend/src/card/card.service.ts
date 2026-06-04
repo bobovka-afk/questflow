@@ -18,6 +18,8 @@ import { UpdateCardDto } from './dto/update-card.dto';
 import type { Card } from '../generated/prisma/client';
 import { XpEventType } from '../generated/prisma/enums';
 import { XP_PER_TASK_COMPLETED } from '../gamification/config/rewards';
+import { NotificationService } from '../notification/notification.service';
+import { UserNotificationType } from '../generated/prisma/enums';
 
 @Injectable()
 export class CardService {
@@ -26,6 +28,7 @@ export class CardService {
     private readonly characterService: CharacterService,
     private readonly questProgressService: QuestProgressService,
     private readonly achievementService: AchievementService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async getCards(listId: number) {
@@ -61,7 +64,11 @@ export class CardService {
     });
   }
 
-  async updateCard(cardId: number, dto: UpdateCardDto): Promise<Card> {
+  async updateCard(
+    cardId: number,
+    dto: UpdateCardDto,
+    actorUserId: number,
+  ): Promise<Card> {
     if (
       dto.title === undefined &&
       dto.description === undefined &&
@@ -76,10 +83,18 @@ export class CardService {
       });
     }
 
+    const before =
+      dto.assigneeId !== undefined
+        ? await this.prisma.card.findUnique({
+            where: { id: cardId },
+            select: { assigneeId: true, title: true },
+          })
+        : null;
+
     const resetReminder =
       dto.dueDate !== undefined || dto.reminderMinutesBefore !== undefined;
 
-    return this.prisma.card.update({
+    const updated = await this.prisma.card.update({
       where: { id: cardId },
       data: {
         title: dto.title,
@@ -91,6 +106,24 @@ export class CardService {
         ...(resetReminder ? { reminderNotifiedAt: null } : {}),
       },
     });
+
+    if (
+      dto.assigneeId != null &&
+      dto.assigneeId !== before?.assigneeId &&
+      dto.assigneeId !== actorUserId
+    ) {
+      await this.notificationService.create(
+        dto.assigneeId,
+        UserNotificationType.CARD_ASSIGNED,
+        {
+          cardId,
+          title: updated.title ?? before?.title ?? null,
+          assignedByUserId: actorUserId,
+        },
+      );
+    }
+
+    return updated;
   }
 
   async deleteCard(cardId: number): Promise<{ ok: boolean }> {

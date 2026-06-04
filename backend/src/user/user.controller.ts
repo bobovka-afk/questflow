@@ -23,6 +23,7 @@ import { JwtAuthGuard } from '../auth/guards/auth.guard';
 import { UserService } from './user.service';
 import { UserEmailChangeService } from './user-email-change.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateUsernameDto } from './dto/update-username.dto';
 import { RequestEmailChangeDto } from './dto/request-email-change.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
 import { clientIpFromForwarded } from '../user-settings/lib/settings-json';
@@ -96,6 +97,17 @@ export class UserController {
     @Body() body: UpdateUserDto,
   ): Promise<UserPublic> {
     return this.userService.updateName(req.user.id, body.name);
+  }
+
+  @Patch('me/username')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ key: 'user:username', limit: 5, windowSec: 300 })
+  @ApiOperation({ summary: 'Set public @username for profile links' })
+  async updateUsername(
+    @Req() req: AuthedRequest,
+    @Body() body: UpdateUsernameDto,
+  ): Promise<UserPublic> {
+    return this.userService.updateUsername(req.user.id, body.username);
   }
 
   @Patch('update-avatar')

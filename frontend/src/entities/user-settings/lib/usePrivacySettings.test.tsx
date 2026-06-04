@@ -25,6 +25,7 @@ describe('usePrivacySettings', () => {
     vi.mocked(userSettingsApi.fetchUserSettings).mockResolvedValue(
       mockUserSettingsDto({
         privacy: {
+          ...DEFAULT_PRIVACY_USER_SETTINGS,
           allowCharacterView: false,
           showAccountAvatarOnPublicProfile: true,
         },
@@ -45,6 +46,7 @@ describe('usePrivacySettings', () => {
     vi.mocked(userSettingsApi.patchPrivacySettings).mockResolvedValue(
       mockUserSettingsDto({
         privacy: {
+          ...DEFAULT_PRIVACY_USER_SETTINGS,
           allowCharacterView: false,
           showAccountAvatarOnPublicProfile: true,
         },
@@ -64,6 +66,8 @@ describe('usePrivacySettings', () => {
     expect(userSettingsApi.patchPrivacySettings).toHaveBeenCalledWith('token', {
       allowCharacterView: false,
       showAccountAvatarOnPublicProfile: true,
+      allowFindByCharacterName: false,
+      showOnlineStatusToFriends: true,
     });
     expect(result.current[0].allowCharacterView).toBe(false);
   });

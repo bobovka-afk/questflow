@@ -69,12 +69,23 @@ export async function fetchSecurityEvents(accessToken: string): Promise<UserSecu
 
 export async function patchNotificationSettings(
   accessToken: string,
-  patch: Partial<import('../model/types').NotificationUserSettings>,
+  patch: Partial<import('../lib/notificationSettings').NotificationUserSettings>,
 ): Promise<UserSettingsDto> {
   return api<UserSettingsDto>('/user/me/settings/notifications', {
     method: 'PATCH',
     accessToken,
     json: patch,
+  });
+}
+
+export async function patchDisplayTimezone(
+  accessToken: string,
+  displayTimezone: string,
+): Promise<UserSettingsDto> {
+  return api<UserSettingsDto>('/user/me/settings/display-timezone', {
+    method: 'PATCH',
+    accessToken,
+    json: { displayTimezone },
   });
 }
 

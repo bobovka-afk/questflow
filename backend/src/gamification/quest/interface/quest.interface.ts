@@ -27,6 +27,7 @@ export type QuestPeriodGroup = {
 export type CharacterQuestsView = {
   daily: QuestPeriodGroup;
   weekly: QuestPeriodGroup;
+  monthly: QuestPeriodGroup;
 };
 
 export type QuestCompletionResult = {

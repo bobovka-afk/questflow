@@ -11,6 +11,7 @@ export type {
 } from './model/types';
 export {
   acceptFriendRequest,
+  blockUser,
   cancelFriendRequest,
   declineFriendRequest,
   fetchConversations,
@@ -24,9 +25,12 @@ export {
   fetchUserRelation,
   markMessagesRead,
   removeFriend,
+  searchFriendsByCharacterName,
   sendDirectMessage,
   sendFriendRequest,
+  unblockUser,
 } from './api/socialApi';
 export { formatFriendCode, parseFriendCodeInput } from './lib/formatFriendCode';
 export { useMessagePolling } from './lib/useMessagePolling';
+export { useMessageDelivery } from './lib/useMessageDelivery';
 export { useSocialInboxSummary } from './lib/useSocialInboxSummary';

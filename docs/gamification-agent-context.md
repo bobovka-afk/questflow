@@ -42,7 +42,7 @@
 | Удар по боссу | −5 маны | `BOSS_ATTACK_MANA_COST` | — |
 | Бюджет % HP пати / сутки | 40 | `BOSS_DAILY_PARTY_BUDGET_PCT` | — |
 | Пати рейда | 2–8 | `BOSS_MIN/MAX_PARTY_SIZE` | — |
-| Активных рейдов на игрока | 1 | `MAX_ACTIVE_RAIDS_PER_USER` | — |
+| Активных рейдов на игрока | 2 | `MAX_ACTIVE_RAIDS_PER_USER` | `xpRewards.ts` |
 | Штраф за вчера без активности | −5 | `HP_INACTIVITY_PENALTY`, cron `applyInactivityHpPenalty` | — |
 | Grace period | 24 ч | `CHARACTER_GRACE_PERIOD_MS` | — |
 | Уровни | 1–100 | `character/config/level-curve.ts` | `lib/level-curve.ts` (дубль кривой) |

@@ -1,9 +1,12 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
   Patch,
+  Post,
   Query,
   Req,
   UseGuards,
@@ -20,13 +23,46 @@ import { JwtAuthGuard } from '../auth/guards/auth.guard';
 import type { AuthedRequest } from '../common/type';
 import { PaginationDto } from '../workspace/dto/pagination.dto';
 import { NotificationService } from './notification.service';
+import { WebPushService } from './web-push.service';
+
+class PushSubscribeDto {
+  endpoint!: string;
+  keys!: { p256dh: string; auth: string };
+}
+
+class PushUnsubscribeDto {
+  endpoint!: string;
+}
 
 @ApiTags('notifications')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('notifications')
 export class NotificationController {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly webPushService: WebPushService,
+  ) {}
+
+  @Get('push/vapid-public-key')
+  getVapidPublicKey() {
+    return { publicKey: this.webPushService.getVapidPublicKey() };
+  }
+
+  @Post('push/subscribe')
+  async subscribe(@Req() req: AuthedRequest, @Body() body: PushSubscribeDto) {
+    await this.webPushService.subscribe(req.user.id, {
+      endpoint: body.endpoint,
+      keys: body.keys,
+    });
+    return { ok: true };
+  }
+
+  @Delete('push/subscribe')
+  async unsubscribe(@Req() req: AuthedRequest, @Body() body: PushUnsubscribeDto) {
+    await this.webPushService.unsubscribe(req.user.id, body.endpoint);
+    return { ok: true };
+  }
 
   @Get()
   @ApiOperation({ summary: 'List in-app notifications for current user' })

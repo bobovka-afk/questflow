@@ -5,9 +5,10 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { WorkspaceModule } from '../workspace/workspace.module';
 import { CharacterModule } from '../character/character.module';
 import { GamificationModule } from '../gamification/gamification.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [PrismaModule, WorkspaceModule, CharacterModule, GamificationModule],
+  imports: [PrismaModule, WorkspaceModule, CharacterModule, GamificationModule, NotificationModule],
   controllers: [CardController],
   providers: [CardService],
 })

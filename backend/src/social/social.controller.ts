@@ -9,8 +9,11 @@ import {
   Post,
   Query,
   Req,
+  Sse,
   UseGuards,
+  MessageEvent,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -20,6 +23,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/auth.guard';
+import { SseAuthGuard } from '../common/guards/sse-auth.guard';
 import { RateLimit } from '../common/decorators/rate-limit.decorator';
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 import type { AuthedRequest } from '../common/type';
@@ -60,6 +64,30 @@ export class SocialController {
   @ApiOperation({ summary: 'List accepted friends' })
   listFriends(@Req() req: AuthedRequest) {
     return this.socialService.listFriends(req.user.id);
+  }
+
+  @Get('friends/search')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ key: 'social:friend-search', limit: 30, windowSec: 60 })
+  @ApiQuery({ name: 'q', required: true })
+  searchFriends(@Req() req: AuthedRequest, @Query('q') q: string) {
+    return this.socialService.searchFriendsByCharacterName(req.user.id, q ?? '');
+  }
+
+  @Post('block/:userId')
+  blockUser(
+    @Req() req: AuthedRequest,
+    @Param('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.socialService.blockUser(req.user.id, userId).then(() => ({ ok: true }));
+  }
+
+  @Delete('block/:userId')
+  unblockUser(
+    @Req() req: AuthedRequest,
+    @Param('userId', ParseIntPipe) userId: number,
+  ) {
+    return this.socialService.unblockUser(req.user.id, userId).then(() => ({ ok: true }));
   }
 
   @Get('friends/requests/incoming')
@@ -136,6 +164,41 @@ export class SocialController {
     @Param('userId', ParseIntPipe) userId: number,
   ) {
     return this.socialService.getSentMessageReceipts(req.user.id, userId);
+  }
+
+  @Sse('messages/stream/:userId')
+  @UseGuards(SseAuthGuard)
+  @ApiOperation({ summary: 'SSE stream of new DM messages (fallback: REST poll)' })
+  streamMessages(
+    @Req() req: AuthedRequest,
+    @Param('userId', ParseIntPipe) peerUserId: number,
+  ): Observable<MessageEvent> {
+    return new Observable((subscriber) => {
+      let lastId = 0;
+      let closed = false;
+      const tick = async () => {
+        if (closed) return;
+        try {
+          const batch = await this.socialService.getMessagesWith(
+            req.user.id,
+            peerUserId,
+            lastId > 0 ? lastId : undefined,
+          );
+          if (batch.length > 0) {
+            lastId = Math.max(lastId, ...batch.map((m) => m.id));
+            subscriber.next({ data: { messages: batch } });
+          }
+        } catch (err) {
+          subscriber.error(err);
+        }
+      };
+      const timer = setInterval(() => void tick(), 3000);
+      void tick();
+      return () => {
+        closed = true;
+        clearInterval(timer);
+      };
+    });
   }
 
   @Get('messages/with/:userId')

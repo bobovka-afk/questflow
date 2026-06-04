@@ -9,13 +9,30 @@ describe('NotificationService', () => {
 
   beforeEach(() => {
     prisma = createPrismaMock();
-    service = new NotificationService(prisma as unknown as PrismaService);
+    const webPushService = {
+      notifyUser: jest.fn().mockResolvedValue(undefined),
+    };
+    service = new NotificationService(
+      prisma as unknown as PrismaService,
+      webPushService as never,
+    );
   });
 
   it('create inserts notification', async () => {
+    prisma.userSettings!.findUnique!.mockResolvedValue({
+      site: { notifications: { inAppMentions: true } },
+    });
     prisma.userNotification!.create!.mockResolvedValue({ id: 1 });
     await service.create(5, UserNotificationType.MENTION, { cardId: 1 });
     expect(prisma.userNotification!.create).toHaveBeenCalled();
+  });
+
+  it('create skips when in-app toggle is off', async () => {
+    prisma.userSettings!.findUnique!.mockResolvedValue({
+      site: { notifications: { inAppMentions: false } },
+    });
+    await service.create(5, UserNotificationType.MENTION, { cardId: 1 });
+    expect(prisma.userNotification!.create).not.toHaveBeenCalled();
   });
 
   it('unreadCount queries unread', async () => {

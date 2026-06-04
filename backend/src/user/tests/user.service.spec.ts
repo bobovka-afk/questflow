@@ -23,9 +23,14 @@ describe('UserService', () => {
         showAccountAvatarOnPublicProfile: true,
       }),
     };
+    const userBlockService = {
+      assertNotBlocked: jest.fn().mockResolvedValue(undefined),
+      areUsersBlocked: jest.fn().mockResolvedValue(false),
+    };
     service = new UserService(
       prisma as unknown as PrismaService,
       userSettingsService as unknown as UserSettingsService,
+      userBlockService as never,
     );
   });
 
@@ -44,6 +49,7 @@ describe('UserService', () => {
         id: 1,
         email: 'a@b.com',
         name: 'U',
+        username: null,
         avatarPath: null,
         passwordHash: 'hash',
         createdAt: new Date(),
@@ -52,6 +58,7 @@ describe('UserService', () => {
         id: 1,
         email: 'a@b.com',
         name: 'U',
+        username: null,
         avatarPath: null,
         hasPassword: true,
         createdAt: expect.any(Date),

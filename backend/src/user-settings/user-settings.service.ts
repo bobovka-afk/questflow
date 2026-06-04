@@ -26,6 +26,7 @@ import {
   parseGamificationSettings,
   parseNotificationSettings,
   parsePrivacySettings,
+  parseDisplayTimezone,
   parseSecuritySettings,
   parseSiteSettings,
 } from './lib/settings-json';
@@ -111,6 +112,31 @@ export class UserSettingsService {
       userId,
       UserSecurityEventType.SECURITY_SETTINGS_CHANGED,
       { privacy: dto },
+      meta,
+    );
+    return this.toSettingsView(updated);
+  }
+
+  async updateDisplayTimezone(
+    userId: number,
+    displayTimezone: string,
+    meta?: SessionRequestMeta,
+  ): Promise<UserSettingsView> {
+    const current = await this.ensureSettings(userId);
+    const site = parseSiteSettings(current.site);
+    const updated = await this.prisma.userSettings.update({
+      where: { userId },
+      data: {
+        site: {
+          ...site,
+          displayTimezone: displayTimezone.trim(),
+        } as Prisma.InputJsonValue,
+      },
+    });
+    await this.logSecurityEvent(
+      userId,
+      UserSecurityEventType.SITE_SETTINGS_CHANGED,
+      { displayTimezone: displayTimezone.trim() },
       meta,
     );
     return this.toSettingsView(updated);
@@ -534,6 +560,7 @@ export class UserSettingsService {
       type: row.type,
       metadata: (row.metadata as Record<string, unknown> | null) ?? null,
       ipAddress: row.ipAddress,
+      deviceLabel: deviceLabelFromUserAgent(row.userAgent ?? undefined) ?? null,
       createdAt: row.createdAt.toISOString(),
     }));
   }
@@ -582,6 +609,7 @@ export class UserSettingsService {
       security,
       privacy: security.privacy,
       notifications: parseNotificationSettings(site.notifications),
+      displayTimezone: parseDisplayTimezone(site) ?? null,
       updatedAt: row.updatedAt.toISOString(),
     };
   }

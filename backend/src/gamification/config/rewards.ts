@@ -30,4 +30,7 @@ export const BOSS_RAID_TTL_DAYS = 5;
 
 export const BOSS_MIN_CONTRIBUTION_PCT_FOR_LOOT = 5;
 
-export const MAX_ACTIVE_RAIDS_PER_USER = 1;
+export const MAX_ACTIVE_RAIDS_PER_USER = 2;
+
+/** Members without a boss hit for this many ms are auto-kicked from active raids. */
+export const PARTY_AFK_INACTIVE_MS = 2 * 24 * 60 * 60 * 1000;

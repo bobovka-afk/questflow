@@ -11,6 +11,10 @@ import {
   cosmeticTypeToCharacterField,
   rollLootCosmeticKey,
 } from '../config/loot-table';
+import {
+  parseBossKeyFromChestSource,
+  rollBossLootCosmeticKey,
+} from '../config/boss-loot-table';
 import { DUST_FOR_DUPLICATE_BY_TIER } from '../config/dust';
 import { AchievementService } from '../achievement/achievement.service';
 import { AchievementMetric } from '../../generated/prisma/enums';
@@ -91,7 +95,11 @@ export class ChestService {
         });
       }
 
-      const cosmeticKey = rollLootCosmeticKey(chest.tier, characterRow.gender);
+      const bossKey = parseBossKeyFromChestSource(chest.source);
+      const cosmeticKey =
+        bossKey != null
+          ? rollBossLootCosmeticKey(bossKey, chest.tier, characterRow.gender)
+          : rollLootCosmeticKey(chest.tier, characterRow.gender);
       const cosmetic = await tx.cosmeticItem.findUnique({
         where: { key: cosmeticKey },
       });

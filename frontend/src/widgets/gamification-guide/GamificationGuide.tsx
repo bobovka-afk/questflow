@@ -11,6 +11,7 @@ import {
   XP_DAILY_CHECKIN,
   XP_PER_TASK_COMPLETED,
 } from '@entities/reward';
+import { GameDayHint } from '@widgets/game-day-hint/GameDayHint';
 
 const DUST_SHOP_COSTS: { tier: ChestTier; cost: number }[] = [
   { tier: 'COMMON', cost: 50 },
@@ -42,6 +43,7 @@ export function GamificationGuide(props: Props) {
           <strong>Игровые сутки.</strong> Лимиты и серия считаются по календарному дню в часовом
           поясе сервера (<code>{DEFAULT_GAME_DAY_TZ}</code> по умолчанию, задаётся в{' '}
           <code>GAME_DAY_TZ</code>). Сброс счётчика XP за карточки — в полночь этого пояса.
+          <GameDayHint className="trello-game-day-hint trello-game-day-hint--guide" />
         </li>
         <li>
           <strong>Опыт за карточки.</strong> За первое закрытие карточки (перевод в «выполнено»){' '}

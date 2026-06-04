@@ -63,8 +63,13 @@ describe('CharacterService', () => {
       getPrivacySettings: jest.fn().mockResolvedValue({
         allowCharacterView: true,
         showAccountAvatarOnPublicProfile: true,
+        allowFindByCharacterName: false,
+        showOnlineStatusToFriends: true,
       }),
     } as unknown as UserSettingsService;
+    const notificationService = {
+      notifyXpGain: jest.fn().mockResolvedValue(undefined),
+    } as unknown as import('../../notification/notification.service').NotificationService;
     service = new CharacterService(
       prisma as unknown as PrismaService,
       configService as unknown as ConfigService,
@@ -73,6 +78,7 @@ describe('CharacterService', () => {
       socialService,
       userService,
       userSettingsService,
+      notificationService,
     );
   });
 
@@ -144,7 +150,12 @@ describe('CharacterService', () => {
         .userSettingsService;
       jest
         .spyOn(userSettingsService, 'getPrivacySettings')
-        .mockResolvedValue({ allowCharacterView: false, showAccountAvatarOnPublicProfile: true });
+        .mockResolvedValue({
+          allowCharacterView: false,
+          showAccountAvatarOnPublicProfile: true,
+          allowFindByCharacterName: false,
+          showOnlineStatusToFriends: true,
+        });
 
       await expect(service.getCharacterForViewerByUserId(2, 1)).rejects.toThrow(
         ForbiddenException,

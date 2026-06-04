@@ -9,6 +9,7 @@ import { SpaLink } from '@shared/lib/navigation';
 import { navigate } from '@shared/lib/navigation-core';
 import { userProfilePath } from '@entities/user';
 import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
+import { SocialUserBlockButton } from '@widgets/social-user-block/SocialUserBlockButton';
 import {
   acceptFriendRequest,
   fetchUserRelation,
@@ -107,6 +108,9 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
   function openMessages() {
     navigate(`/profile/character?with=${userId}`);
   }
+
+  const socialBlocked =
+    relation?.blockedByMe === true || relation?.blockedByThem === true;
 
   async function handleAddFriend() {
     if (!character?.friendCode) return;
@@ -315,7 +319,7 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
                   ID: {formatFriendCode(character.friendCode)}
                 </span>
               )}
-              {!relation.isFriend && !relation.outgoingRequestId && (
+              {!socialBlocked && !relation.isFriend && !relation.outgoingRequestId && (
                 <button
                   type="button"
                   className="trello-btn trello-btn-primary trello-btn-sm"
@@ -327,10 +331,10 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
                     : 'Добавить в друзья'}
                 </button>
               )}
-              {relation.outgoingRequestId != null && !relation.isFriend && (
+              {!socialBlocked && relation.outgoingRequestId != null && !relation.isFriend && (
                 <span className="trello-muted">Заявка отправлена</span>
               )}
-              {relation.isFriend && (
+              {!socialBlocked && relation.isFriend && (
                 <span className="trello-muted">В друзьях</span>
               )}
               {relation.canMessage && (
@@ -342,6 +346,13 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
                   Написать
                 </button>
               )}
+              <SocialUserBlockButton
+                accessToken={accessToken}
+                userId={userId}
+                relation={relation}
+                onRelationChange={setRelation}
+                onError={setSocialMsg}
+              />
             </div>
           )}
         </section>

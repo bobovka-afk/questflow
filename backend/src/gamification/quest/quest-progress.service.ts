@@ -5,7 +5,9 @@ import {
   AchievementMetric,
   QuestMetric,
   QuestPeriod,
+  UserNotificationType,
 } from '../../generated/prisma/enums';
+import { NotificationService } from '../../notification/notification.service';
 import { AchievementService } from '../achievement/achievement.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DEFAULT_GAME_DAY_TZ } from '../constants';
@@ -18,6 +20,7 @@ import type {
 } from './interface/quest.interface';
 import {
   getDailyPeriodKey,
+  getMonthlyPeriodKey,
   getWeeklyPeriodKey,
   getWeekDayKeyRange,
 } from './quest-period';
@@ -31,6 +34,7 @@ export class QuestProgressService {
     private readonly configService: ConfigService,
     private readonly chestService: ChestService,
     private readonly achievementService: AchievementService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   private getTimeZone(): string {
@@ -43,6 +47,7 @@ export class QuestProgressService {
     const tz = this.getTimeZone();
     const dailyKey = getDailyPeriodKey(new Date(), tz);
     const weeklyKey = getWeeklyPeriodKey(new Date(), tz);
+    const monthlyKey = getMonthlyPeriodKey(new Date(), tz);
 
     const templates = await this.prisma.questTemplate.findMany({
       where: { active: true },
@@ -52,7 +57,7 @@ export class QuestProgressService {
     const progressRows = await this.prisma.userQuestProgress.findMany({
       where: {
         userId,
-        periodKey: { in: [dailyKey, weeklyKey] },
+        periodKey: { in: [dailyKey, weeklyKey, monthlyKey] },
       },
       include: {
         chest: true,
@@ -93,6 +98,7 @@ export class QuestProgressService {
     return {
       daily: buildGroup(QuestPeriod.DAILY, dailyKey),
       weekly: buildGroup(QuestPeriod.WEEKLY, weeklyKey),
+      monthly: buildGroup(QuestPeriod.MONTHLY, monthlyKey),
     };
   }
 
@@ -117,6 +123,7 @@ export class QuestProgressService {
     const dayKey = getTodayGameDayKey(tz);
     const dailyKey = getDailyPeriodKey(now, tz);
     const weeklyKey = getWeeklyPeriodKey(now, tz);
+    const monthlyKey = getMonthlyPeriodKey(now, tz);
 
     const results = await this.prisma.$transaction(async (tx) => {
       await tx.userWorkspaceQuestDay.upsert({
@@ -144,6 +151,7 @@ export class QuestProgressService {
           QuestMetric.CARDS_COMPLETED,
           dailyKey,
           weeklyKey,
+          monthlyKey,
         )),
       );
 
@@ -155,6 +163,7 @@ export class QuestProgressService {
             QuestMetric.CARDS_COMPLETED_WITH_DUE_TODAY,
             dailyKey,
             weeklyKey,
+            monthlyKey,
           )),
         );
       }
@@ -182,6 +191,7 @@ export class QuestProgressService {
     const now = new Date();
     const dailyKey = getDailyPeriodKey(now, tz);
     const weeklyKey = getWeeklyPeriodKey(now, tz);
+    const monthlyKey = getMonthlyPeriodKey(now, tz);
 
     const results = await this.prisma.$transaction((tx) =>
       this.incrementMetric(
@@ -190,6 +200,7 @@ export class QuestProgressService {
         QuestMetric.COMMENTS_CREATED,
         dailyKey,
         weeklyKey,
+        monthlyKey,
       ),
     );
     await this.notifyQuestCompletions(userId, results);
@@ -204,6 +215,7 @@ export class QuestProgressService {
     const now = new Date();
     const dailyKey = getDailyPeriodKey(now, tz);
     const weeklyKey = getWeeklyPeriodKey(now, tz);
+    const monthlyKey = getMonthlyPeriodKey(now, tz);
 
     const results = await this.prisma.$transaction((tx) =>
       this.incrementMetric(
@@ -212,6 +224,7 @@ export class QuestProgressService {
         QuestMetric.DAILY_CHECKIN_DONE,
         dailyKey,
         weeklyKey,
+        monthlyKey,
       ),
     );
     await this.notifyQuestCompletions(userId, results);
@@ -244,15 +257,36 @@ export class QuestProgressService {
     userId: number,
     results: QuestCompletionResult[],
   ): Promise<void> {
-    const completed = results.filter((r) => r.newlyCompleted).length;
-    if (completed === 0) {
+    const newly = results.filter((r) => r.newlyCompleted);
+    if (newly.length === 0) {
       return;
     }
     await this.achievementService.recordIncrement(
       userId,
       AchievementMetric.QUESTS_COMPLETED_TOTAL,
-      completed,
+      newly.length,
     );
+    for (const q of newly) {
+      await this.notificationService.create(
+        userId,
+        UserNotificationType.QUEST_COMPLETED,
+        {
+          questKey: q.key,
+          questTitle: q.titleRu,
+          chestId: q.chestId,
+        },
+      );
+      if (q.chestId) {
+        await this.notificationService.create(
+          userId,
+          UserNotificationType.CHEST_READY,
+          {
+            chestId: q.chestId,
+            questTitle: q.titleRu,
+          },
+        );
+      }
+    }
   }
 
   private async hasCharacter(userId: number): Promise<boolean> {
@@ -269,12 +303,24 @@ export class QuestProgressService {
     return dueDay.getTime() === today.getTime();
   }
 
+  private resolvePeriodKey(
+    period: QuestPeriod,
+    dailyKey: string,
+    weeklyKey: string,
+    monthlyKey: string,
+  ): string {
+    if (period === QuestPeriod.DAILY) return dailyKey;
+    if (period === QuestPeriod.WEEKLY) return weeklyKey;
+    return monthlyKey;
+  }
+
   private async incrementMetric(
     tx: QuestTx,
     userId: number,
     metric: QuestMetric,
     dailyKey: string,
     weeklyKey: string,
+    monthlyKey: string,
   ): Promise<QuestCompletionResult[]> {
     const templates = await tx.questTemplate.findMany({
       where: { active: true, metric },
@@ -282,8 +328,12 @@ export class QuestProgressService {
     const results: QuestCompletionResult[] = [];
 
     for (const template of templates) {
-      const periodKey =
-        template.period === QuestPeriod.DAILY ? dailyKey : weeklyKey;
+      const periodKey = this.resolvePeriodKey(
+        template.period,
+        dailyKey,
+        weeklyKey,
+        monthlyKey,
+      );
       const completed = await this.incrementTemplateProgress(
         tx,
         userId,

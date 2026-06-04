@@ -13,6 +13,7 @@ import {
   fetchOutgoingFriendRequests,
   parseFriendCodeInput,
   removeFriend,
+  searchFriendsByCharacterName,
   sendFriendRequest,
   type FriendRequestView,
   type FriendView,
@@ -44,6 +45,8 @@ export function FriendsPanel({ accessToken, onMessagePeer, onInboxChange }: Prop
     userId: number;
     name: string;
   } | null>(null);
+  const [nameSearch, setNameSearch] = useState('');
+  const [searchHits, setSearchHits] = useState<SocialUserSummary[]>([]);
 
   const onInboxChangeRef = useRef(onInboxChange);
   onInboxChangeRef.current = onInboxChange;
@@ -89,23 +92,45 @@ export function FriendsPanel({ accessToken, onMessagePeer, onInboxChange }: Prop
     }
   }
 
-  async function handleSendRequest() {
-    const code = parseFriendCodeInput(codeInput);
-    if (code == null) {
-      setMsg('Введите 4-значный код друга');
+  async function handleNameSearch() {
+    const q = nameSearch.trim();
+    if (q.length < 2) {
+      setSearchHits([]);
       return;
     }
+    setBusy(true);
+    try {
+      setSearchHits(await searchFriendsByCharacterName(accessToken, q));
+    } catch (e) {
+      setMsg(formatApiError(e));
+      setSearchHits([]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSendToFriendCode(code: number) {
     setBusy(true);
     setMsg(null);
     try {
       await sendFriendRequest(accessToken, code);
       setCodeInput('');
+      setSearchHits([]);
       await afterMutation();
     } catch (e) {
       setMsg(formatApiError(e));
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleSendRequest() {
+    const code = parseFriendCodeInput(codeInput);
+    if (code == null) {
+      setMsg('Введите 4-значный код друга');
+      return;
+    }
+    await handleSendToFriendCode(code);
   }
 
   async function handleAccept(id: number) {
@@ -205,6 +230,41 @@ export function FriendsPanel({ accessToken, onMessagePeer, onInboxChange }: Prop
             Отправить заявку
           </button>
         </div>
+        <div className="trello-social-add-row" style={{ marginTop: 10 }}>
+          <input
+            className="trello-input"
+            placeholder="Имя персонажа (от 2 букв)"
+            value={nameSearch}
+            onChange={(e) => setNameSearch(e.target.value)}
+          />
+          <button
+            type="button"
+            className="trello-btn trello-btn-ghost trello-btn-sm"
+            disabled={busy}
+            onClick={() => void handleNameSearch()}
+          >
+            Найти
+          </button>
+        </div>
+        {searchHits.length > 0 && (
+          <ul className="trello-social-friend-list">
+            {searchHits.map((u) => (
+              <li key={u.userId} className="trello-social-friend-item">
+                <span>{displayName(u)}</span>
+                <button
+                  type="button"
+                  className="trello-btn trello-btn-ghost trello-btn-sm"
+                  disabled={busy || u.friendCode == null}
+                  onClick={() =>
+                    u.friendCode != null && void handleSendToFriendCode(u.friendCode)
+                  }
+                >
+                  Заявка
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {incoming.length > 0 && (
@@ -277,6 +337,11 @@ export function FriendsPanel({ accessToken, onMessagePeer, onInboxChange }: Prop
             {friends.map((f) => {
               const label = displayName(f.user);
               const avatarSrc = avatarSrcFromPath(f.user.avatarPath);
+              const onlineLabel = f.user.isOnline
+                ? 'в сети'
+                : f.user.lastSeenAt
+                  ? `был(а) ${new Date(f.user.lastSeenAt).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+                  : null;
               return (
                 <li key={f.user.userId} className="trello-social-friend-card">
                   <SpaLink
@@ -293,7 +358,12 @@ export function FriendsPanel({ accessToken, onMessagePeer, onInboxChange }: Prop
                         </span>
                       )}
                     </span>
-                    <span className="trello-social-friend-name">{label}</span>
+                    <span className="trello-social-friend-name">
+                      {label}
+                      {onlineLabel ? (
+                        <span className="trello-social-friend-presence"> · {onlineLabel}</span>
+                      ) : null}
+                    </span>
                   </SpaLink>
                   <span className="trello-social-friend-actions">
                     {onMessagePeer && (

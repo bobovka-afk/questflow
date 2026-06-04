@@ -10,6 +10,7 @@ const LABELS: Record<string, string> = {
   SECURITY_SETTINGS_CHANGED: 'Изменены настройки безопасности',
   EMAIL_CHANGE_REQUESTED: 'Запрошена смена почты',
   EMAIL_CHANGED: 'Почта изменена',
+  ACCOUNT_DELETED: 'Аккаунт удалён',
 };
 
 export function securityEventLabelRu(type: string): string {

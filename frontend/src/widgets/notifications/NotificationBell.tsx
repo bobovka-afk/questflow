@@ -22,6 +22,24 @@ function summary(row: NotificationRow): string {
   if (row.type === 'DEADLINE') {
     return `Скоро дедлайн: «${String(p.cardTitle ?? 'карточка')}»`;
   }
+  if (row.type === 'QUEST_COMPLETED') {
+    return `Квест выполнен: ${String(p.questTitle ?? 'квест')}`;
+  }
+  if (row.type === 'CHEST_READY') {
+    return `Сундук готов: ${String(p.questTitle ?? 'награда')}`;
+  }
+  if (row.type === 'ACHIEVEMENT') {
+    return `Достижение: ${String(p.titleRu ?? p.achievementKey ?? '')}`;
+  }
+  if (row.type === 'PARTY_RAID_INVITE') {
+    return `Приглашение в рейд: ${String(p.bossNameRu ?? p.bossName ?? 'босс')}`;
+  }
+  if (row.type === 'FRIEND_REQUEST') {
+    return `Заявка в друзья от ${String(p.requesterName ?? p.fromName ?? 'пользователя')}`;
+  }
+  if (row.type === 'CARD_ASSIGNED') {
+    return `Вас назначили на «${String(p.title ?? p.cardTitle ?? 'карточку')}»`;
+  }
   return 'Уведомление';
 }
 
@@ -77,15 +95,34 @@ export function NotificationBell({ accessToken }: Props) {
   }, []);
 
   async function openNotification(row: NotificationRow) {
-    const ws = row.payload.workspaceId;
-    const board = row.payload.boardId;
+    const p = row.payload;
+    await api(`/notifications/${row.id}/read`, {
+      method: 'PATCH',
+      accessToken,
+    });
+    setOpen(false);
+    void refreshCount();
+
+    if (row.type === 'PARTY_RAID_INVITE' && typeof p.raidId === 'number') {
+      navigate(`/profile/character?partyRaid=${p.raidId}`);
+      return;
+    }
+    if (row.type === 'FRIEND_REQUEST') {
+      navigate('/profile/character');
+      return;
+    }
+    if (
+      row.type === 'QUEST_COMPLETED' ||
+      row.type === 'CHEST_READY' ||
+      row.type === 'ACHIEVEMENT'
+    ) {
+      navigate('/profile/character');
+      return;
+    }
+
+    const ws = p.workspaceId;
+    const board = p.boardId;
     if (typeof ws === 'number' && typeof board === 'number') {
-      await api(`/notifications/${row.id}/read`, {
-        method: 'PATCH',
-        accessToken,
-      });
-      setOpen(false);
-      void refreshCount();
       navigate(`/workspaces/${ws}/boards/${board}`);
     }
   }

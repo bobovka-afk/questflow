@@ -15,6 +15,7 @@ import { REFRESH_TOKEN_COOKIE_NAME } from '../auth/constants/refresh-token.const
 import { UpdateGamificationSettingsDto } from './dto/update-gamification-settings.dto';
 import { UpdatePrivacySettingsDto } from './dto/update-privacy-settings.dto';
 import { UpdateNotificationSettingsDto } from './dto/update-notification-settings.dto';
+import { UpdateDisplayTimezoneDto } from './dto/update-display-timezone.dto';
 import type {
   UserSecurityEventView,
   UserSessionView,
@@ -84,6 +85,19 @@ export class UserSettingsController {
     return this.userSettingsService.updatePrivacySettings(
       req.user.id,
       body,
+      sessionMetaFromRequest(req),
+    );
+  }
+
+  @Patch('settings/display-timezone')
+  @ApiOperation({ summary: 'Update display timezone for deadlines and game day hint' })
+  updateDisplayTimezone(
+    @Req() req: AuthedRequest & { ip?: string },
+    @Body() body: UpdateDisplayTimezoneDto,
+  ): Promise<UserSettingsView> {
+    return this.userSettingsService.updateDisplayTimezone(
+      req.user.id,
+      body.displayTimezone,
       sessionMetaFromRequest(req),
     );
   }

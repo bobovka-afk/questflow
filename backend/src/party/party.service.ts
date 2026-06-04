@@ -24,7 +24,12 @@ import {
   BOSS_MIN_PARTY_SIZE,
   BOSS_RAID_TTL_DAYS,
   MANA_MAX,
+  MAX_ACTIVE_RAIDS_PER_USER,
+  PARTY_AFK_INACTIVE_MS,
 } from '../gamification/config/rewards';
+import { NotificationService } from '../notification/notification.service';
+import { UserNotificationType } from '../generated/prisma/enums';
+import { UserBlockService } from '../user/user-block.service';
 import { BOSS_TEMPLATES, getBossTemplate } from './config/boss-templates';
 import { buildBossChestSource, calcDamagePerAttack } from './lib/boss-damage';
 import type {
@@ -62,6 +67,8 @@ export class PartyService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly chestService: ChestService,
+    private readonly notificationService: NotificationService,
+    private readonly userBlockService: UserBlockService,
   ) {}
 
   listBosses(): BossCatalogItem[] {
@@ -103,6 +110,7 @@ export class PartyService {
     await this.assertNoActiveRaidMembership(leaderId);
 
     for (const friendId of uniqueFriends) {
+      await this.userBlockService.assertNotBlocked(leaderId, friendId);
       const isFriend = await this.areFriends(leaderId, friendId);
       if (!isFriend) {
         throw new ForbiddenException({
@@ -135,6 +143,15 @@ export class PartyService {
         },
       },
     });
+
+    const bossName = boss.nameRu;
+    for (const friendId of uniqueFriends) {
+      await this.notificationService.create(
+        friendId,
+        UserNotificationType.PARTY_RAID_INVITE,
+        { raidId: raid.id, bossKey, bossNameRu: bossName, leaderId },
+      );
+    }
 
     return this.getRaidView(leaderId, raid.id);
   }
@@ -723,7 +740,7 @@ export class PartyService {
     userId: number,
     exceptRaidId?: number,
   ): Promise<void> {
-    const existing = await this.prisma.partyRaidMember.findFirst({
+    const activeCount = await this.prisma.partyRaidMember.count({
       where: {
         userId,
         status: {
@@ -737,16 +754,17 @@ export class PartyService {
         },
       },
     });
-    if (existing) {
+    if (activeCount >= MAX_ACTIVE_RAIDS_PER_USER) {
       throw new ConflictException({
         code: 'PARTY_RAID_ALREADY_ACTIVE',
-        message: 'You are already in an active raid',
+        message: `You can be in at most ${MAX_ACTIVE_RAIDS_PER_USER} active raids`,
       });
     }
   }
 
   private async expireStaleRaids(): Promise<void> {
     const now = new Date();
+    await this.kickAfkMembers(now);
     await this.prisma.partyRaid.updateMany({
       where: {
         status: PartyRaidStatus.ACTIVE,
@@ -754,6 +772,34 @@ export class PartyService {
       },
       data: { status: PartyRaidStatus.EXPIRED },
     });
+  }
+
+  private async kickAfkMembers(now: Date): Promise<void> {
+    const cutoff = new Date(now.getTime() - PARTY_AFK_INACTIVE_MS);
+    const activeMembers = await this.prisma.partyRaidMember.findMany({
+      where: {
+        status: PartyMemberStatus.ACTIVE,
+        role: PartyMemberRole.MEMBER,
+        raid: { status: PartyRaidStatus.ACTIVE },
+      },
+      select: { id: true, raidId: true, userId: true, joinedAt: true },
+    });
+
+    for (const member of activeMembers) {
+      const lastHit = await this.prisma.partyRaidHit.findFirst({
+        where: { raidId: member.raidId, userId: member.userId },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      });
+      const lastActive = lastHit?.createdAt ?? member.joinedAt;
+      if (lastActive && lastActive >= cutoff) {
+        continue;
+      }
+      await this.prisma.partyRaidMember.update({
+        where: { id: member.id },
+        data: { status: PartyMemberStatus.KICKED },
+      });
+    }
   }
 
   private async areFriends(userA: number, userB: number): Promise<boolean> {

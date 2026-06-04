@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, API_URL, formatApiError, isRateLimitMessage } from '@shared/api';
+import { profilePathForUsername } from '@entities/user';
 import { navigate, SpaLink } from '@shared/lib';
 import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
 
@@ -7,6 +8,7 @@ export type ProfileMeUser = {
   id: number;
   email: string;
   name: string;
+  username?: string | null;
   avatarPath?: string | null;
   hasPassword: boolean;
   createdAt: string;
@@ -382,6 +384,20 @@ export function ProfileMePage(props: Props) {
                     >
                       {user?.name ?? '—'}
                     </button>
+                  )}
+                </div>
+
+                <div className="trello-label">Публичная ссылка</div>
+                <div style={{ marginBottom: 12 }}>
+                  {user?.username ? (
+                    <SpaLink to={profilePathForUsername(user.username)}>
+                      @{user.username}
+                    </SpaLink>
+                  ) : (
+                    <span className="trello-muted">
+                      Не задан —{' '}
+                      <SpaLink to="/settings/account">настройки аккаунта</SpaLink>
+                    </span>
                   )}
                 </div>
 

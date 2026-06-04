@@ -33,6 +33,8 @@ describe('UserSettingsService', () => {
       expect(result.privacy).toEqual({
         allowCharacterView: true,
         showAccountAvatarOnPublicProfile: true,
+        allowFindByCharacterName: false,
+        showOnlineStatusToFriends: true,
       });
       expect(result.updatedAt).toBe('2026-05-28T12:00:00.000Z');
     });
@@ -403,6 +405,7 @@ describe('UserSettingsService', () => {
           type: UserSecurityEventType.PASSWORD_CHANGED,
           metadata: { source: 'test' },
           ipAddress: '127.0.0.1',
+          deviceLabel: null,
           createdAt: '2026-05-28T11:00:00.000Z',
         },
       ]);

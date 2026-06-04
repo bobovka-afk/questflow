@@ -10,10 +10,34 @@ import { SocialService } from '../social.service';
 describe('SocialService — friends', () => {
   let service: SocialService;
   let prisma: ReturnType<typeof createPrismaMock>;
+  let userBlockService: {
+    assertNotBlocked: jest.Mock;
+    areUsersBlocked: jest.Mock;
+    hasBlocked: jest.Mock;
+  };
 
   beforeEach(() => {
     prisma = createPrismaMock();
-    service = new SocialService(prisma as unknown as PrismaService);
+    const notificationService = { create: jest.fn().mockResolvedValue(undefined) };
+    userBlockService = {
+      assertNotBlocked: jest.fn().mockResolvedValue(undefined),
+      areUsersBlocked: jest.fn().mockResolvedValue(false),
+      hasBlocked: jest.fn().mockResolvedValue(false),
+    };
+    const userSettingsService = {
+      getPrivacySettings: jest.fn().mockResolvedValue({
+        allowFindByCharacterName: true,
+        showOnlineStatusToFriends: true,
+        allowCharacterView: true,
+        showAccountAvatarOnPublicProfile: true,
+      }),
+    };
+    service = new SocialService(
+      prisma as unknown as PrismaService,
+      notificationService as never,
+      userBlockService as never,
+      userSettingsService as never,
+    );
   });
 
   describe('acceptFriendRequest', () => {
@@ -125,6 +149,23 @@ describe('SocialService — friends', () => {
       const rel = await service.getUserRelation(1, 2);
       expect(rel.canMessage).toBe(true);
       expect(rel.isFriend).toBe(false);
+      expect(rel.blockedByMe).toBe(false);
+      expect(rel.blockedByThem).toBe(false);
+    });
+
+    it('disables messaging when viewer blocked target', async () => {
+      prisma.friendRequest!.findFirst!.mockResolvedValue({
+        id: 1,
+        requesterId: 1,
+        addresseeId: 2,
+        status: FriendRequestStatus.ACCEPTED,
+      });
+      prisma.workspaceMember!.findFirst!.mockResolvedValue(null);
+      userBlockService.hasBlocked.mockImplementation(async (a: number, b: number) => a === 1 && b === 2);
+      const rel = await service.getUserRelation(1, 2);
+      expect(rel.blockedByMe).toBe(true);
+      expect(rel.canMessage).toBe(false);
+      expect(rel.isFriend).toBe(true);
     });
   });
 

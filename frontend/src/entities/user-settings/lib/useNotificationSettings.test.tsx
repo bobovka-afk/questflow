@@ -24,7 +24,11 @@ describe('useNotificationSettings', () => {
   it('loads notifications from API', async () => {
     vi.mocked(userSettingsApi.fetchUserSettings).mockResolvedValue(
       mockUserSettingsDto({
-        notifications: { emailSecurity: false, emailWorkspaceInvites: true },
+        notifications: {
+          ...DEFAULT_NOTIFICATION_USER_SETTINGS,
+          emailSecurity: false,
+          emailWorkspaceInvites: true,
+        },
       }),
     );
 
@@ -42,7 +46,11 @@ describe('useNotificationSettings', () => {
     vi.mocked(userSettingsApi.fetchUserSettings).mockResolvedValue(mockUserSettingsDto());
     vi.mocked(userSettingsApi.patchNotificationSettings).mockResolvedValue(
       mockUserSettingsDto({
-        notifications: { emailSecurity: false, emailWorkspaceInvites: true },
+        notifications: {
+          ...DEFAULT_NOTIFICATION_USER_SETTINGS,
+          emailSecurity: false,
+          emailWorkspaceInvites: true,
+        },
       }),
     );
 

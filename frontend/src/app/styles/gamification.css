@@ -3717,4 +3717,57 @@
   text-align: center;
 }
 
+.trello-character-stats-panel--exhausted .trello-character-stat-pill--health-exhausted {
+  opacity: 0.85;
+  filter: grayscale(0.35);
+}
+
+.trello-character-exhausted-banner {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  background: color-mix(in srgb, #c9372c 12%, var(--qf-panel-bg-muted, #f4f5f7));
+  border: 1px solid color-mix(in srgb, #c9372c 35%, transparent);
+  color: var(--qf-text, #172b4d);
+}
+
+.theme-dark .trello-character-exhausted-banner {
+  color: var(--qf-text, #e2e8f0);
+}
+
+.trello-game-day-hint {
+  margin: 10px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--qf-text-muted, #64748b);
+}
+
+.trello-game-day-hint time {
+  font-weight: 600;
+  color: var(--qf-text, #1e293b);
+}
+
+.theme-dark .trello-game-day-hint time {
+  color: var(--qf-shell-fg, #e2e8f0);
+}
+
+.trello-game-day-hint--guide {
+  margin-top: 6px;
+}
+
+.trello-character-party-invite-toast {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  background: color-mix(in srgb, #0c66e4 10%, var(--qf-panel-bg-muted, #f4f5f7));
+  border: 1px solid color-mix(in srgb, #0c66e4 28%, transparent);
+}
+
 

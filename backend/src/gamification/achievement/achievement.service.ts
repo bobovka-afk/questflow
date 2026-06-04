@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
-import { AchievementMetric } from '../../generated/prisma/enums';
+import { AchievementMetric, UserNotificationType } from '../../generated/prisma/enums';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationService } from '../../notification/notification.service';
 import type {
   AchievementProgressItem,
   AchievementUnlockResult,
@@ -12,7 +13,10 @@ type AchievementTx = Prisma.TransactionClient;
 
 @Injectable()
 export class AchievementService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async getAchievementsForUser(userId: number): Promise<CharacterAchievementsView> {
     const [templates, unlocked, progressRows] = await Promise.all([
@@ -60,9 +64,11 @@ export class AchievementService {
     if (!(await this.hasCharacter(userId))) {
       return [];
     }
-    return this.prisma.$transaction((tx) =>
+    const results = await this.prisma.$transaction((tx) =>
       this.applyProgress(tx, userId, metric, { increment: delta }),
     );
+    await this.notifyUnlocks(userId, results);
+    return results;
   }
 
   async recordMax(
@@ -73,9 +79,11 @@ export class AchievementService {
     if (!(await this.hasCharacter(userId))) {
       return [];
     }
-    return this.prisma.$transaction((tx) =>
+    const results = await this.prisma.$transaction((tx) =>
       this.applyProgress(tx, userId, metric, { setMax: value }),
     );
+    await this.notifyUnlocks(userId, results);
+    return results;
   }
 
   async recordCosmeticsOwnedCount(
@@ -93,11 +101,26 @@ export class AchievementService {
         setExact: count,
       });
     }
-    return this.prisma.$transaction((inner) =>
+    const results = await this.prisma.$transaction((inner) =>
       this.applyProgress(inner, userId, AchievementMetric.COSMETICS_OWNED_COUNT, {
         setExact: count,
       }),
     );
+    await this.notifyUnlocks(userId, results);
+    return results;
+  }
+
+  private async notifyUnlocks(
+    userId: number,
+    unlocks: AchievementUnlockResult[],
+  ): Promise<void> {
+    for (const u of unlocks) {
+      await this.notificationService.create(userId, UserNotificationType.ACHIEVEMENT, {
+        key: u.key,
+        titleRu: u.titleRu,
+        rewardDust: u.rewardDust,
+      });
+    }
   }
 
   private async applyProgress(

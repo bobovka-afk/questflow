@@ -118,10 +118,11 @@ export class CardController {
   @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
   @ApiResponse({ status: 404, description: "code: 'CARD_NOT_FOUND'" })
   async updateCard(
-    @Param('cardId', ParseIntPipe) cardId,
+    @Req() req: AuthedRequest,
+    @Param('cardId', ParseIntPipe) cardId: number,
     @Body() dto: UpdateCardDto,
   ): Promise<Card> {
-    return this.cardService.updateCard(cardId, dto);
+    return this.cardService.updateCard(cardId, dto, req.user.id);
   }
 
   @Patch('cards/:cardId/labels')

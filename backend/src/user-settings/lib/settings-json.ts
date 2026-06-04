@@ -1,6 +1,5 @@
 import {
   DEFAULT_GAMIFICATION_SETTINGS,
-  DEFAULT_NOTIFICATION_SETTINGS,
   DEFAULT_PRIVACY_SETTINGS,
   DEFAULT_SECURITY_SETTINGS,
   DEFAULT_SITE_SETTINGS,
@@ -10,6 +9,7 @@ import {
   type SecuritySettingsJson,
   type SiteSettingsJson,
 } from '../config/default-user-settings';
+import { mergeNotificationSettings } from '../../notification/notification-preferences';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -26,7 +26,22 @@ export function parsePrivacySettings(raw: unknown): PrivacySettingsJson {
       typeof raw.showAccountAvatarOnPublicProfile === 'boolean'
         ? raw.showAccountAvatarOnPublicProfile
         : DEFAULT_PRIVACY_SETTINGS.showAccountAvatarOnPublicProfile,
+    allowFindByCharacterName:
+      typeof raw.allowFindByCharacterName === 'boolean'
+        ? raw.allowFindByCharacterName
+        : DEFAULT_PRIVACY_SETTINGS.allowFindByCharacterName,
+    showOnlineStatusToFriends:
+      typeof raw.showOnlineStatusToFriends === 'boolean'
+        ? raw.showOnlineStatusToFriends
+        : DEFAULT_PRIVACY_SETTINGS.showOnlineStatusToFriends,
   };
+}
+
+export function parseDisplayTimezone(raw: unknown): string | undefined {
+  if (!isRecord(raw)) return undefined;
+  return typeof raw.displayTimezone === 'string' && raw.displayTimezone.trim()
+    ? raw.displayTimezone.trim()
+    : undefined;
 }
 
 export function parseGamificationSettings(raw: unknown): GamificationSettingsJson {
@@ -44,17 +59,7 @@ export function parseGamificationSettings(raw: unknown): GamificationSettingsJso
 }
 
 export function parseNotificationSettings(raw: unknown): NotificationSettingsJson {
-  if (!isRecord(raw)) return { ...DEFAULT_NOTIFICATION_SETTINGS };
-  return {
-    emailSecurity:
-      typeof raw.emailSecurity === 'boolean'
-        ? raw.emailSecurity
-        : DEFAULT_NOTIFICATION_SETTINGS.emailSecurity,
-    emailWorkspaceInvites:
-      typeof raw.emailWorkspaceInvites === 'boolean'
-        ? raw.emailWorkspaceInvites
-        : DEFAULT_NOTIFICATION_SETTINGS.emailWorkspaceInvites,
-  };
+  return mergeNotificationSettings(raw);
 }
 
 export function parseSiteSettings(raw: unknown): SiteSettingsJson {

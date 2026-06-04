@@ -9,6 +9,9 @@ describe('QuestProgressService', () => {
   const achievementService = {
     recordIncrement: jest.fn().mockResolvedValue([]),
   };
+  const notificationService = {
+    create: jest.fn().mockResolvedValue(undefined),
+  };
   const chestService = new ChestService(
     prisma as never,
     achievementService as never,
@@ -39,6 +42,7 @@ describe('QuestProgressService', () => {
       configService as never,
       chestService,
       achievementService as never,
+      notificationService as never,
     );
   });
 

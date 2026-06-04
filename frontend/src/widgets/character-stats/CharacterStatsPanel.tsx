@@ -15,8 +15,22 @@ type Props = {
 };
 
 export function CharacterStatsPanel({ character, xpToward }: Props) {
+  const exhausted = character.health <= 0;
+
   return (
-    <div className="trello-character-stats-panel">
+    <div
+      className={
+        exhausted
+          ? 'trello-character-stats-panel trello-character-stats-panel--exhausted'
+          : 'trello-character-stats-panel'
+      }
+    >
+      {exhausted ? (
+        <p className="trello-character-exhausted-banner" role="status">
+          Персонаж истощён — доски и карточки доступны; завтра возможен штраф HP за
+          неактивность, если не будет XP за день.
+        </p>
+      ) : null}
       <div className="trello-character-stat-row">
         <div className="trello-character-stat-pill trello-character-stat-pill--level">
           <div className="trello-character-stat-label-row">
@@ -66,7 +80,13 @@ export function CharacterStatsPanel({ character, xpToward }: Props) {
             </span>
           </div>
         </div>
-        <div className="trello-character-stat-pill trello-character-stat-pill--health">
+        <div
+          className={
+            exhausted
+              ? 'trello-character-stat-pill trello-character-stat-pill--health trello-character-stat-pill--health-exhausted'
+              : 'trello-character-stat-pill trello-character-stat-pill--health'
+          }
+        >
           <div className="trello-character-stat-label-row">
             <span className="trello-character-stat-label">ЗДОРОВЬЕ</span>
             <img src={healthStatIconUrl()} alt="" className="trello-character-stat-icon" loading="lazy" />

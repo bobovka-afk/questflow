@@ -21,3 +21,6 @@ export const BOSS_ATTACK_MANA_COST = 5;
 
 /** Зеркало backend `gamification/constants.ts` (фактическое значение — env `GAME_DAY_TZ` на сервере). */
 export const DEFAULT_GAME_DAY_TZ = 'UTC';
+
+/** Зеркало backend `gamification/config/rewards.ts`. */
+export const MAX_ACTIVE_RAIDS_PER_USER = 2;

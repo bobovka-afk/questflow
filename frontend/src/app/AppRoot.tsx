@@ -28,6 +28,7 @@ import {
 } from '@pages/index';
 import { GamificationIntroModal, ProfileInvitesSection } from '@widgets/index';
 import { navigate, openSpaInNewTab, SpaLink } from '@shared/lib';
+import { canonicalProfilePath } from '@shared/lib/normalizeLegacyProfilePath';
 import { ProfileToolbarAnchor, ProfileToolbarOutletProvider } from '@shared/ui/profile-toolbar';
 import { NotificationBell } from '@widgets/notifications/NotificationBell';
 import { useProfileToolbarOutlet } from '@shared/ui/profile-toolbar';
@@ -865,6 +866,35 @@ function AppContent() {
     }
     document.documentElement.classList.toggle('theme-dark', theme === 'dark');
   }, [theme]);
+
+  useEffect(() => {
+    const canonical = canonicalProfilePath(route);
+    if (!canonical || canonical === route) return;
+    window.history.replaceState({}, '', canonical + window.location.search);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, [route]);
+
+  useEffect(() => {
+    const m = route.match(/^\/profile\/@([a-z0-9_]{3,32})(\/character)?\/?$/);
+    if (!m) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const resolved = await api<{ id: number; username: string }>(
+          `/user/public/username/${m[1]}`,
+          { method: 'GET' },
+        );
+        if (cancelled) return;
+        const suffix = m[2] ? '/character' : '';
+        navigate(`/profile/${resolved.id}${suffix}`);
+      } catch {
+        if (!cancelled) navigate('/profile/me');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [route]);
 
   const toolbarInitials = useMemo(() => {
     const n = toolbarUser?.name?.trim();

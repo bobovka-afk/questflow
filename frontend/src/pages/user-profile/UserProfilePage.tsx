@@ -10,6 +10,7 @@ import { avatarInitials, avatarSrcFromPath, userCharacterPath, type UserProfileV
 import { SpaLink } from '@shared/lib/navigation';
 import { navigate } from '@shared/lib/navigation-core';
 import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
+import { SocialUserBlockButton } from '@widgets/social-user-block/SocialUserBlockButton';
 
 function formatRegisteredRU(isoDate: string) {
   const d = new Date(isoDate);
@@ -137,6 +138,8 @@ export function UserProfilePage({ accessToken, userId, currentUserId }: Props) {
   }
 
   const canMessage = relation?.canMessage ?? false;
+  const socialBlocked =
+    relation?.blockedByMe === true || relation?.blockedByThem === true;
 
   return (
     <div className="trello-app-shell">
@@ -225,7 +228,10 @@ export function UserProfilePage({ accessToken, userId, currentUserId }: Props) {
                         Сообщение
                       </button>
                     ) : null}
-                    {!relation?.isFriend && !relation?.outgoingRequestId && user.friendCode != null ? (
+                    {!socialBlocked &&
+                    !relation?.isFriend &&
+                    !relation?.outgoingRequestId &&
+                    user.friendCode != null ? (
                       <button
                         type="button"
                         className="trello-btn trello-btn-primary trello-btn-sm"
@@ -239,12 +245,19 @@ export function UserProfilePage({ accessToken, userId, currentUserId }: Props) {
                             : 'В друзья'}
                       </button>
                     ) : null}
-                    {relation?.outgoingRequestId != null && !relation.isFriend ? (
+                    {!socialBlocked && relation?.outgoingRequestId != null && !relation.isFriend ? (
                       <span className="trello-cell-meta">Заявка отправлена</span>
                     ) : null}
-                    {relation?.isFriend ? (
+                    {!socialBlocked && relation?.isFriend ? (
                       <span className="trello-cell-meta">В друзьях</span>
                     ) : null}
+                    <SocialUserBlockButton
+                      accessToken={accessToken}
+                      userId={userId}
+                      relation={relation}
+                      onRelationChange={setRelation}
+                      onError={setSocialMsg}
+                    />
                   </div>
                 </div>
               </div>

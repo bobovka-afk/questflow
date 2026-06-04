@@ -15,7 +15,27 @@ describe('SocialService', () => {
 
   beforeEach(() => {
     prisma = createPrismaMock();
-    service = new SocialService(prisma as unknown as PrismaService);
+    const notificationService = { create: jest.fn().mockResolvedValue(undefined) };
+    const userBlockService = {
+      assertNotBlocked: jest.fn().mockResolvedValue(undefined),
+      areUsersBlocked: jest.fn().mockResolvedValue(false),
+      blockUser: jest.fn(),
+      unblockUser: jest.fn(),
+    };
+    const userSettingsService = {
+      getPrivacySettings: jest.fn().mockResolvedValue({
+        allowFindByCharacterName: true,
+        showOnlineStatusToFriends: true,
+        allowCharacterView: true,
+        showAccountAvatarOnPublicProfile: true,
+      }),
+    };
+    service = new SocialService(
+      prisma as unknown as PrismaService,
+      notificationService as never,
+      userBlockService as never,
+      userSettingsService as never,
+    );
   });
 
   describe('canMessage', () => {
@@ -72,6 +92,12 @@ describe('SocialService', () => {
         status: FriendRequestStatus.PENDING,
         createdAt: new Date(),
         respondedAt: null,
+        requester: {
+          id: 1,
+          name: 'Me',
+          avatarPath: null,
+          character: { name: 'Self', friendCode: 1111 },
+        },
         addressee: {
           id: 2,
           name: 'Peer',

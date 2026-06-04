@@ -1,5 +1,6 @@
 import {
   DEFAULT_GAMIFICATION_SETTINGS,
+  DEFAULT_NOTIFICATION_SETTINGS,
   DEFAULT_PRIVACY_SETTINGS,
   DEFAULT_SECURITY_SETTINGS,
   DEFAULT_SITE_SETTINGS,
@@ -36,10 +37,7 @@ describe('settings-json', () => {
 
   describe('parseNotificationSettings', () => {
     it('returns defaults for invalid payload', () => {
-      expect(parseNotificationSettings(null)).toEqual({
-        emailSecurity: true,
-        emailWorkspaceInvites: true,
-      });
+      expect(parseNotificationSettings(null)).toEqual(DEFAULT_NOTIFICATION_SETTINGS);
     });
   });
 
@@ -55,8 +53,8 @@ describe('settings-json', () => {
         }),
       ).toEqual({
         notifications: {
+          ...DEFAULT_NOTIFICATION_SETTINGS,
           emailSecurity: false,
-          emailWorkspaceInvites: true,
         },
       });
     });
@@ -74,9 +72,8 @@ describe('settings-json', () => {
           showAccountAvatarOnPublicProfile: 'no',
         }),
       ).toEqual({
+        ...DEFAULT_PRIVACY_SETTINGS,
         allowCharacterView: false,
-        showAccountAvatarOnPublicProfile:
-          DEFAULT_PRIVACY_SETTINGS.showAccountAvatarOnPublicProfile,
       });
     });
   });
@@ -93,8 +90,8 @@ describe('settings-json', () => {
         }),
       ).toEqual({
         privacy: {
+          ...DEFAULT_PRIVACY_SETTINGS,
           allowCharacterView: false,
-          showAccountAvatarOnPublicProfile: true,
         },
       });
     });

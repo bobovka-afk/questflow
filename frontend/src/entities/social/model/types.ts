@@ -9,6 +9,8 @@ export type SocialUserSummary = {
   avatarPath: string | null;
   characterName: string | null;
   friendCode: number | null;
+  isOnline?: boolean;
+  lastSeenAt?: string | null;
 };
 
 export type FriendRequestView = {
@@ -55,6 +57,8 @@ export type UserRelationView = {
   canMessage: boolean;
   incomingRequestId: number | null;
   outgoingRequestId: number | null;
+  blockedByMe: boolean;
+  blockedByThem: boolean;
 };
 
 export type SocialInboxSummary = {

@@ -1,11 +1,15 @@
 export type PrivacyUserSettings = {
   allowCharacterView: boolean;
   showAccountAvatarOnPublicProfile: boolean;
+  allowFindByCharacterName: boolean;
+  showOnlineStatusToFriends: boolean;
 };
 
 export const DEFAULT_PRIVACY_USER_SETTINGS: PrivacyUserSettings = {
   allowCharacterView: true,
   showAccountAvatarOnPublicProfile: true,
+  allowFindByCharacterName: false,
+  showOnlineStatusToFriends: true,
 };
 
 export function parsePrivacySettings(raw: unknown): PrivacyUserSettings {
@@ -22,5 +26,13 @@ export function parsePrivacySettings(raw: unknown): PrivacyUserSettings {
       typeof o.showAccountAvatarOnPublicProfile === 'boolean'
         ? o.showAccountAvatarOnPublicProfile
         : DEFAULT_PRIVACY_USER_SETTINGS.showAccountAvatarOnPublicProfile,
+    allowFindByCharacterName:
+      typeof o.allowFindByCharacterName === 'boolean'
+        ? o.allowFindByCharacterName
+        : DEFAULT_PRIVACY_USER_SETTINGS.allowFindByCharacterName,
+    showOnlineStatusToFriends:
+      typeof o.showOnlineStatusToFriends === 'boolean'
+        ? o.showOnlineStatusToFriends
+        : DEFAULT_PRIVACY_USER_SETTINGS.showOnlineStatusToFriends,
   };
 }

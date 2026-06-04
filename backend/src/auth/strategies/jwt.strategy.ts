@@ -33,6 +33,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 			}
 		}
 
+		void this.userService.touchLastActive(user.id).catch(() => undefined)
+
 		return { ...user, sessionId: payload.sid }
 	}
 }

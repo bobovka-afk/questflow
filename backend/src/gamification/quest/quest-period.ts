@@ -11,6 +11,17 @@ export function getDailyPeriodKey(
   return `${y}-${m}-${d}`;
 }
 
+/** Calendar month in game timezone: `YYYY-MM`. */
+export function getMonthlyPeriodKey(
+  instant: Date,
+  timeZone: string,
+): string {
+  const day = getGameDayKey(instant, timeZone);
+  const y = day.getUTCFullYear();
+  const m = String(day.getUTCMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
 export function getWeeklyPeriodKey(
   instant: Date,
   timeZone: string,

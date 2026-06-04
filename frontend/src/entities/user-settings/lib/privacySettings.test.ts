@@ -17,15 +17,14 @@ describe('parsePrivacySettings', () => {
         showAccountAvatarOnPublicProfile: true,
       }),
     ).toEqual({
+      ...DEFAULT_PRIVACY_USER_SETTINGS,
       allowCharacterView: false,
-      showAccountAvatarOnPublicProfile: true,
     });
   });
 
   it('ignores invalid field types', () => {
-    expect(parsePrivacySettings({ allowCharacterView: 'no' })).toEqual({
-      allowCharacterView: true,
-      showAccountAvatarOnPublicProfile: true,
-    });
+    expect(parsePrivacySettings({ allowCharacterView: 'no' })).toEqual(
+      DEFAULT_PRIVACY_USER_SETTINGS,
+    );
   });
 });

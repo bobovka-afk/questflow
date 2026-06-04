@@ -3,22 +3,20 @@ export type GamificationUserSettings = {
   xpGainNotifications: boolean;
 };
 
-export type PrivacyUserSettings = {
-  allowCharacterView: boolean;
-  showAccountAvatarOnPublicProfile: boolean;
-};
-
-export type NotificationUserSettings = {
-  emailSecurity: boolean;
-  emailWorkspaceInvites: boolean;
-};
+export type {
+  PrivacyUserSettings,
+} from '../lib/privacySettings';
+export type {
+  NotificationUserSettings,
+} from '../lib/notificationSettings';
 
 export type UserSettingsDto = {
   gamification: GamificationUserSettings;
   site: Record<string, unknown>;
   security: Record<string, unknown>;
-  privacy: PrivacyUserSettings;
-  notifications: NotificationUserSettings;
+  privacy: import('../lib/privacySettings').PrivacyUserSettings;
+  notifications: import('../lib/notificationSettings').NotificationUserSettings;
+  displayTimezone?: string | null;
   updatedAt: string;
 };
 
@@ -40,6 +38,7 @@ export type UserSecurityEventDto = {
   type: string;
   metadata: Record<string, unknown> | null;
   ipAddress: string | null;
+  deviceLabel?: string | null;
   createdAt: string;
 };
 

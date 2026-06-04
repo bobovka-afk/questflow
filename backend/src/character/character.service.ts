@@ -51,6 +51,7 @@ import type {
 import { SocialService } from '../social/social.service';
 import { UserService } from '../user/user.service';
 import { UserSettingsService } from '../user-settings/user-settings.service';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class CharacterService {
@@ -62,6 +63,7 @@ export class CharacterService {
     private socialService: SocialService,
     private userService: UserService,
     private userSettingsService: UserSettingsService,
+    private notificationService: NotificationService,
   ) {}
 
   async getCharacter(userId: number): Promise<Character> {
@@ -327,6 +329,18 @@ export class CharacterService {
       AchievementMetric.CHECKIN_STREAK_MAX,
       result.character.checkinStreak,
     );
+
+    const xpNotified =
+      result.rewards.taskXp +
+      result.rewards.checkinXp +
+      result.rewards.streakMilestoneXp;
+    if (xpNotified > 0) {
+      await this.notificationService.notifyXpGain(userId, {
+        xpAmount: xpNotified,
+        source: eventType,
+      });
+    }
+
     return result;
   }
 

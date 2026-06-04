@@ -109,6 +109,38 @@
   border-bottom: none;
 }
 
+.trello-settings-security-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.trello-settings-security-log-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--trello-border, #dfe1e6);
+}
+
+.trello-settings-security-log-item:last-child {
+  border-bottom: none;
+}
+
+.trello-settings-security-log-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trello-settings-security-log-meta {
+  font-size: 0.8rem;
+  color: var(--qf-text-muted, #64748b);
+}
+
+.theme-dark .trello-settings-security-log-meta {
+  color: var(--qf-text-muted, #94a3b8);
+}
+
 .trello-settings-switch-copy {
   flex: 1 1 auto;
   min-width: 0;

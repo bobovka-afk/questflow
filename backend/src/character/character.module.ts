@@ -7,12 +7,14 @@ import { GamificationModule } from '../gamification/gamification.module';
 import { SocialModule } from '../social/social.module';
 import { UserModule } from '../user/user.module';
 import { UserSettingsModule } from '../user-settings/user-settings.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
     PrismaModule,
     ConfigModule,
     GamificationModule,
+    NotificationModule,
     SocialModule,
     UserModule,
     UserSettingsModule,

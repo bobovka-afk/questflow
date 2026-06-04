@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   fetchPendingEmailChange,
   fetchUserSessions,
+  fetchUserSettings,
+  patchDisplayTimezone,
   requestEmailChange,
   revokeOtherUserSessions,
   revokeUserSession,
@@ -11,12 +13,15 @@ import {
   type PendingEmailChangeDto,
   type UserSessionDto,
 } from '@entities/user-settings';
+import { isValidUsername, normalizeUsername, profilePathForUsername, updateUsername } from '@entities/user';
 import { api, formatApiError } from '@shared/api';
 import { navigate, SpaLink } from '@shared/lib';
 import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
 import { SettingsSwitch } from '@shared/ui/settings-switch/SettingsSwitch';
 import { SettingsPasswordPanel } from '@widgets/settings-password/SettingsPasswordPanel';
 import { SettingsDeleteAccountPanel } from '@widgets/settings-delete-account/SettingsDeleteAccountPanel';
+import { SettingsSecurityLog } from '@widgets/settings-security-log/SettingsSecurityLog';
+import { SettingsWebPushPanel } from '@widgets/settings-web-push/SettingsWebPushPanel';
 import {
   SETTINGS_TAB_LABELS,
   SETTINGS_TABS,
@@ -28,8 +33,18 @@ type UserSafe = {
   id: number;
   email: string;
   name: string;
+  username: string | null;
   hasPassword: boolean;
 };
+
+const DISPLAY_TIMEZONE_SUGGESTIONS = [
+  'Europe/Moscow',
+  'Europe/Kyiv',
+  'Asia/Almaty',
+  'UTC',
+  'Europe/Berlin',
+  'America/New_York',
+];
 
 type Props = {
   accessToken: string | null;
@@ -67,6 +82,12 @@ export function SettingsPage(props: Props) {
   const [securityLoading, setSecurityLoading] = useState(false);
   const [sessionBusyId, setSessionBusyId] = useState<string | null>(null);
   const [revokeOthersBusy, setRevokeOthersBusy] = useState(false);
+  const [usernameDraft, setUsernameDraft] = useState('');
+  const [usernameBusy, setUsernameBusy] = useState(false);
+  const [usernameMsg, setUsernameMsg] = useState<string | null>(null);
+  const [displayTimezone, setDisplayTimezone] = useState('');
+  const [timezoneBusy, setTimezoneBusy] = useState(false);
+  const [timezoneMsg, setTimezoneMsg] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -81,12 +102,35 @@ export function SettingsPage(props: Props) {
           accessToken: props.accessToken,
         });
         setUser(res);
+        setUsernameDraft(res.username ?? '');
       } catch (e) {
         setMsg(formatApiError(e));
       }
     }
     void load();
   }, [props.accessToken]);
+
+  useEffect(() => {
+    if (!props.accessToken || tab !== 'account') return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const settings = await fetchUserSettings(props.accessToken!);
+        if (!cancelled) {
+          const tz =
+            typeof settings.displayTimezone === 'string'
+              ? settings.displayTimezone
+              : '';
+          setDisplayTimezone(tz);
+        }
+      } catch {
+        if (!cancelled) setDisplayTimezone('');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [props.accessToken, tab]);
 
   useEffect(() => {
     if (!props.accessToken || tab !== 'security') return;
@@ -183,6 +227,47 @@ export function SettingsPage(props: Props) {
     }
   }
 
+  async function handleSaveUsername() {
+    if (!props.accessToken) return;
+    const normalized = normalizeUsername(usernameDraft);
+    if (!isValidUsername(normalized)) {
+      setUsernameMsg('3–32 символа: латиница, цифры, подчёркивание.');
+      return;
+    }
+    setUsernameBusy(true);
+    setUsernameMsg(null);
+    try {
+      const updated = await updateUsername(props.accessToken, normalized);
+      setUser((u) => (u ? { ...u, username: updated.username } : u));
+      setUsernameDraft(updated.username ?? normalized);
+      setUsernameMsg('Username сохранён.');
+    } catch (e) {
+      setUsernameMsg(formatApiError(e));
+    } finally {
+      setUsernameBusy(false);
+    }
+  }
+
+  async function handleSaveTimezone() {
+    if (!props.accessToken) return;
+    const tz = displayTimezone.trim();
+    if (!tz) {
+      setTimezoneMsg('Укажите часовой пояс, например Europe/Moscow.');
+      return;
+    }
+    setTimezoneBusy(true);
+    setTimezoneMsg(null);
+    try {
+      const res = await patchDisplayTimezone(props.accessToken, tz);
+      setDisplayTimezone(res.displayTimezone ?? tz);
+      setTimezoneMsg('Часовой пояс сохранён.');
+    } catch (e) {
+      setTimezoneMsg(formatApiError(e));
+    } finally {
+      setTimezoneBusy(false);
+    }
+  }
+
   async function handleRevokeOtherSessions() {
     if (!props.accessToken) return;
     setRevokeOthersBusy(true);
@@ -256,6 +341,78 @@ export function SettingsPage(props: Props) {
                 onClick={() => void handleRequestEmailChange()}
               >
                 {emailChangeBusy ? '…' : 'Отправить подтверждения'}
+              </button>
+            </article>
+            <article className="trello-settings-card">
+              <h2 className="trello-settings-card-title">Публичный @username</h2>
+              <p className="trello-settings-card-hint">
+                Ссылка для других:{' '}
+                {user?.username ? (
+                  <SpaLink to={profilePathForUsername(user.username)}>
+                    {profilePathForUsername(user.username)}
+                  </SpaLink>
+                ) : (
+                  'задайте ник ниже'
+                )}
+              </p>
+              {usernameMsg ? (
+                <p className="trello-settings-card-hint">{usernameMsg}</p>
+              ) : null}
+              <label className="trello-field">
+                <span className="trello-label">Username</span>
+                <input
+                  className="trello-input"
+                  type="text"
+                  value={usernameDraft}
+                  onChange={(e) => setUsernameDraft(e.target.value)}
+                  placeholder="hero_42"
+                  autoComplete="off"
+                  disabled={usernameBusy}
+                  maxLength={32}
+                />
+              </label>
+              <button
+                type="button"
+                className="trello-btn trello-btn-primary trello-btn-sm"
+                disabled={usernameBusy || !usernameDraft.trim()}
+                onClick={() => void handleSaveUsername()}
+              >
+                {usernameBusy ? '…' : 'Сохранить username'}
+              </button>
+            </article>
+            <article className="trello-settings-card">
+              <h2 className="trello-settings-card-title">Часовой пояс отображения</h2>
+              <p className="trello-settings-card-hint">
+                Для дедлайнов и подписей времени в интерфейсе. Сброс игровых суток на сервере
+                не меняется.
+              </p>
+              {timezoneMsg ? (
+                <p className="trello-settings-card-hint">{timezoneMsg}</p>
+              ) : null}
+              <label className="trello-field">
+                <span className="trello-label">IANA timezone</span>
+                <input
+                  className="trello-input"
+                  type="text"
+                  list="qf-timezone-suggestions"
+                  value={displayTimezone}
+                  onChange={(e) => setDisplayTimezone(e.target.value)}
+                  placeholder="Europe/Moscow"
+                  disabled={timezoneBusy}
+                />
+                <datalist id="qf-timezone-suggestions">
+                  {DISPLAY_TIMEZONE_SUGGESTIONS.map((z) => (
+                    <option key={z} value={z} />
+                  ))}
+                </datalist>
+              </label>
+              <button
+                type="button"
+                className="trello-btn trello-btn-primary trello-btn-sm"
+                disabled={timezoneBusy || !displayTimezone.trim()}
+                onClick={() => void handleSaveTimezone()}
+              >
+                {timezoneBusy ? '…' : 'Сохранить часовой пояс'}
               </button>
             </article>
             <article className="trello-settings-card">
@@ -346,6 +503,8 @@ export function SettingsPage(props: Props) {
                 );
               })()}
             </article>
+
+            <SettingsSecurityLog accessToken={props.accessToken} />
           </div>
         );
 
@@ -377,11 +536,67 @@ export function SettingsPage(props: Props) {
                     setNotificationSettings({ emailWorkspaceInvites: checked })
                   }
                 />
+                <SettingsSwitch
+                  label="In-app: квесты, сундуки, достижения"
+                  description="Колокол в шапке — геймификация."
+                  checked={notificationSettings.inAppGamification}
+                  disabled={notificationMeta.saving}
+                  onChange={(checked) =>
+                    setNotificationSettings({ inAppGamification: checked })
+                  }
+                />
+                <SettingsSwitch
+                  label="In-app: @упоминания"
+                  checked={notificationSettings.inAppMentions}
+                  disabled={notificationMeta.saving}
+                  onChange={(checked) => setNotificationSettings({ inAppMentions: checked })}
+                />
+                <SettingsSwitch
+                  label="In-app: дедлайны карточек"
+                  checked={notificationSettings.inAppDeadlines}
+                  disabled={notificationMeta.saving}
+                  onChange={(checked) => setNotificationSettings({ inAppDeadlines: checked })}
+                />
+                <SettingsSwitch
+                  label="In-app: назначение на карточку"
+                  checked={notificationSettings.inAppAssign}
+                  disabled={notificationMeta.saving}
+                  onChange={(checked) => setNotificationSettings({ inAppAssign: checked })}
+                />
+                <SettingsSwitch
+                  label="In-app: друзья и рейды"
+                  checked={notificationSettings.inAppSocial}
+                  disabled={notificationMeta.saving}
+                  onChange={(checked) => setNotificationSettings({ inAppSocial: checked })}
+                />
                 <p className="trello-settings-card-hint">
-                  Всплывающие XP и анимация чекина — во вкладке «Геймификация».
+                  Всплывающие XP на доске — вкладка «Геймификация» (не дублируют колокол).
                 </p>
+                <SettingsSwitch
+                  label="Push: назначение на карточку"
+                  checked={notificationSettings.pushAssign}
+                  disabled={notificationMeta.saving}
+                  onChange={(checked) => setNotificationSettings({ pushAssign: checked })}
+                />
+                <SettingsSwitch
+                  label="Push: @упоминания"
+                  checked={notificationSettings.pushMention}
+                  disabled={notificationMeta.saving}
+                  onChange={(checked) => setNotificationSettings({ pushMention: checked })}
+                />
+                <SettingsSwitch
+                  label="Push: заявки в друзья"
+                  checked={notificationSettings.pushFriendRequest}
+                  disabled={notificationMeta.saving}
+                  onChange={(checked) =>
+                    setNotificationSettings({ pushFriendRequest: checked })
+                  }
+                />
               </div>
             )}
+            {props.accessToken ? (
+              <SettingsWebPushPanel accessToken={props.accessToken} />
+            ) : null}
           </div>
         );
 
@@ -443,6 +658,24 @@ export function SettingsPage(props: Props) {
                   disabled={privacyMeta.saving}
                   onChange={(checked) =>
                     setPrivacySettings({ showAccountAvatarOnPublicProfile: checked })
+                  }
+                />
+                <SettingsSwitch
+                  label="Находить по имени персонажа"
+                  description="Другие смогут искать вас в разделе «Друзья» по имени героя."
+                  checked={privacySettings.allowFindByCharacterName}
+                  disabled={privacyMeta.saving}
+                  onChange={(checked) =>
+                    setPrivacySettings({ allowFindByCharacterName: checked })
+                  }
+                />
+                <SettingsSwitch
+                  label="Статус «в сети» для друзей"
+                  description="Друзья видят онлайн и время последней активности в списке."
+                  checked={privacySettings.showOnlineStatusToFriends}
+                  disabled={privacyMeta.saving}
+                  onChange={(checked) =>
+                    setPrivacySettings({ showOnlineStatusToFriends: checked })
                   }
                 />
               </div>

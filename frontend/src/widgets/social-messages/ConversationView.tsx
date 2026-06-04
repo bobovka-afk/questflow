@@ -6,7 +6,7 @@ import {
   fetchUserRelation,
   markMessagesRead,
   sendDirectMessage,
-  useMessagePolling,
+  useMessageDelivery,
   type DirectMessageView,
   type MessageReadReceipt,
   type SocialUserSummary,
@@ -100,7 +100,7 @@ export function ConversationView({
     [mergeMessages, peer.userId],
   );
 
-  const { seedLastMessageId } = useMessagePolling({
+  const { seedLastMessageId } = useMessageDelivery({
     accessToken,
     peerUserId: peer.userId,
     enabled,

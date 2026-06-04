@@ -7,11 +7,13 @@ import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 import { UserSettingsModule } from '../user-settings/user-settings.module';
 import { MailModule } from '../mail/mail.module';
 import { UserEmailChangeService } from './user-email-change.service';
+import { UserBlockService } from './user-block.service';
+import { UserPublicController } from './user-public.controller';
 
 @Module({
   imports: [PrismaModule, RedisModule, UserSettingsModule, MailModule],
-  controllers: [UserController],
-  providers: [UserService, UserEmailChangeService, RateLimitGuard],
-  exports: [UserService, UserEmailChangeService],
+  controllers: [UserController, UserPublicController],
+  providers: [UserService, UserEmailChangeService, UserBlockService, RateLimitGuard],
+  exports: [UserService, UserEmailChangeService, UserBlockService],
 })
 export class UserModule {}

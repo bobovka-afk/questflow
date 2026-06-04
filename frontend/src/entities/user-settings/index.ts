@@ -13,6 +13,7 @@ export {
   fetchUserSessions,
   fetchUserSettings,
   patchGamificationSettings,
+  patchDisplayTimezone,
   patchNotificationSettings,
   patchPrivacySettings,
   requestEmailChange,

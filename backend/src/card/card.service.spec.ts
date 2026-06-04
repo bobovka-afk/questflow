@@ -23,17 +23,19 @@ describe('CardService', () => {
     const achievementService = {
       recordIncrement: jest.fn().mockResolvedValue([]),
     };
+    const notificationService = { create: jest.fn().mockResolvedValue(undefined) };
     service = new CardService(
       prisma as unknown as PrismaService,
       characterService as unknown as CharacterService,
       questProgressService as never,
       achievementService as never,
+      notificationService as never,
     );
   });
 
   describe('updateCard', () => {
     it('requires at least one field', async () => {
-      await expect(service.updateCard(1, {})).rejects.toThrow(
+      await expect(service.updateCard(1, {}, 1)).rejects.toThrow(
         BadRequestException,
       );
     });

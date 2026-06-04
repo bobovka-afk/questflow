@@ -3,9 +3,22 @@ export function createPrismaMock(): any {
   return {
     user: {
       findUnique: mockFn(),
+      findFirst: mockFn(),
       create: mockFn(),
       update: mockFn(),
       delete: mockFn(),
+    },
+    userBlock: {
+      findFirst: mockFn(),
+      findMany: mockFn(),
+      upsert: mockFn(),
+      deleteMany: mockFn(),
+    },
+    webPushSubscription: {
+      findMany: mockFn(),
+      upsert: mockFn(),
+      delete: mockFn(),
+      deleteMany: mockFn(),
     },
     authToken: {
       findUnique: mockFn(),
@@ -99,6 +112,7 @@ export function createPrismaMock(): any {
       delete: mockFn(),
     },
     userSettings: {
+      findUnique: mockFn(),
       upsert: mockFn(),
       update: mockFn(),
     },
@@ -153,10 +167,12 @@ export function createPrismaMock(): any {
       findUnique: mockFn(),
       findFirst: mockFn(),
       findMany: mockFn(),
+      count: mockFn(),
       create: mockFn(),
       update: mockFn(),
     },
     partyRaidHit: {
+      findFirst: mockFn(),
       create: mockFn(),
       findMany: mockFn(),
     },

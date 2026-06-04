@@ -9,7 +9,25 @@ describe('SocialService — direct messages', () => {
 
   beforeEach(() => {
     prisma = createPrismaMock();
-    service = new SocialService(prisma as unknown as PrismaService);
+    const notificationService = { create: jest.fn().mockResolvedValue(undefined) };
+    const userBlockService = {
+      assertNotBlocked: jest.fn().mockResolvedValue(undefined),
+      areUsersBlocked: jest.fn().mockResolvedValue(false),
+    };
+    const userSettingsService = {
+      getPrivacySettings: jest.fn().mockResolvedValue({
+        allowFindByCharacterName: true,
+        showOnlineStatusToFriends: true,
+        allowCharacterView: true,
+        showAccountAvatarOnPublicProfile: true,
+      }),
+    };
+    service = new SocialService(
+      prisma as unknown as PrismaService,
+      notificationService as never,
+      userBlockService as never,
+      userSettingsService as never,
+    );
   });
 
   describe('getMessagesWith edge cases', () => {
