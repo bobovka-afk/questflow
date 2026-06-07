@@ -16,7 +16,6 @@ import {
   formatWorkspaceRole,
   type WorkspacePermissions,
 } from '@entities/workspace';
-import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
 import { MemberPermissionsModal } from '@widgets/workspace-members/MemberPermissionsModal';
 
 type Props = {
@@ -391,8 +390,11 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
               <span className="trello-logo" aria-hidden />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
-            <SpaLink className="trello-btn trello-btn-sm trello-btn-topbar-nav" to="/workspaces">
-              ← Рабочие пространства
+            <SpaLink
+              className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn"
+              to={`/workspaces/${workspaceId}/boards`}
+            >
+              ← Доски
             </SpaLink>
           </div>
           <h1 className="trello-topbar-stripe-center">Участники рабочего пространства</h1>
@@ -429,7 +431,6 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
                 Отправить приглашение
               </button>
             )}
-            {accessToken ? <ProfileToolbarAnchor /> : null}
           </div>
         </header>
 
@@ -442,7 +443,7 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
           </div>
         )}
 
-        <div className="trello-members-table-block">
+        <div className="trello-members-table-block px-workspaces-table">
           {loading ? (
             <div className="trello-empty">Загрузка…</div>
           ) : rows.length === 0 ? (
@@ -690,11 +691,12 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
                 ) : inviteRows.length === 0 ? (
                   <div className="trello-empty">Нет активных приглашений.</div>
                 ) : (
-                  <div className="trello-table-wrap">
-                    <table className="trello-table">
-                      <thead>
-                        <tr>
-                          <th>Email</th>
+                  <div className="px-workspaces-table">
+                    <div className="trello-table-wrap">
+                      <table className="trello-table">
+                        <thead>
+                          <tr>
+                            <th>Email</th>
                           <th>Роль</th>
                           <th>Отправлено</th>
                           <th>Действует до</th>
@@ -729,6 +731,7 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
                         ))}
                       </tbody>
                     </table>
+                  </div>
                   </div>
                 )}
                 {!invitesLoading && inviteRows.length > 0 && invitesHasMore && (

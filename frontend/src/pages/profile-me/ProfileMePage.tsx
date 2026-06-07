@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, API_URL, formatApiError, isRateLimitMessage } from '@shared/api';
 import { profilePathForUsername } from '@entities/user';
 import { navigate, SpaLink } from '@shared/lib';
-import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
 
 export type ProfileMeUser = {
   id: number;
@@ -228,16 +227,15 @@ export function ProfileMePage(props: Props) {
               <span className="trello-logo" aria-hidden />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
+            <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/workspaces">
+              Назад
+            </SpaLink>
           </div>
           <h1 className="trello-topbar-stripe-center">Профиль</h1>
           <div className="trello-topbar-actions">
             <SpaLink className="trello-btn trello-btn-ghost" to="/settings">
               Настройки
             </SpaLink>
-            <SpaLink className="trello-btn trello-btn-ghost" to="/workspaces">
-              Назад
-            </SpaLink>
-            <ProfileToolbarAnchor />
           </div>
         </header>
 

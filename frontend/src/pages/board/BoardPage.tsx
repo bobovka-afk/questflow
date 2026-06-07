@@ -38,7 +38,6 @@ import {
 } from '@entities/reward'
 import { useGamificationSettings } from '@entities/user-settings'
 import { SpaLink } from '@shared/lib/navigation'
-import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar'
 import type { BoardRow } from '@pages/workspace-boards/WorkspaceBoardsPage'
 import {
 	canArchiveBoards,
@@ -341,6 +340,20 @@ export function BoardPage({
 		canManageLabels(myPermissions) || canManageWorkspace(myRole)
 
 	useWorkspaceSearchHotkey(() => setSearchOpen(true), Boolean(accessToken))
+
+	useEffect(() => {
+		if (activeListMenuId == null) return
+		function handlePointerDown(e: globalThis.MouseEvent) {
+			const wrap = document.querySelector(
+				`[data-list-menu-id="${activeListMenuId}"]`,
+			)
+			if (wrap && !wrap.contains(e.target as Node)) {
+				setActiveListMenuId(null)
+			}
+		}
+		document.addEventListener('mousedown', handlePointerDown)
+		return () => document.removeEventListener('mousedown', handlePointerDown)
+	}, [activeListMenuId])
 
 	const [comments, setComments] = useState<CommentRow[]>([])
 	const [commentsLoading, setCommentsLoading] = useState(false)
@@ -778,14 +791,22 @@ export function BoardPage({
 		setAddBusy(true)
 		setMsg(null)
 		try {
-			await api(`/workspace/${workspaceId}/board/${boardId}/lists`, {
-				method: 'POST',
-				accessToken,
-				json: { name, position }
-			})
+			const created = await api<ListRow>(
+				`/workspace/${workspaceId}/board/${boardId}/lists`,
+				{
+					method: 'POST',
+					accessToken,
+					json: { name, position },
+				},
+			)
+			setLists(prev =>
+				[...prev, created].sort(
+					(a, b) => a.position - b.position || a.id - b.id,
+				),
+			)
+			setCardsByListId(prev => ({ ...prev, [created.id]: prev[created.id] ?? [] }))
 			setNewListName('')
 			setAddListOpen(false)
-			await load()
 		} catch (e) {
 			setAlertText(formatError(e))
 			setAlertOpen(true)
@@ -817,6 +838,7 @@ export function BoardPage({
 			setActiveListMenuId(null)
 			setListPendingDelete(null)
 			await load()
+			if (archivedListsOpen) await loadArchivedLists()
 		} catch (e) {
 			setMsg(formatError(e))
 		} finally {
@@ -1092,6 +1114,13 @@ export function BoardPage({
 				}
 				if (
 					completionSavedButXpFailed &&
+					code === 'XP_EVENT_ALREADY_RECORDED'
+				) {
+					// Повторное закрытие — XP уже был; карточка сохранена, уведомление не нужно.
+					return
+				}
+				if (
+					completionSavedButXpFailed &&
 					isXpTaskSoftNoticeCode(code)
 				) {
 					window.clearTimeout(xpBottomNoticeTimerRef.current)
@@ -1317,25 +1346,26 @@ export function BoardPage({
 														{canManageLists ? (
 															<div
 																className='trello-list-menu-wrap'
-																onMouseEnter={() =>
-																	setActiveListMenuId(
-																		list.id
-																	)
-																}
-																onMouseLeave={() =>
-																	setActiveListMenuId(
-																		null
-																	)
-																}
+																data-list-menu-id={list.id}
 															>
 																<button
 																	type='button'
 																	className='trello-list-column-menu-btn'
 																	title='Действия с колонкой'
 																	aria-label='Действия с колонкой'
+																	aria-haspopup='menu'
+																	aria-expanded={
+																		activeListMenuId === list.id
+																	}
 																	onMouseDown={e =>
 																		e.stopPropagation()
 																	}
+																	onClick={e => {
+																		e.stopPropagation()
+																		setActiveListMenuId(prev =>
+																			prev === list.id ? null : list.id,
+																		)
+																	}}
 																>
 																	✎
 																</button>
@@ -1445,12 +1475,17 @@ export function BoardPage({
 																			{(
 																				dragProvided,
 																				snapshot
-																			) => (
+																			) => {
+																				const {
+																					style: dragStyle,
+																					...dragRest
+																				} = dragProvided.draggableProps
+																				return (
 																				<div
 																					ref={
 																						dragProvided.innerRef
 																					}
-																					{...dragProvided.draggableProps}
+																					{...dragRest}
 																					{...dragProvided.dragHandleProps}
 																					className={[
 																						'trello-card trello-card--clickable',
@@ -1470,6 +1505,11 @@ export function BoardPage({
 																						.join(
 																							' '
 																						)}
+																					style={
+																						snapshot.isDragging
+																							? dragStyle
+																							: undefined
+																					}
 																				>
 																					<div className='trello-card-inner'>
 																						{card.coverImageUrl ? (
@@ -1623,7 +1663,8 @@ export function BoardPage({
 																						</div>
 																					</div>
 																				</div>
-																			)}
+																				)
+																			}}
 																		</Draggable>
 																	)
 																)}
@@ -1644,36 +1685,6 @@ export function BoardPage({
 						</div>
 					)}
 				</Droppable>
-				{archivedListsOpen && canArchiveLists ? (
-					<div className='trello-archived-lists-panel'>
-						<h3 className='trello-archived-lists-title'>
-							Архив колонок
-						</h3>
-						{archivedLists.length === 0 ? (
-							<p className='trello-settings-card-hint'>
-								Нет архивных колонок.
-							</p>
-						) : (
-						<ul className='trello-archived-lists'>
-							{archivedLists.map(list => (
-								<li key={list.id}>
-									<span>{list.name}</span>
-									<button
-										type='button'
-										className='trello-btn trello-btn-sm trello-btn-ghost'
-										disabled={archiveListBusyId === list.id}
-										onClick={() =>
-											void restoreArchivedList(list)
-										}
-									>
-										Восстановить
-									</button>
-								</li>
-							))}
-						</ul>
-						)}
-					</div>
-				) : null}
 				<div className='trello-list-wrap trello-add-list-wrap trello-add-list-wrap--inline'>
 					<button
 						type='button'
@@ -1710,19 +1721,17 @@ export function BoardPage({
 							Questflow
 						</span>
 					</SpaLink>
-				</div>
-				<h1 className='trello-topbar-stripe-center'>
-					{loading ? '…' : (board?.name ?? 'Доска')}
-				</h1>
-				<div className='trello-topbar-actions'>
 					<SpaLink
 						className='trello-btn trello-btn-topbar-nav trello-topbar-back-btn'
 						to={`/workspaces/${workspaceId}/boards`}
 					>
 						← Доски
 					</SpaLink>
-					{accessToken ? <ProfileToolbarAnchor /> : null}
 				</div>
+				<h1 className='trello-topbar-stripe-center'>
+					{loading ? '…' : (board?.name ?? 'Доска')}
+				</h1>
+				<div className='trello-topbar-actions' />
 			</header>
 
 			{accessToken && (
@@ -1785,8 +1794,8 @@ export function BoardPage({
 						{canArchiveLists ? (
 							<button
 								type='button'
-								className={`trello-btn trello-btn-sm trello-btn-ghost${archivedListsOpen ? ' trello-btn-primary' : ''}`}
-								onClick={() => setArchivedListsOpen(o => !o)}
+								className='trello-btn trello-btn-sm trello-btn-ghost'
+								onClick={() => setArchivedListsOpen(true)}
 							>
 								Архив колонок
 							</button>
@@ -2036,6 +2045,14 @@ export function BoardPage({
 						setDeleteCardRow(row)
 					}}
 					onCoverChange={() => void refreshEditCardFromBoard()}
+					onToggleComplete={(e) => {
+						if (!editCard) return
+						void toggleCardCompletion(editCard, e)
+						setEditCard((prev) =>
+							prev ? { ...prev, isCompleted: !prev.isCompleted } : prev,
+						)
+					}}
+					completionBusy={completionBusyId === editCard.id}
 					title={editCardTitle}
 					onTitleChange={setEditCardTitle}
 					titleEditing={cardTitleEditing}
@@ -2237,6 +2254,91 @@ export function BoardPage({
 				title={isRateLimitMessage(alertText) ? 'Лимит запросов' : undefined}
 				onClose={() => setAlertOpen(false)}
 			/>
+
+			{archivedListsOpen && canArchiveLists ? (
+				<div
+					className='trello-modal-backdrop'
+					role='presentation'
+					onClick={() => !archiveListBusyId && setArchivedListsOpen(false)}
+				>
+					<div
+						className='trello-modal trello-modal-archived-lists'
+						role='dialog'
+						aria-modal
+						aria-labelledby='archived-lists-modal-title'
+						onClick={e => e.stopPropagation()}
+					>
+						<div className='trello-modal-head'>
+							<h2 className='trello-modal-title' id='archived-lists-modal-title'>
+								Архив колонок
+							</h2>
+							<button
+								type='button'
+								className='trello-modal-close'
+								onClick={() => !archiveListBusyId && setArchivedListsOpen(false)}
+								aria-label='Закрыть'
+							>
+								×
+							</button>
+						</div>
+						<div className='trello-modal-body trello-archived-lists-modal-body'>
+							{archivedLists.length === 0 ? (
+								<p className='trello-settings-card-hint'>
+									Нет архивных колонок.
+								</p>
+							) : (
+								<ul className='trello-archived-lists'>
+									{archivedLists.map(list => (
+										<li key={list.id}>
+											<span className='trello-archived-lists-name'>
+												{list.name}
+											</span>
+											<div className='trello-archived-lists-actions'>
+												<button
+													type='button'
+													className='trello-btn trello-btn-sm trello-btn-ghost'
+													disabled={archiveListBusyId === list.id}
+													onClick={() =>
+														void restoreArchivedList(list)
+													}
+												>
+													{archiveListBusyId === list.id
+														? '…'
+														: 'Восстановить'}
+												</button>
+												{canManageLists ? (
+													<button
+														type='button'
+														className='trello-btn trello-btn-sm trello-btn-danger-ghost'
+														disabled={
+															deleteListId === list.id ||
+															archiveListBusyId === list.id
+														}
+														onClick={() =>
+															setListPendingDelete(list)
+														}
+													>
+														Удалить
+													</button>
+												) : null}
+											</div>
+										</li>
+									))}
+								</ul>
+							)}
+						</div>
+						<div className='trello-modal-foot'>
+							<button
+								type='button'
+								className='trello-btn trello-btn-ghost'
+								onClick={() => !archiveListBusyId && setArchivedListsOpen(false)}
+							>
+								Закрыть
+							</button>
+						</div>
+					</div>
+				</div>
+			) : null}
 
 			{listPendingDelete && (
 				<div

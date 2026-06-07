@@ -204,10 +204,7 @@ export function isXpGrantErrorCode(code?: string): boolean {
 
 /** Не модальное «ошибка», а мягкое оповещение (карточка на сервере уже закрыта). */
 export function isXpTaskSoftNoticeCode(code?: string): boolean {
-  return (
-    code === 'XP_EVENT_ALREADY_RECORDED' ||
-    code === 'DAILY_TASK_XP_LIMIT'
-  );
+  return code === 'DAILY_TASK_XP_LIMIT';
 }
 
 function isNetworkFetchError(e: unknown): boolean {

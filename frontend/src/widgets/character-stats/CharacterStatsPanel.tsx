@@ -13,10 +13,27 @@ type XpToward = {
 type Props = {
   character: CharacterDto;
   xpToward: XpToward;
+  /** full — все статы; sidebar — HP под портретом; detail — 2×2 (уровень/мана, опыт/пыль) */
+  variant?: 'full' | 'sidebar' | 'detail';
 };
 
-export function CharacterStatsPanel({ character, xpToward }: Props) {
+function statVisible(
+  variant: 'full' | 'sidebar' | 'detail',
+  stat: 'level' | 'xp' | 'health' | 'mana' | 'dust',
+): boolean {
+  if (variant === 'full') return true;
+  if (variant === 'sidebar') return stat === 'health';
+  return stat === 'level' || stat === 'xp' || stat === 'mana' || stat === 'dust';
+}
+
+export function CharacterStatsPanel({ character, xpToward, variant = 'full' }: Props) {
   const exhausted = character.health <= 0;
+  const rowClass =
+    variant === 'sidebar'
+      ? 'trello-character-stat-row trello-character-stat-row--sidebar'
+      : variant === 'detail'
+        ? 'trello-character-stat-row trello-character-stat-row--detail'
+        : 'trello-character-stat-row';
 
   return (
     <div
@@ -32,7 +49,8 @@ export function CharacterStatsPanel({ character, xpToward }: Props) {
           неактивность, если не будет XP за день.
         </p>
       ) : null}
-      <div className="trello-character-stat-row">
+      <div className={rowClass}>
+        {statVisible(variant, 'level') ? (
         <div className="trello-character-stat-pill trello-character-stat-pill--level">
           <div className="trello-character-stat-label-row">
             <span className="trello-character-stat-label">УРОВЕНЬ</span>
@@ -51,6 +69,32 @@ export function CharacterStatsPanel({ character, xpToward }: Props) {
             <span className="trello-character-stat-meter-value">{character.level}</span>
           </div>
         </div>
+        ) : null}
+        {statVisible(variant, 'mana') ? (
+        <div className="trello-character-stat-pill trello-character-stat-pill--mana">
+          <div className="trello-character-stat-label-row">
+            <span className="trello-character-stat-label">МАНА</span>
+            <img src={manaStatIconUrl()} alt="" className="trello-character-stat-icon" loading="lazy" />
+          </div>
+          <div
+            className="trello-character-stat-meter"
+            role="img"
+            aria-label={`Мана ${character.manaCurrent ?? 0} из ${MANA_MAX}`}
+          >
+            <div
+              className="trello-character-stat-bar-fill trello-character-stat-bar-fill--mana"
+              style={{
+                width: `${Math.min(100, Math.round(((character.manaCurrent ?? 0) / MANA_MAX) * 100))}%`,
+              }}
+              aria-hidden
+            />
+            <span className="trello-character-stat-meter-value">
+              {character.manaCurrent ?? 0}/{MANA_MAX}
+            </span>
+          </div>
+        </div>
+        ) : null}
+        {statVisible(variant, 'xp') ? (
         <div className="trello-character-stat-pill trello-character-stat-pill--xp">
           <div className="trello-character-stat-label-row">
             <span className="trello-character-stat-label">ОПЫТ</span>
@@ -81,6 +125,8 @@ export function CharacterStatsPanel({ character, xpToward }: Props) {
             </span>
           </div>
         </div>
+        ) : null}
+        {statVisible(variant, 'health') ? (
         <div
           className={
             exhausted
@@ -107,32 +153,12 @@ export function CharacterStatsPanel({ character, xpToward }: Props) {
             <span className="trello-character-stat-meter-value">{character.health}</span>
           </div>
         </div>
-        <div className="trello-character-stat-pill trello-character-stat-pill--mana">
-          <div className="trello-character-stat-label-row">
-            <span className="trello-character-stat-label">МАНА</span>
-            <img src={manaStatIconUrl()} alt="" className="trello-character-stat-icon" loading="lazy" />
-          </div>
-          <div
-            className="trello-character-stat-meter"
-            role="img"
-            aria-label={`Мана ${character.manaCurrent ?? 0} из ${MANA_MAX}`}
-          >
-            <div
-              className="trello-character-stat-bar-fill trello-character-stat-bar-fill--mana"
-              style={{
-                width: `${Math.min(100, Math.round(((character.manaCurrent ?? 0) / MANA_MAX) * 100))}%`,
-              }}
-              aria-hidden
-            />
-            <span className="trello-character-stat-meter-value">
-              {character.manaCurrent ?? 0}/{MANA_MAX}
-            </span>
-          </div>
-        </div>
+        ) : null}
+        {statVisible(variant, 'dust') ? (
         <div className="trello-character-stat-pill trello-character-stat-pill--dust">
           <div className="trello-character-stat-label-row">
             <span className="trello-character-stat-label">ПЫЛЬ</span>
-            <DustIcon size={24} />
+            <DustIcon size={40} className="trello-character-stat-icon" />
           </div>
           <div className="trello-character-stat-meter trello-character-stat-meter--dust" role="img" aria-label={`Пыль ${character.dust}`}>
             <span className="trello-character-stat-meter-value trello-character-stat-meter-value--dust">
@@ -140,6 +166,7 @@ export function CharacterStatsPanel({ character, xpToward }: Props) {
             </span>
           </div>
         </div>
+        ) : null}
       </div>
     </div>
   );

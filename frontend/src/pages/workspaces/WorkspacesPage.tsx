@@ -1,11 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type ApiError } from '@shared/api';
-import {
-  SpaLink,
-} from '@shared/lib/navigation';
-import { handleSpaTileAuxClick, handleSpaTileClick, navigate } from '@shared/lib/navigation-core';
+import { SpaLink } from '@shared/lib/navigation';
+import { navigate } from '@shared/lib/navigation-core';
 import { canManageWorkspace, formatWorkspaceRole } from '@entities/workspace';
-import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
 
 type WorkspaceMemberRow = {
   id: number;
@@ -26,6 +23,12 @@ type WorkspaceUpdateRes = {
   description: string | null;
 };
 
+type WorkspaceDetailStats = {
+  boardCount: number | null;
+  memberCount: number | null;
+  loading: boolean;
+};
+
 function formatError(e: unknown) {
   const err = e as Partial<ApiError>;
   if (typeof err?.message === 'string') return err.message;
@@ -33,10 +36,24 @@ function formatError(e: unknown) {
 }
 
 function formatWorkspaceNameForUI(name: string) {
-  // Sometimes stored name comes like: `12345(Название)`.
-  // For UI show only `Название`.
   const m = name.match(/^\s*\d+\s*\((.*)\)\s*$/);
   return m ? m[1] : name;
+}
+
+function boardWord(n: number) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'доска';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'доски';
+  return 'досок';
+}
+
+function memberWord(n: number) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'участник';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'участника';
+  return 'участников';
 }
 
 type Props = { accessToken: string | null };
@@ -49,6 +66,12 @@ export function WorkspacesPage({ accessToken }: Props) {
   const [hasMore, setHasMore] = useState(false);
   const [loadMoreBusy, setLoadMoreBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<number | null>(null);
+  const [detailStats, setDetailStats] = useState<WorkspaceDetailStats>({
+    boardCount: null,
+    memberCount: null,
+    loading: false,
+  });
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState('');
@@ -62,6 +85,12 @@ export function WorkspacesPage({ accessToken }: Props) {
 
   const [deleteRow, setDeleteRow] = useState<WorkspaceMemberRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+
+  const selectedRow = useMemo(
+    () => rows.find((row) => row.workspace.id === selectedWorkspaceId) ?? null,
+    [rows, selectedWorkspaceId],
+  );
+
   const load = useCallback(async () => {
     if (!accessToken) {
       setLoading(false);
@@ -116,6 +145,58 @@ export function WorkspacesPage({ accessToken }: Props) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (rows.length === 0) {
+      setSelectedWorkspaceId(null);
+      return;
+    }
+    setSelectedWorkspaceId((current) => {
+      if (current != null && rows.some((row) => row.workspace.id === current)) {
+        return current;
+      }
+      return rows[0].workspace.id;
+    });
+  }, [rows]);
+
+  useEffect(() => {
+    if (!accessToken || selectedWorkspaceId == null) {
+      setDetailStats({ boardCount: null, memberCount: null, loading: false });
+      return;
+    }
+
+    let cancelled = false;
+    setDetailStats((prev) => ({ ...prev, loading: true }));
+
+    void (async () => {
+      try {
+        const [boards, members] = await Promise.all([
+          api<unknown[]>(`/workspace/${selectedWorkspaceId}/boards`, {
+            method: 'GET',
+            accessToken,
+          }),
+          api<unknown[]>(
+            `/workspace/${selectedWorkspaceId}/members?limit=100&offset=0`,
+            { method: 'GET', accessToken },
+          ),
+        ]);
+        if (cancelled) return;
+        setDetailStats({
+          boardCount: Array.isArray(boards) ? boards.length : 0,
+          memberCount: Array.isArray(members) ? members.length : 0,
+          loading: false,
+        });
+      } catch {
+        if (!cancelled) {
+          setDetailStats({ boardCount: null, memberCount: null, loading: false });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, selectedWorkspaceId]);
 
   async function submitCreate() {
     if (!accessToken) return;
@@ -188,7 +269,6 @@ export function WorkspacesPage({ accessToken }: Props) {
                   ...r.workspace,
                   name: updated.name,
                   description: updated.description,
-                  updatedAt: new Date().toISOString(),
                 },
               }
             : r,
@@ -227,33 +307,28 @@ export function WorkspacesPage({ accessToken }: Props) {
     Object.keys(buildEditPatch(editRow, editName, editDesc)).length > 0;
 
   return (
-    <div className="trello-app-shell trello-page-workspaces">
-      <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
-          <div className="trello-topbar-stripe-left">
-            <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-              <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">Questflow</span>
-            </SpaLink>
-          </div>
-          <h1 className="trello-topbar-stripe-center" aria-hidden />
-          <div className="trello-topbar-actions">
-            {accessToken && rows.length > 0 && (
-              <button
-                type="button"
-                className="trello-btn trello-btn-ghost"
-                onClick={() => {
-                  setCreateOpen(true);
-                  setMsg(null);
-                }}
-              >
-                Создать рабочее пространство
-              </button>
-            )}
-            {accessToken ? <ProfileToolbarAnchor /> : null}
-          </div>
-        </header>
+    <div className="px-page">
+      <header className="px-topbar">
+        <div className="px-topbar-left">
+          <h1 className="px-topbar-title">Рабочие пространства</h1>
+        </div>
+        <div className="px-topbar-actions">
+          {accessToken ? (
+            <button
+              type="button"
+              className="px-btn px-btn--primary"
+              onClick={() => {
+                setCreateOpen(true);
+                setMsg(null);
+              }}
+            >
+              + Пространство
+            </button>
+          ) : null}
+        </div>
+      </header>
 
+      <div className="px-content">
         {!accessToken && (
           <div className="trello-banner trello-banner-warn">
             Войдите на главной, чтобы управлять рабочими пространствами.
@@ -265,131 +340,142 @@ export function WorkspacesPage({ accessToken }: Props) {
 
         {msg && <div className="trello-banner trello-banner-error">{msg}</div>}
 
-        <section className="trello-panel">
-          <div className="trello-panel-head">
-            <span className="trello-panel-title">Ваши рабочие пространства</span>
-          </div>
-
-          {loading ? (
-            <div className="trello-empty">Загрузка…</div>
-          ) : rows.length === 0 ? (
-            accessToken ? (
-              <div className="trello-workspaces-empty-grid">
-                <button
-                  type="button"
-                  className="trello-board-tile trello-board-tile-add"
-                  onClick={() => {
-                    setCreateOpen(true);
-                    setMsg(null);
-                  }}
-                >
-                  <span className="trello-board-tile-add-icon">+</span>
-                    <span>Создать рабочее пространство</span>
-                </button>
-              </div>
-            ) : (
-              <div className="trello-empty">Пока нет рабочих пространств.</div>
-            )
+        {loading ? (
+          <p className="px-empty">Загрузка…</p>
+        ) : rows.length === 0 ? (
+          accessToken ? (
+            <div className="trello-workspaces-empty-grid">
+              <button
+                type="button"
+                className="trello-board-tile trello-board-tile-add"
+                onClick={() => {
+                  setCreateOpen(true);
+                  setMsg(null);
+                }}
+              >
+                <span className="trello-board-tile-add-icon">+</span>
+                <span>Создать рабочее пространство</span>
+              </button>
+            </div>
           ) : (
-            <>
-              <div className="trello-table-wrap">
-                <table className="trello-table">
-                  <thead>
-                    <tr>
-                      <th>Название</th>
-                      <th>Описание</th>
-                      <th>Роль</th>
-                      <th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row) => (
-                      <tr
-                        key={row.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) =>
-                          handleSpaTileClick(e, `/workspaces/${row.workspace.id}/boards`)
-                        }
-                        onAuxClick={(e) =>
-                          handleSpaTileAuxClick(e, `/workspaces/${row.workspace.id}/boards`)
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            navigate(`/workspaces/${row.workspace.id}/boards`);
-                          }
-                        }}
-                      >
-                        <td>
-                          <div className="trello-cell-title">
-                            {formatWorkspaceNameForUI(row.workspace.name)}
-                          </div>
-                        </td>
-                        <td className="trello-cell-desc">
-                          {row.workspace.description?.trim()
-                            ? row.workspace.description
-                            : '—'}
-                        </td>
-                        <td>
-                          <span className="trello-pill">{formatWorkspaceRole(row.role)}</span>
-                        </td>
-                        <td className="trello-row-actions">
-                          <SpaLink
-                            to={`/workspaces/${row.workspace.id}/members`}
-                            className="trello-btn trello-btn-ghost trello-btn-sm"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Участники
-                          </SpaLink>
-                          {canManageWorkspace(row.role) ? (
-                            <>
-                              <button
-                                type="button"
-                                className="trello-btn trello-btn-ghost trello-btn-sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openEdit(row);
-                                }}
-                              >
-                                Изменить
-                              </button>
-                              {row.role === 'OWNER' ? (
-                                <button
-                                  type="button"
-                                  className="trello-btn trello-btn-danger-ghost trello-btn-sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeleteRow(row);
-                                    setMsg(null);
-                                  }}
-                                >
-                                  Удалить
-                                </button>
-                              ) : null}
-                            </>
-                          ) : null}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <p className="px-empty">Пока нет рабочих пространств.</p>
+          )
+        ) : (
+          <div className="px-ws-split">
+            <div className="px-ws-list">
+              <div className="px-ws-list-head">Выберите пространство</div>
+              <div className="px-ws-list-scroll">
+                {rows.map((row) => {
+                  const workspaceId = row.workspace.id;
+                  const isActive = workspaceId === selectedWorkspaceId;
+                  return (
+                    <button
+                      key={row.id}
+                      type="button"
+                      className={
+                        isActive
+                          ? 'px-ws-item px-ws-item--active'
+                          : 'px-ws-item'
+                      }
+                      title="Дважды нажмите, чтобы открыть доски"
+                      onClick={() => setSelectedWorkspaceId(workspaceId)}
+                      onDoubleClick={() => navigate(`/workspaces/${workspaceId}/boards`)}
+                    >
+                      {formatWorkspaceNameForUI(row.workspace.name)}
+                      <div className="px-ws-item-sub">{formatWorkspaceRole(row.role)}</div>
+                    </button>
+                  );
+                })}
               </div>
-              {hasMore && (
-                <div className="trello-workspaces-load-more">
+              {hasMore ? (
+                <div className="px-ws-list-foot">
                   <button
                     type="button"
-                    className="trello-btn trello-btn-ghost"
+                    className="px-btn px-btn--ghost"
                     disabled={loadMoreBusy}
                     onClick={() => void loadMore()}
                   >
                     {loadMoreBusy ? 'Загрузка…' : 'Загрузить ещё'}
                   </button>
                 </div>
-              )}
-            </>
-          )}
-        </section>
+              ) : null}
+            </div>
+
+            {selectedRow ? (
+              <div className="px-ws-detail">
+                <h2 className="px-ws-detail-title">
+                  {formatWorkspaceNameForUI(selectedRow.workspace.name)}
+                </h2>
+                <p className="px-ws-detail-desc">
+                  {selectedRow.workspace.description?.trim()
+                    ? selectedRow.workspace.description
+                    : 'Описание не задано.'}
+                </p>
+                <div className="px-ws-stats">
+                  <div className="px-ws-stat">
+                    {detailStats.loading || detailStats.boardCount == null ? (
+                      'Загрузка…'
+                    ) : (
+                      <>
+                        <strong>{detailStats.boardCount}</strong> {boardWord(detailStats.boardCount)}
+                      </>
+                    )}
+                  </div>
+                  <div className="px-ws-stat">
+                    {detailStats.loading || detailStats.memberCount == null ? (
+                      'Загрузка…'
+                    ) : (
+                      <>
+                        <strong>{detailStats.memberCount}</strong>{' '}
+                        {memberWord(detailStats.memberCount)}
+                      </>
+                    )}
+                  </div>
+                  <div className="px-ws-stat">
+                    Роль: <strong>{formatWorkspaceRole(selectedRow.role)}</strong>
+                  </div>
+                </div>
+                <div className="px-ws-detail-actions">
+                  <SpaLink
+                    className="px-btn px-btn--primary"
+                    to={`/workspaces/${selectedRow.workspace.id}/boards`}
+                  >
+                    Открыть доски →
+                  </SpaLink>
+                  <SpaLink
+                    className="px-btn px-btn--ghost"
+                    to={`/workspaces/${selectedRow.workspace.id}/members`}
+                  >
+                    Участники
+                  </SpaLink>
+                  {canManageWorkspace(selectedRow.role) ? (
+                    <>
+                      <button
+                        type="button"
+                        className="px-btn px-btn--ghost"
+                        onClick={() => openEdit(selectedRow)}
+                      >
+                        Изменить
+                      </button>
+                      {selectedRow.role === 'OWNER' ? (
+                        <button
+                          type="button"
+                          className="px-btn px-btn--ghost px-btn--danger"
+                          onClick={() => {
+                            setDeleteRow(selectedRow);
+                            setMsg(null);
+                          }}
+                        >
+                          Удалить
+                        </button>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {createOpen && (

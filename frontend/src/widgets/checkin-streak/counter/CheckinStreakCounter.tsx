@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { STREAK_LABEL } from '@entities/reward';
+import { checkinToastIconUrl } from '@shared/assets/uiAssets';
 
 type Props = {
   streak: number;
@@ -7,6 +8,12 @@ type Props = {
   animateFrom?: number | null;
   size?: 'profile' | 'toast';
   className?: string;
+  onClick?: () => void;
+};
+
+const STREAK_FLAME_SIZE: Record<'profile' | 'toast', number> = {
+  profile: 26,
+  toast: 22,
 };
 
 export function CheckinStreakCounter(props: Props) {
@@ -20,25 +27,49 @@ export function CheckinStreakCounter(props: Props) {
     'trello-checkin-streak',
     size === 'toast' ? 'trello-checkin-streak--toast' : 'trello-checkin-streak--profile',
     rolling ? 'trello-checkin-streak--rolling' : '',
+    props.onClick ? 'trello-checkin-streak--clickable' : '',
     props.className ?? '',
   ]
     .filter(Boolean)
     .join(' ');
 
-  return (
-    <div
-      className={rootClass}
-      role="img"
-      aria-label={`${STREAK_LABEL}: ${props.streak} ${dayLabel(props.streak)}`}
-      title={STREAK_LABEL}
-    >
-      <span className="trello-checkin-streak-flame" aria-hidden>
-        🔥
-      </span>
-      <span className="trello-checkin-streak-value-wrap" aria-hidden>
+  const ariaLabel = `${STREAK_LABEL}: ${props.streak} ${dayLabel(props.streak)}`;
+  const flameSize = STREAK_FLAME_SIZE[size];
+
+  const content: ReactNode = (
+    <>
+      <img
+        src={checkinToastIconUrl()}
+        alt=""
+        width={flameSize}
+        height={flameSize}
+        className="trello-checkin-streak-flame"
+        draggable={false}
+      />
+      <span className="trello-checkin-streak-value-wrap" aria-hidden={props.onClick ? true : undefined}>
         <span className="trello-checkin-streak-value">{props.streak}</span>
       </span>
       <span className="trello-checkin-streak-caption">{STREAK_LABEL}</span>
+    </>
+  );
+
+  if (props.onClick) {
+    return (
+      <button
+        type="button"
+        className={rootClass}
+        aria-label={`Информация о ${STREAK_LABEL.toLowerCase()}: ${props.streak} ${dayLabel(props.streak)}`}
+        title="Подробнее о серии"
+        onClick={props.onClick}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className={rootClass} role="img" aria-label={ariaLabel} title={STREAK_LABEL}>
+      {content}
     </div>
   );
 }

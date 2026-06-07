@@ -3,7 +3,6 @@ import { CheckinStreakCounter } from '@widgets/checkin-streak/counter/CheckinStr
 import { CheckinStreakInfoModal } from '@widgets/checkin-streak/info-modal/CheckinStreakInfoModal';
 import { StreakProfileNotice } from '@widgets/checkin-streak/profile-notice/StreakProfileNotice';
 import type { StreakProfileFeedback } from '@entities/character/lib/characterStreakSnapshot';
-import { STREAK_LABEL } from '@entities/reward';
 
 type Props = {
   streak: number;
@@ -36,19 +35,9 @@ export function CheckinStreakProfileRow(props: Props) {
             streak={props.streak}
             animateFrom={props.animateFrom}
             size="profile"
+            onClick={() => setManualInfoOpen(true)}
           />
         </div>
-        <button
-          type="button"
-          className="trello-streak-info-btn"
-          onClick={() => setManualInfoOpen(true)}
-          aria-label={`Информация о ${STREAK_LABEL.toLowerCase()}`}
-          title="Информация о серии"
-        >
-          <span className="trello-streak-info-btn-icon" aria-hidden>
-            i
-          </span>
-        </button>
       </div>
 
       <CheckinStreakInfoModal

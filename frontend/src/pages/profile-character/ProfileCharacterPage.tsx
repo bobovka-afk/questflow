@@ -21,7 +21,6 @@ import {
 } from '@entities/character/lib/characterStreakSnapshot';
 import { CharacterCreateForm } from '@features/character-create/ui/CharacterCreateForm';
 import { SpaLink } from '@shared/lib/navigation';
-import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
 import { ProfileCharacterQuestsPanel, type ProfileCharacterTabKey } from '@widgets/profile-character-quests/ProfileCharacterQuestsPanel';
 import { FriendsPanel } from '@widgets/social-friends/FriendsPanel';
 import { MessagesPanel } from '@widgets/social-messages/MessagesPanel';
@@ -29,7 +28,6 @@ import { RaidPanel } from '@widgets/party-raid/RaidPanel';
 import { useSocialInboxSummary } from '@entities/social';
 import { CharacterPortraitWithFrame } from '@widgets/character-portrait/CharacterPortraitWithFrame';
 import { CharacterStatsPanel } from '@widgets/character-stats/CharacterStatsPanel';
-import { GameDayHint } from '@widgets/game-day-hint/GameDayHint';
 
 type Props = {
   accessToken: string;
@@ -41,6 +39,33 @@ function roleFromPreset(preset: string): CharacterRole {
   return (CHARACTER_ROLES as readonly string[]).includes(base)
     ? (base as CharacterRole)
     : 'DRUID';
+}
+
+type PanelTabKey = ProfileCharacterTabKey | 'character' | 'friends' | 'messages' | 'raid';
+
+function buildPanelTabs(
+  activePanelTab: PanelTabKey,
+  inboxSummary: { incomingFriendRequests: number; unreadMessages: number },
+): { key: PanelTabKey; label: string; badge: number }[] {
+  return [
+    { key: 'character', label: 'Персонаж', badge: 0 },
+    { key: 'quests', label: 'Задания', badge: 0 },
+    {
+      key: 'friends',
+      label: 'Друзья',
+      badge: activePanelTab === 'friends' ? 0 : inboxSummary.incomingFriendRequests,
+    },
+    {
+      key: 'messages',
+      label: 'Сообщения',
+      badge: inboxSummary.unreadMessages,
+    },
+    { key: 'raid', label: 'Рейд', badge: 0 },
+    { key: 'inventory', label: 'Хранилище', badge: 0 },
+    { key: 'shop', label: 'Магазин', badge: 0 },
+    { key: 'achievements', label: 'Достижения', badge: 0 },
+    { key: 'rules', label: 'Правила', badge: 0 },
+  ];
 }
 
 export function ProfileCharacterPage(props: Props) {
@@ -64,9 +89,7 @@ export function ProfileCharacterPage(props: Props) {
   > | null>(null);
 
   const [loadKey, setLoadKey] = useState(0);
-  const [activePanelTab, setActivePanelTab] = useState<
-    ProfileCharacterTabKey | 'character' | 'friends' | 'messages' | 'raid'
-  >('character');
+  const [activePanelTab, setActivePanelTab] = useState<PanelTabKey>('character');
   const [tabOpenSignal, setTabOpenSignal] = useState(0);
   const [messagePeerUserId, setMessagePeerUserId] = useState<number | null>(null);
 
@@ -80,9 +103,12 @@ export function ProfileCharacterPage(props: Props) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const withUser = params.get('with');
+    const tab = params.get('tab');
     if (withUser && /^\d+$/.test(withUser)) {
       setActivePanelTab('messages');
       setMessagePeerUserId(Number(withUser));
+    } else if (tab === 'messages') {
+      setActivePanelTab('messages');
     }
     const partyRaid = params.get('partyRaid');
     if (partyRaid && /^\d+$/.test(partyRaid)) {
@@ -178,6 +204,90 @@ export function ProfileCharacterPage(props: Props) {
     return getCharacterXpTowardNext(character.level, character.currentXp);
   }, [character]);
 
+  const panelTabs = useMemo(
+    () => buildPanelTabs(activePanelTab, inboxSummary),
+    [activePanelTab, inboxSummary],
+  );
+
+  function selectPanelTab(nextTab: PanelTabKey) {
+    if (activePanelTab === nextTab) {
+      setTabOpenSignal((prev) => prev + 1);
+      return;
+    }
+    setActivePanelTab(nextTab);
+    setTabOpenSignal((prev) => prev + 1);
+    void refreshInbox();
+  }
+
+  function renderPanelContent() {
+    if (!character) return null;
+    if (activePanelTab === 'character') {
+      return <CharacterStatsPanel character={character} xpToward={xpToward} variant="detail" />;
+    }
+    if (activePanelTab === 'friends') {
+      return (
+        <FriendsPanel
+          accessToken={props.accessToken}
+          onInboxChange={refreshInbox}
+          onMessagePeer={(userId) => {
+            setMessagePeerUserId(userId);
+            setActivePanelTab('messages');
+            refreshInbox();
+          }}
+        />
+      );
+    }
+    if (activePanelTab === 'messages') {
+      return (
+        <MessagesPanel
+          accessToken={props.accessToken}
+          currentUserId={character.userId}
+          initialPeerUserId={messagePeerUserId}
+          visible={activePanelTab === 'messages'}
+          onInboxChange={refreshInbox}
+        />
+      );
+    }
+    if (activePanelTab === 'raid') {
+      return (
+        <RaidPanel
+          accessToken={props.accessToken}
+          currentUserId={character.userId}
+          manaCurrent={character.manaCurrent ?? 0}
+          onRefreshCharacter={async () => {
+            const c = await api<CharacterDto>('/character/me', {
+              method: 'GET',
+              accessToken: props.accessToken,
+            });
+            setCharacter(c);
+            props.onCharacterUpdated?.(c);
+          }}
+        />
+      );
+    }
+    return (
+      <ProfileCharacterQuestsPanel
+        accessToken={props.accessToken}
+        characterGender={character.gender}
+        characterPortrait={{
+          avatarPreset: character.avatarPreset,
+          frameKey: character.equippedPortraitFrameKey,
+          profileBackgroundKey: character.equippedProfileBackgroundKey,
+        }}
+        activeTab={activePanelTab as ProfileCharacterTabKey}
+        tabOpenSignal={tabOpenSignal}
+        onCharacterRefresh={async () => {
+          const c = await api<CharacterDto>('/character/me', {
+            method: 'GET',
+            accessToken: props.accessToken,
+          });
+          setCharacter(c);
+          props.onCharacterUpdated?.(c);
+        }}
+      />
+    );
+  }
+
   function openEdit() {
     if (!character) return;
     setName(character.name);
@@ -252,16 +362,15 @@ export function ProfileCharacterPage(props: Props) {
                 <span className="trello-logo" aria-hidden />
                 <span className="trello-top-left-brand-text">Questflow</span>
               </SpaLink>
+              <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/workspaces">
+                Назад
+              </SpaLink>
             </div>
             <h1 className="trello-topbar-stripe-center">Создайте своего персонажа</h1>
             <div className="trello-topbar-actions">
-              <SpaLink className="trello-btn trello-btn-ghost" to="/workspaces">
-                Назад
-              </SpaLink>
               <SpaLink className="trello-btn trello-btn-ghost" to="/profile/me">
                 Профиль
               </SpaLink>
-              <ProfileToolbarAnchor />
             </div>
           </header>
           <CharacterCreateForm
@@ -284,14 +393,12 @@ export function ProfileCharacterPage(props: Props) {
                 <span className="trello-logo" aria-hidden />
                 <span className="trello-top-left-brand-text">Questflow</span>
               </SpaLink>
-            </div>
-            <h1 className="trello-topbar-stripe-center">Персонаж</h1>
-            <div className="trello-topbar-actions">
-              <SpaLink className="trello-btn trello-btn-ghost" to="/profile/me">
+              <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/profile/me">
                 Профиль
               </SpaLink>
-              <ProfileToolbarAnchor />
             </div>
+            <h1 className="trello-topbar-stripe-center">Персонаж</h1>
+            <div className="trello-topbar-actions" />
           </header>
           <div className="trello-banner trello-banner-error">{loadError}</div>
           <div className="trello-panel" style={{ maxWidth: 480, margin: '16px auto 0' }}>
@@ -325,87 +432,27 @@ export function ProfileCharacterPage(props: Props) {
               <span className="trello-logo" aria-hidden />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
+            <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/workspaces">
+              Назад
+            </SpaLink>
           </div>
-          <h1 className="trello-topbar-stripe-center trello-topbar-stripe-center--ellipsis" title={character.name}>
+          <h1
+            className="trello-topbar-stripe-center trello-topbar-stripe-center--ellipsis"
+            title={character.name}
+          >
             {character.name}
           </h1>
           <div className="trello-topbar-actions">
             <SpaLink className="trello-btn trello-btn-ghost" to="/profile/me">
               Аккаунт
             </SpaLink>
-            <SpaLink className="trello-btn trello-btn-ghost" to="/workspaces">
-              Назад
-            </SpaLink>
-            <ProfileToolbarAnchor />
           </div>
         </header>
 
         {msg && <div className="trello-banner trello-banner-error">{msg}</div>}
 
-        <section className="trello-character-profile trello-character-profile--rpg">
-          <div className="trello-character-rpg-shell">
-            <div className="trello-character-rpg-tabs" role="tablist" aria-label="Разделы персонажа">
-              {[
-                { key: 'character', label: 'Персонаж', badge: 0 },
-                { key: 'quests', label: 'Задания', badge: 0 },
-                {
-                  key: 'friends',
-                  label: 'Друзья',
-                  badge:
-                    activePanelTab === 'friends'
-                      ? 0
-                      : inboxSummary.incomingFriendRequests,
-                },
-                {
-                  key: 'messages',
-                  label: 'Сообщения',
-                  badge: inboxSummary.unreadMessages,
-                },
-                { key: 'raid', label: 'Рейд', badge: 0 },
-                { key: 'inventory', label: 'Хранилище', badge: 0 },
-                { key: 'shop', label: 'Магазин', badge: 0 },
-                { key: 'achievements', label: 'Достижения', badge: 0 },
-                { key: 'rules', label: 'Правила', badge: 0 },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={activePanelTab === tab.key}
-                  className={
-                    activePanelTab === tab.key
-                      ? 'trello-character-rpg-tab trello-character-rpg-tab--active'
-                      : 'trello-character-rpg-tab'
-                  }
-                  onClick={() => {
-                    const nextTab = tab.key as
-                      | ProfileCharacterTabKey
-                      | 'character'
-                      | 'friends'
-                      | 'messages'
-                      | 'raid';
-                    if (activePanelTab === nextTab) {
-                      setTabOpenSignal((prev) => prev + 1);
-                      return;
-                    }
-                    setActivePanelTab(nextTab);
-                    setTabOpenSignal((prev) => prev + 1);
-                    void refreshInbox();
-                  }}
-                >
-                  <span>{tab.label}</span>
-                  {tab.badge > 0 && (
-                    <span
-                      className="trello-character-rpg-tab-badge"
-                      aria-label={`${tab.badge} новых`}
-                    >
-                      {tab.badge > 99 ? '99+' : tab.badge}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-
+        <section className="trello-character-profile trello-character-profile--rpg trello-character-profile--rpg-snes">
+          <div className="trello-character-rpg-shell trello-character-rpg-shell--snes">
             {partyInviteToast ? (
               <p className="trello-character-party-invite-toast" role="status">
                 {partyInviteToast}
@@ -419,8 +466,8 @@ export function ProfileCharacterPage(props: Props) {
               </p>
             ) : null}
 
-            <div className="trello-character-profile-hero trello-character-profile-hero--rpg-grid">
-              <div className="trello-character-profile-portrait-column">
+            <div className="trello-character-rpg-layout-snes">
+              <aside className="trello-character-rpg-hero-col" aria-label="Персонаж">
                 <div className="trello-character-profile-portrait-wrap trello-character-profile-portrait-wrap--square">
                   <CharacterPortraitWithFrame
                     avatarPreset={character.avatarPreset}
@@ -428,7 +475,11 @@ export function ProfileCharacterPage(props: Props) {
                     profileBackgroundKey={character.equippedProfileBackgroundKey}
                   />
                 </div>
-                <button type="button" className="trello-btn trello-btn-primary trello-character-edit-trigger" onClick={openEdit}>
+                <button
+                  type="button"
+                  className="trello-btn trello-btn-primary trello-character-edit-trigger"
+                  onClick={openEdit}
+                >
                   Редактировать
                 </button>
                 <CheckinStreakProfileRow
@@ -438,72 +489,59 @@ export function ProfileCharacterPage(props: Props) {
                   lostNotice={streakLostNotice}
                   onDismissLost={() => setStreakLostNotice(null)}
                 />
-              </div>
-              <div className="trello-character-profile-info-col trello-character-profile-info-col--rpg">
-              <div className="trello-character-rpg-inline-panel">
-                {activePanelTab === 'character' ? (
-                  <>
-                    <CharacterStatsPanel character={character} xpToward={xpToward} />
-                    <GameDayHint />
-                  </>
-                ) : activePanelTab === 'friends' ? (
-                  <FriendsPanel
-                    accessToken={props.accessToken}
-                    onInboxChange={refreshInbox}
-                    onMessagePeer={(userId) => {
-                      setMessagePeerUserId(userId);
-                      setActivePanelTab('messages');
-                      refreshInbox();
-                    }}
-                  />
-                ) : activePanelTab === 'messages' ? (
-                  <MessagesPanel
-                    accessToken={props.accessToken}
-                    currentUserId={character.userId}
-                    initialPeerUserId={messagePeerUserId}
-                    visible={activePanelTab === 'messages'}
-                    onInboxChange={refreshInbox}
-                  />
-                ) : activePanelTab === 'raid' ? (
-                  <RaidPanel
-                    accessToken={props.accessToken}
-                    currentUserId={character.userId}
-                    manaCurrent={character.manaCurrent ?? 0}
-                    onRefreshCharacter={async () => {
-                      const c = await api<CharacterDto>('/character/me', {
-                        method: 'GET',
-                        accessToken: props.accessToken,
-                      });
-                      setCharacter(c);
-                      props.onCharacterUpdated?.(c);
-                    }}
-                  />
-                ) : (
-                  <ProfileCharacterQuestsPanel
-                    accessToken={props.accessToken}
-                    characterGender={character.gender}
-                    characterPortrait={{
-                      avatarPreset: character.avatarPreset,
-                      frameKey: character.equippedPortraitFrameKey,
-                      profileBackgroundKey: character.equippedProfileBackgroundKey,
-                    }}
-                    activeTab={activePanelTab as ProfileCharacterTabKey}
-                    tabOpenSignal={tabOpenSignal}
-                    onCharacterRefresh={async () => {
-                      const c = await api<CharacterDto>('/character/me', {
-                        method: 'GET',
-                        accessToken: props.accessToken,
-                      });
-                      setCharacter(c);
-                      props.onCharacterUpdated?.(c);
-                    }}
-                  />
-                )}
+                <CharacterStatsPanel
+                  character={character}
+                  xpToward={xpToward}
+                  variant="sidebar"
+                />
+              </aside>
+
+              <div className="trello-character-rpg-workspace">
+                <nav
+                  className="trello-character-rpg-tabs trello-character-rpg-tabs--vertical"
+                  role="tablist"
+                  aria-label="Разделы персонажа"
+                  aria-orientation="vertical"
+                >
+                  {panelTabs.map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      role="tab"
+                      id={`character-tab-${tab.key}`}
+                      aria-selected={activePanelTab === tab.key}
+                      aria-controls={`character-tabpanel-${tab.key}`}
+                      className={
+                        activePanelTab === tab.key
+                          ? 'trello-character-rpg-tab trello-character-rpg-tab--active'
+                          : 'trello-character-rpg-tab'
+                      }
+                      onClick={() => selectPanelTab(tab.key)}
+                    >
+                      <span>{tab.label}</span>
+                      {tab.badge > 0 && (
+                        <span
+                          className="trello-character-rpg-tab-badge"
+                          aria-label={`${tab.badge} новых`}
+                        >
+                          {tab.badge > 99 ? '99+' : tab.badge}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </nav>
+
+                <div
+                  className="trello-character-rpg-inline-panel"
+                  role="tabpanel"
+                  id={`character-tabpanel-${activePanelTab}`}
+                  aria-labelledby={`character-tab-${activePanelTab}`}
+                >
+                  {renderPanelContent()}
+                </div>
               </div>
             </div>
           </div>
-          </div>
-
         </section>
       </div>
 

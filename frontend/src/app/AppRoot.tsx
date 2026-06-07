@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useEffect, useLayoutEffect, useState, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
 import { api, API_URL, formatApiError, isRateLimitMessage, setSessionExpiredHandler, type ApiError } from '@shared/api';
 import { routeNeedsCharacterGate, type CharacterDto } from '@entities/character';
@@ -15,6 +15,7 @@ import {
   BoardPage,
   CharacterSetupPage,
   InviteAcceptPage,
+  NotificationsPage,
   parseSettingsTabFromRoute,
   ProfileCharacterPage,
   ProfileMePage,
@@ -27,11 +28,11 @@ import {
   WorkspacesPage,
 } from '@pages/index';
 import { GamificationIntroModal, ProfileInvitesSection } from '@widgets/index';
-import { navigate, openSpaInNewTab, SpaLink } from '@shared/lib';
+import { AppShell, routeUsesAppShell } from '@widgets/app-shell';
+import { useAppTheme } from './theme/useAppTheme';
+import { navigate, SpaLink } from '@shared/lib';
 import { canonicalProfilePath } from '@shared/lib/normalizeLegacyProfilePath';
-import { ProfileToolbarAnchor, ProfileToolbarOutletProvider } from '@shared/ui/profile-toolbar';
-import { NotificationBell } from '@widgets/notifications/NotificationBell';
-import { useProfileToolbarOutlet } from '@shared/ui/profile-toolbar';
+import { ProfileToolbarOutletProvider } from '@shared/ui/profile-toolbar';
 import '../index.css';
 
 type UserSafe = {
@@ -59,21 +60,6 @@ function migrateLegacyAccessTokenKey() {
   }
 }
 migrateLegacyAccessTokenKey();
-
-const THEME_KEY = 'questflow_theme';
-const THEME_KEY_LEGACY = 'mini_trello_theme';
-
-function migrateLegacyThemeKey() {
-  try {
-    if (!localStorage.getItem(THEME_KEY) && localStorage.getItem(THEME_KEY_LEGACY)) {
-      localStorage.setItem(THEME_KEY, localStorage.getItem(THEME_KEY_LEGACY)!);
-      localStorage.removeItem(THEME_KEY_LEGACY);
-    }
-  } catch {
-    /* ignore */
-  }
-}
-migrateLegacyThemeKey();
 
 function useRoute() {
   const [path, setPath] = useState(() => window.location.pathname);
@@ -138,13 +124,12 @@ function EmailVerificationRequestPage() {
               <span className="trello-logo" aria-hidden />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
-          </div>
-          <h1 className="trello-topbar-stripe-center">Подтверждение email</h1>
-          <div className="trello-topbar-actions">
-            <SpaLink className="trello-btn trello-btn-ghost" to="/">
+            <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/">
               На главную
             </SpaLink>
           </div>
+          <h1 className="trello-topbar-stripe-center">Подтверждение email</h1>
+          <div className="trello-topbar-actions" />
         </header>
 
         <section className="trello-panel">
@@ -210,13 +195,12 @@ function EmailVerifiedStatusPage() {
               <span className="trello-logo" aria-hidden />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
-          </div>
-          <h1 className="trello-topbar-stripe-center">Подтверждение email</h1>
-          <div className="trello-topbar-actions">
-            <SpaLink className="trello-btn trello-btn-ghost" to="/">
+            <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/">
               На главную
             </SpaLink>
           </div>
+          <h1 className="trello-topbar-stripe-center">Подтверждение email</h1>
+          <div className="trello-topbar-actions" />
         </header>
 
         <section className="trello-panel">
@@ -269,13 +253,12 @@ function PasswordResetRequestPage() {
               <span className="trello-logo" aria-hidden />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
-          </div>
-          <h1 className="trello-topbar-stripe-center">Сброс пароля</h1>
-          <div className="trello-topbar-actions">
-            <SpaLink className="trello-btn trello-btn-ghost" to="/">
+            <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/">
               На главную
             </SpaLink>
           </div>
+          <h1 className="trello-topbar-stripe-center">Сброс пароля</h1>
+          <div className="trello-topbar-actions" />
         </header>
 
         <section className="trello-panel">
@@ -360,13 +343,12 @@ function PasswordResetConfirmPage() {
               <span className="trello-logo" aria-hidden />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
-          </div>
-          <h1 className="trello-topbar-stripe-center">Сброс пароля</h1>
-          <div className="trello-topbar-actions">
-            <SpaLink className="trello-btn trello-btn-ghost" to="/">
+            <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/">
               На главную
             </SpaLink>
           </div>
+          <h1 className="trello-topbar-stripe-center">Сброс пароля</h1>
+          <div className="trello-topbar-actions" />
         </header>
 
         <section className="trello-panel">
@@ -422,16 +404,6 @@ function PasswordResetConfirmPage() {
       </div>
     </div>
   );
-}
-
-function avatarSrcForToolbar(p: string | null | undefined): string {
-  if (!p) return '';
-  const normalized = p.replace(/\\/g, '/');
-  if (normalized.startsWith('data:')) return normalized;
-  if (normalized.startsWith('http://') || normalized.startsWith('https://')) return normalized;
-  if (normalized.startsWith('//')) return `https:${normalized}`;
-  if (normalized.startsWith('/')) return `${API_URL}${normalized}`;
-  return `${API_URL}/${normalized}`;
 }
 
 type AuthedOptions = { gamificationIntro?: boolean };
@@ -512,11 +484,6 @@ function Home(props: { onAuthed: (token: string, options?: AuthedOptions) => voi
           <h1 className="trello-home-title trello-home-title-center">
             {mode === 'login' ? 'Вход' : 'Создать аккаунт'}
           </h1>
-          <p className="trello-home-sub trello-home-sub-center">
-            {mode === 'login'
-              ? 'Войдите, чтобы открыть доски и рабочие пространства'
-              : 'Зарегистрируйтесь и приглашайте команду на доски'}
-          </p>
 
           {msg && (
             <div
@@ -605,37 +572,26 @@ function Home(props: { onAuthed: (token: string, options?: AuthedOptions) => voi
   );
 }
 
-function MyInvitesPage(props: {
-  accessToken: string | null;
-  onInvitesCountChange?: (count: number) => void;
-}) {
+function MyInvitesPage(props: { accessToken: string | null }) {
   return (
-    <div className="trello-app-shell">
-      <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
-          <div className="trello-topbar-stripe-left">
-            <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-              <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">Questflow</span>
-            </SpaLink>
-          </div>
-          <h1 className="trello-topbar-stripe-center">Приглашения</h1>
-          <div className="trello-topbar-actions">
-            <SpaLink className="trello-btn trello-btn-ghost" to="/workspaces">
-              Назад
-            </SpaLink>
-            {props.accessToken ? <ProfileToolbarAnchor /> : null}
-          </div>
-        </header>
-        <ProfileInvitesSection accessToken={props.accessToken} onRowsCountChange={props.onInvitesCountChange} />
-      </div>
+    <div className="px-page">
+      <header className="px-topbar">
+        <div className="px-topbar-left">
+          <SpaLink className="px-btn px-btn--ghost" to="/workspaces">
+            Назад
+          </SpaLink>
+          <h1 className="px-topbar-title">Приглашения</h1>
+        </div>
+        <div className="px-topbar-actions" />
+      </header>
+      <ProfileInvitesSection accessToken={props.accessToken} />
     </div>
   );
 }
 
 function AppContent() {
-  const { outletEl } = useProfileToolbarOutlet();
   const route = useRoute();
+  const { toggleTheme, isDark } = useAppTheme();
   const [accessToken, setAccessToken] = useState<string | null>(() => {
     const stored = getAccessTokenFromStorage();
     if (stored) return stored;
@@ -643,23 +599,7 @@ function AppContent() {
     return url.searchParams.get('accessToken');
   });
 
-  type Theme = 'light' | 'dark';
-  const getInitialTheme = (): Theme => {
-    const fromStorage = localStorage.getItem(THEME_KEY);
-    if (fromStorage === 'light' || fromStorage === 'dark') return fromStorage;
-    try {
-      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    } catch {
-      return 'light';
-    }
-  };
-
-  const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
   const [toolbarUser, setToolbarUser] = useState<UserSafe | null>(null);
-  const [toolbarAvatarBroken, setToolbarAvatarBroken] = useState(false);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
-  const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const [characterLoadState, setCharacterLoadState] = useState<
     'idle' | 'loading' | 'missing' | 'ok'
   >('idle');
@@ -772,41 +712,12 @@ function AppContent() {
   }, [accessToken]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setToolbarAvatarBroken(false);
-  }, [toolbarUser?.avatarPath]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setProfileMenuOpen(false);
-  }, [route]);
-
-  useEffect(() => {
-    if (!profileMenuOpen) return;
-    function onDocMouseDown(e: MouseEvent) {
-      const el = profileMenuRef.current;
-      if (el && !el.contains(e.target as Node)) {
-        setProfileMenuOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', onDocMouseDown);
-    return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [profileMenuOpen]);
-
-  useEffect(() => {
-    setSessionExpiredHandler(() => {
-      setToken(null);
-      navigate('/');
-    });
-    return () => setSessionExpiredHandler(null);
-  }, []);
-
-  useEffect(() => {
     const protectedPath =
       route === '/workspaces' ||
       route.startsWith('/workspaces/') ||
       route.startsWith('/profile') ||
       route.startsWith('/invites') ||
+      route.startsWith('/notifications') ||
       route.startsWith('/settings') ||
       route.startsWith('/character/setup') ||
       route.startsWith('/dashboard');
@@ -830,42 +741,18 @@ function AppContent() {
   }, [route, accessToken]);
 
   useEffect(() => {
+    setSessionExpiredHandler(() => {
+      setToken(null);
+      navigate('/');
+    });
+    return () => setSessionExpiredHandler(null);
+  }, []);
+
+  useEffect(() => {
     if (route === '/profile') {
       navigate('/profile/me');
     }
   }, [route]);
-
-  useEffect(() => {
-    if (!accessToken) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setPendingInvitesCount(0);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const rows = await api<Array<{ id: number }>>('/workspace-invite/my?limit=100&offset=0', {
-          method: 'GET',
-          accessToken,
-        });
-        if (!cancelled) setPendingInvitesCount(Array.isArray(rows) ? rows.length : 0);
-      } catch {
-        if (!cancelled) setPendingInvitesCount(0);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [accessToken, route]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(THEME_KEY, theme);
-    } catch {
-      // ignore
-    }
-    document.documentElement.classList.toggle('theme-dark', theme === 'dark');
-  }, [theme]);
 
   useEffect(() => {
     const canonical = canonicalProfilePath(route);
@@ -896,17 +783,6 @@ function AppContent() {
     };
   }, [route]);
 
-  const toolbarInitials = useMemo(() => {
-    const n = toolbarUser?.name?.trim();
-    if (!n) return '?';
-    const parts = n.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) return `${parts[0]![0]!}${parts[1]![0]!}`.toUpperCase();
-    return n.slice(0, 2).toUpperCase();
-  }, [toolbarUser?.name]);
-
-  const toolbarAvatarSrc =
-    toolbarUser?.avatarPath && !toolbarAvatarBroken ? avatarSrcForToolbar(toolbarUser.avatarPath) : '';
-
   async function handleLogout() {
     try {
       await api<boolean>('/auth/logout', { method: 'POST' });
@@ -914,7 +790,6 @@ function AppContent() {
       // ignore
     }
     setToken(null);
-    setProfileMenuOpen(false);
     navigate('/');
   }
 
@@ -936,11 +811,18 @@ function AppContent() {
   if (route === '/invite' || route.startsWith('/invite/')) {
     page = <InviteAcceptPage accessToken={accessToken} />;
   } else if (route.startsWith('/invites')) {
-    page = <MyInvitesPage accessToken={accessToken} onInvitesCountChange={setPendingInvitesCount} />;
+    page = <MyInvitesPage accessToken={accessToken} />;
+  } else if (route === '/notifications') {
+    page =
+      !accessToken ? (
+        <Home onAuthed={handleAuthed} hasSession={false} />
+      ) : (
+        <NotificationsPage accessToken={accessToken} />
+      );
   } else if (characterGateLoading) {
     page = (
-      <div className="trello-app-shell">
-        <div className="trello-boards-main trello-character-gate-loading">Загрузка профиля персонажа…</div>
+      <div className="px-page">
+        <div className="px-content trello-character-gate-loading">Загрузка профиля персонажа…</div>
       </div>
     );
   } else if (route.startsWith('/character/setup')) {
@@ -1029,20 +911,28 @@ function AppContent() {
     page = <Home onAuthed={handleAuthed} hasSession={!!accessToken} />;
   }
 
-  const toolbarLayoutClass =
-    accessToken && boardDetailMatch
-      ? 'trello-fixed-toolbar--board'
-      : accessToken
-        ? 'trello-fixed-toolbar--shell'
-        : 'trello-fixed-toolbar--guest';
+  const showShell = routeUsesAppShell(route, accessToken);
+  const wrappedPage = showShell && accessToken ? (
+    <AppShell
+      accessToken={accessToken}
+      route={route}
+      themeIsDark={isDark}
+      onThemeToggle={toggleTheme}
+      onLogout={handleLogout}
+    >
+      {page}
+    </AppShell>
+  ) : (
+    page
+  );
 
-  const themeSwitch = (
+  const guestThemeSwitch = (
     <label className="theme-switch" aria-label="Тёмная тема">
       <input
         className="theme-switch-input"
         type="checkbox"
-        checked={theme === 'dark'}
-        onChange={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+        checked={isDark}
+        onChange={toggleTheme}
       />
       <span className="theme-switch-track" aria-hidden>
         <span className="theme-switch-thumb" />
@@ -1050,143 +940,21 @@ function AppContent() {
     </label>
   );
 
-  const toolbarAnchored = !!(accessToken && outletEl);
-  const toolbarPortalTarget = toolbarAnchored && outletEl ? outletEl : document.body;
-
-  const toolbarNode = (
-    <div
-      className={`trello-fixed-toolbar ${toolbarLayoutClass}${toolbarAnchored ? ' trello-fixed-toolbar--in-header' : ''}`}
-      aria-label="Параметры приложения"
-    >
-      {!accessToken && (
-        <div className="theme-toggle trello-theme-toggle-inline" aria-label="Theme switch">
-          <span className="theme-toggle-icon" aria-hidden>
-            ◐
-          </span>
-          {themeSwitch}
-        </div>
-      )}
-      {accessToken && (
-        <>
-          <NotificationBell accessToken={accessToken} />
-          <div className="trello-profile-dropdown" ref={profileMenuRef}>
-          <div className="trello-toolbar-avatar-wrap">
-            <button
-              type="button"
-              className="trello-toolbar-avatar-btn"
-              title="Меню"
-              aria-expanded={profileMenuOpen}
-              aria-haspopup="menu"
-              onClick={(e) => {
-                if (e.metaKey || e.ctrlKey) {
-                  e.preventDefault();
-                  openSpaInNewTab('/profile/me');
-                  return;
-                }
-                setProfileMenuOpen((o) => !o);
-              }}
-              onAuxClick={(e) => {
-                if (e.button === 1) {
-                  e.preventDefault();
-                  openSpaInNewTab('/profile/me');
-                }
-              }}
-            >
-              {pendingInvitesCount > 0 && <span className="trello-toolbar-notification-dot" aria-hidden />}
-              {toolbarAvatarSrc ? (
-                <img
-                  src={toolbarAvatarSrc}
-                  alt=""
-                  className="trello-toolbar-avatar-img"
-                  loading="eager"
-                  referrerPolicy="no-referrer"
-                  crossOrigin="anonymous"
-                  onError={() => setToolbarAvatarBroken(true)}
-                />
-              ) : (
-                <span className="trello-toolbar-avatar-fallback">{toolbarInitials}</span>
-              )}
-            </button>
-          </div>
-          {profileMenuOpen && (
-            <div className="trello-profile-menu" role="menu">
-              <SpaLink
-                className="trello-profile-menu-item"
-                role="menuitem"
-                to="/profile/me"
-                onClick={() => setProfileMenuOpen(false)}
-              >
-                Профиль
-              </SpaLink>
-              <SpaLink
-                className="trello-profile-menu-item"
-                role="menuitem"
-                to="/profile/character"
-                onClick={() => setProfileMenuOpen(false)}
-              >
-                Персонаж
-              </SpaLink>
-              <SpaLink
-                className="trello-profile-menu-item trello-profile-menu-item-with-badge"
-                role="menuitem"
-                to="/invites"
-                onClick={() => setProfileMenuOpen(false)}
-              >
-                <span>Приглашения</span>
-                {pendingInvitesCount > 0 && (
-                  <span className="trello-profile-menu-item-badge" aria-label={`Активных приглашений: ${pendingInvitesCount}`}>
-                    {pendingInvitesCount}
-                  </span>
-                )}
-              </SpaLink>
-              <SpaLink
-                className="trello-profile-menu-item"
-                role="menuitem"
-                to="/settings"
-                onClick={() => setProfileMenuOpen(false)}
-              >
-                Настройки
-              </SpaLink>
-              <div className="trello-profile-menu-theme" role="presentation">
-                <span className="trello-profile-menu-theme-label">
-                  <svg className="trello-moon-icon" viewBox="0 0 24 24" aria-hidden>
-                    <path
-                      fill="currentColor"
-                      d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.54 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.86.89-3.51 2.26-4.4-.44-.06-.9-.1-1.36-.1z"
-                    />
-                  </svg>
-                  Темное оформление
-                </span>
-                {themeSwitch}
-              </div>
-              <SpaLink
-                className="trello-profile-menu-item"
-                role="menuitem"
-                to="/workspaces"
-                onClick={() => setProfileMenuOpen(false)}
-              >
-                Мои рабочие пространства
-              </SpaLink>
-              <button
-                type="button"
-                className="trello-profile-menu-item trello-profile-menu-logout"
-                role="menuitem"
-                onClick={() => void handleLogout()}
-              >
-                Выйти
-              </button>
-            </div>
-          )}
-        </div>
-        </>
-      )}
-    </div>
-  );
-
   return (
     <>
-      {createPortal(toolbarNode, toolbarPortalTarget)}
-      {page}
+      {!accessToken &&
+        createPortal(
+          <div className="trello-fixed-toolbar trello-fixed-toolbar--guest" aria-label="Параметры приложения">
+            <div className="theme-toggle trello-theme-toggle-inline" aria-label="Theme switch">
+              <span className="theme-toggle-icon" aria-hidden>
+                ◐
+              </span>
+              {guestThemeSwitch}
+            </div>
+          </div>,
+          document.body,
+        )}
+      {wrappedPage}
       {accessToken &&
         createPortal(
           <GamificationIntroModal

@@ -17,7 +17,7 @@ import {
   type BossCatalogItem,
   type PartyRaidView,
 } from '@entities/party';
-import { BOSS_ICON_SIZE, BOSS_ICON_SIZE_PICK, BOSS_ICON_SIZE_SM, bossIconUrl } from '@entities/party/lib/bossAssets';
+import { BOSS_ICON_SIZE_PICK, BOSS_ICON_SIZE_SM, bossIconUrl } from '@entities/party/lib/bossAssets';
 
 type Props = {
   accessToken: string;

@@ -165,6 +165,8 @@ export type CardDetailModalTrelloProps = {
   onSave: () => void;
   onDelete: () => void;
   onCoverChange: () => void;
+  onToggleComplete: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  completionBusy?: boolean;
   title: string;
   onTitleChange: (v: string) => void;
   titleEditing: boolean;
@@ -379,23 +381,26 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
     );
   } else if (panel === 'members') {
     panelContent = (
-      <div className="trello-card-detail-popover">
-        <select
-          className="trello-input trello-card-assignee-select"
-          value={props.assigneeId == null ? '' : String(props.assigneeId)}
-          onChange={(e) => {
-            const v = e.target.value;
-            props.onAssigneeChange(v === '' ? null : Number(v));
-          }}
-          disabled={props.busy}
-        >
-          <option value="">Не назначен</option>
-          {props.members.map((m) => (
-            <option key={m.user.id} value={m.user.id}>
-              {m.user.name}
-            </option>
-          ))}
-        </select>
+      <div className="trello-card-detail-popover trello-card-detail-popover--members">
+        <label className="trello-field">
+          <span className="trello-label">Исполнитель</span>
+          <select
+            className="trello-input trello-card-assignee-select"
+            value={props.assigneeId == null ? '' : String(props.assigneeId)}
+            onChange={(e) => {
+              const v = e.target.value;
+              props.onAssigneeChange(v === '' ? null : Number(v));
+            }}
+            disabled={props.busy}
+          >
+            <option value="">Не назначен</option>
+            {props.members.map((m) => (
+              <option key={m.user.id} value={m.user.id}>
+                {m.user.name}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
     );
   }
@@ -423,63 +428,6 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
           </div>
         ) : null}
 
-        <header className="trello-card-detail-header">
-          <button type="button" className="trello-card-detail-list-btn" disabled>
-            <span>{props.listName}</span>
-            <span className="trello-card-detail-chevron" aria-hidden />
-          </button>
-          <div className="trello-card-detail-header-actions">
-            <div className="trello-card-detail-menu-wrap" ref={menuRef}>
-              <button
-                type="button"
-                className="trello-card-detail-icon-btn"
-                aria-label="Действия"
-                aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((v) => !v)}
-              >
-                <span className="trello-card-detail-ellipsis" aria-hidden>
-                  •••
-                </span>
-              </button>
-              {menuOpen ? (
-                <div className="trello-card-detail-menu" role="menu">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={props.title.trim().length < 3 || props.busy}
-                    onClick={() => {
-                      setMenuOpen(false);
-                      props.onSave();
-                    }}
-                  >
-                    Сохранить
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="trello-card-detail-menu-danger"
-                    disabled={props.busy}
-                    onClick={() => {
-                      setMenuOpen(false);
-                      props.onDelete();
-                    }}
-                  >
-                    Удалить карточку
-                  </button>
-                </div>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              className="trello-card-detail-icon-btn"
-              aria-label="Закрыть"
-              onClick={() => !props.busy && props.onClose()}
-            >
-              ×
-            </button>
-          </div>
-        </header>
-
         <div className="trello-card-detail-layout">
           <div className="trello-card-detail-layout-main">
             <div className="trello-card-detail-title-row">
@@ -487,12 +435,24 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                 type="button"
                 className={
                   props.card.isCompleted
-                    ? 'trello-card-detail-check trello-card-detail-check--done'
-                    : 'trello-card-detail-check'
+                    ? 'trello-card-complete-btn trello-card-complete-btn--done trello-card-detail-complete-btn'
+                    : 'trello-card-complete-btn trello-card-detail-complete-btn'
                 }
-                aria-label="Выполнено"
-                disabled
-              />
+                aria-label={
+                  props.card.isCompleted
+                    ? 'Отметить как невыполненную'
+                    : 'Отметить как выполненную'
+                }
+                aria-pressed={Boolean(props.card.isCompleted)}
+                disabled={props.busy || props.completionBusy}
+                onClick={props.onToggleComplete}
+              >
+                {props.card.isCompleted ? (
+                  <span className="trello-card-complete-check" aria-hidden>
+                    ✓
+                  </span>
+                ) : null}
+              </button>
               <div className="trello-card-detail-title-block">
                 {props.titleEditing ? (
                   <div className="trello-card-detail-title-edit">
@@ -533,18 +493,71 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                     </div>
                   </div>
                 ) : (
-                  <h2
-                    className="trello-card-detail-title"
-                    onClick={() => !props.busy && props.onTitleEditStart()}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') props.onTitleEditStart();
-                    }}
-                    role="button"
-                    tabIndex={0}
+                  <button
+                    type="button"
+                    className={
+                      props.card.isCompleted
+                        ? 'trello-card-detail-title-hit trello-card-detail-title-hit--done'
+                        : 'trello-card-detail-title-hit'
+                    }
+                    disabled={props.busy}
+                    onClick={() => props.onTitleEditStart()}
                   >
-                    {props.title.trim() || props.card.title}
-                  </h2>
+                    <span className="trello-card-detail-title">
+                      {props.title.trim() || props.card.title}
+                    </span>
+                  </button>
                 )}
+              </div>
+              <div className="trello-card-detail-header-actions">
+                <div className="trello-card-detail-menu-wrap" ref={menuRef}>
+                  <button
+                    type="button"
+                    className="trello-card-detail-icon-btn"
+                    aria-label="Действия"
+                    aria-expanded={menuOpen}
+                    onClick={() => setMenuOpen((v) => !v)}
+                  >
+                    <span className="trello-card-detail-ellipsis" aria-hidden>
+                      •••
+                    </span>
+                  </button>
+                  {menuOpen ? (
+                    <div className="trello-card-detail-menu" role="menu">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={props.title.trim().length < 3 || props.busy}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          props.onSave();
+                        }}
+                      >
+                        Сохранить
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="trello-card-detail-menu-danger"
+                        disabled={props.busy}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          props.onDelete();
+                        }}
+                      >
+                        Удалить карточку
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className="trello-card-detail-icon-btn trello-card-detail-close-btn"
+                  aria-label="Закрыть"
+                  onClick={() => !props.busy && props.onClose()}
+                >
+                  ×
+                </button>
               </div>
             </div>
 
@@ -576,15 +589,6 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
               </p>
             ) : null}
             <div className="trello-card-detail-add-row">
-              <button
-                type="button"
-                className="trello-card-detail-add-btn"
-                onClick={() => {
-                  if (props.wsLabels.length > 0) togglePanel('labels');
-                }}
-              >
-                + Добавить
-              </button>
               {props.wsLabels.length > 0 ? (
                 <button
                   type="button"

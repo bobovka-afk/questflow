@@ -1,7 +1,6 @@
 import { CharacterCreateForm } from '@features/character-create/ui/CharacterCreateForm';
 import { type CharacterDto } from '@entities/character';
 import { navigate } from '@shared/lib/navigation-core';
-import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
 
 type Props = {
   accessToken: string;
@@ -26,7 +25,6 @@ export function CharacterSetupPage(props: Props) {
           </div>
           <h1 className="trello-topbar-stripe-center">Создайте своего персонажа</h1>
           <div className="trello-topbar-actions">
-            <ProfileToolbarAnchor />
           </div>
         </header>
 

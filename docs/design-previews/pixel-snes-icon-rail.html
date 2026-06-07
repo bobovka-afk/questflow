@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Questflow — Icon rail: слева / справа</title>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0810;
+      font-family: VT323, monospace;
+      font-size: 20px;
+      min-height: 100vh;
+    }
+    .picker {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 14px;
+      background: #1a1033;
+      border-bottom: 4px solid #000;
+    }
+    .picker span { color: #a898c8; font-size: 18px; }
+    .picker button {
+      font: inherit;
+      padding: 4px 14px;
+      background: #2a1850;
+      color: #ffe566;
+      border: 3px solid #000;
+      box-shadow: inset -2px -2px 0 #1a1033, inset 2px 2px 0 #5c4a8a;
+      cursor: pointer;
+    }
+    .picker button.active { background: #4a6741; color: #d4edc9; }
+    .picker-hint { width: 100%; font-size: 16px; color: #666; }
+
+    .preview { display: none; min-height: calc(100vh - 52px); }
+    .preview.active { display: block; }
+
+    .px {
+      --bg: #1a1033;
+      --bg2: #2a1850;
+      --border: #000;
+      --accent: #ffe566;
+      --text: #f0e6d3;
+      --muted: #a898c8;
+      --tile1: #4a6741;
+      --tile2: #5c4a8a;
+      --tile3: #8b4513;
+      --green: #6bcb77;
+      color: var(--text);
+      background: var(--bg);
+      image-rendering: pixelated;
+      min-height: calc(100vh - 52px);
+    }
+    .shell { display: flex; min-height: calc(100vh - 52px); }
+    .shell--rail-right { flex-direction: row; }
+    .shell--rail-right .main { order: 1; }
+    .shell--rail-right .rail { order: 2; }
+
+    .rail {
+      width: 56px;
+      flex-shrink: 0;
+      background: var(--bg2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 0;
+      gap: 8px;
+    }
+    .shell--rail-left .rail {
+      border-right: 4px solid var(--border);
+      box-shadow: inset -3px 0 0 #5c4a8a;
+    }
+    .shell--rail-right .rail {
+      border-left: 4px solid var(--border);
+      box-shadow: inset 3px 0 0 #5c4a8a;
+    }
+
+    .logo {
+      width: 28px; height: 28px;
+      background: #c9a227;
+      border: 3px solid var(--border);
+      box-shadow: inset -2px -2px 0 #8b6914, inset 2px 2px 0 var(--accent);
+      margin-bottom: 8px;
+    }
+    .rail-btn {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+      font: inherit;
+      font-size: 18px;
+      cursor: pointer;
+      display: grid; place-items: center;
+    }
+    .rail-btn.active { background: #4a6741; color: #d4edc9; border-color: var(--accent); }
+    .rail-spacer { flex: 1; }
+    .avatar {
+      width: 36px; height: 36px;
+      background: var(--green);
+      border: 3px solid var(--border);
+      display: grid; place-items: center;
+      font-size: 12px; color: var(--bg);
+    }
+
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: var(--bg2);
+      border-bottom: 4px solid var(--border);
+      gap: 12px;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .topbar-title {
+      font-size: 24px;
+      color: var(--accent);
+      text-shadow: 2px 2px 0 #000;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .breadcrumb { font-size: 16px; color: var(--muted); white-space: nowrap; }
+    .topbar-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+    .btn {
+      font: inherit;
+      font-size: 18px;
+      padding: 4px 10px;
+      background: var(--bg2);
+      color: var(--text);
+      border: 3px solid var(--border);
+      box-shadow: inset -2px -2px 0 var(--bg), inset 2px 2px 0 #5c4a8a;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-primary { background: #4a6741; color: #d4edc9; }
+    .btn-ghost { background: transparent; box-shadow: none; border-color: #5c4a8a; color: var(--muted); }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 12px 20px;
+      border-bottom: 3px solid #5c4a8a;
+      flex-wrap: wrap;
+    }
+    .toolbar-end { margin-left: auto; }
+
+    .content { padding: 20px; flex: 1; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+      max-width: 1000px;
+    }
+    .tile {
+      aspect-ratio: 1.55;
+      border: 4px solid var(--border);
+      box-shadow: inset -3px -3px 0 rgba(0,0,0,0.4), inset 3px 3px 0 rgba(255,255,255,0.12);
+      padding: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-end;
+    }
+    .tile-name { font-size: 22px; line-height: 1.2; }
+    .tile:nth-child(1) { background: var(--tile1); color: #d4edc9; }
+    .tile:nth-child(2) { background: var(--tile2); color: #e8dff5; }
+    .tile:nth-child(3) { background: var(--tile3); color: #ffe4c4; }
+    .tile-add {
+      aspect-ratio: 1.55;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 6px;
+      background: var(--bg);
+      border: 4px dashed #5c4a8a;
+      color: var(--muted);
+      box-shadow: none;
+      font: inherit;
+      cursor: pointer;
+    }
+    .tile-add-icon { font-size: 28px; line-height: 1; }
+
+    /* подписи к rail для preview */
+    .rail-label {
+      position: fixed;
+      bottom: 12px;
+      font-size: 14px;
+      color: #555;
+      pointer-events: none;
+    }
+    .shell--rail-left .rail-label { left: 8px; }
+    .shell--rail-right .rail-label { right: 8px; }
+  </style>
+</head>
+<body>
+  <nav class="picker">
+    <span>Icon rail · SNES A:</span>
+    <button type="button" class="active" data-target="left">Меню слева</button>
+    <button type="button" data-target="right">Меню справа</button>
+    <p class="picker-hint">Вариант 3 · без LV/XP на главной. Выберите сторону rail.</p>
+  </nav>
+
+  <!-- LEFT RAIL -->
+  <section class="preview px active" id="p-left">
+    <div class="shell shell--rail-left">
+      <aside class="rail" aria-label="Навигация">
+        <span class="logo" aria-hidden="true"></span>
+        <button type="button" class="rail-btn active" title="Доски">▦</button>
+        <button type="button" class="rail-btn" title="Персонаж">⚔</button>
+        <button type="button" class="rail-btn" title="Приглашения">✉</button>
+        <button type="button" class="rail-btn" title="Настройки">⚙</button>
+        <div class="rail-spacer"></div>
+        <span class="avatar" title="Профиль">IK</span>
+      </aside>
+      <div class="main">
+        <header class="topbar">
+          <div class="topbar-left">
+            <span class="breadcrumb">Пространства /</span>
+            <h1 class="topbar-title">Мой проект</h1>
+          </div>
+          <div class="topbar-actions">
+            <button type="button" class="btn btn-ghost">Поиск ⌘K</button>
+          </div>
+        </header>
+        <div class="toolbar">
+          <button type="button" class="btn btn-ghost">← Назад</button>
+          <button type="button" class="btn btn-ghost">Архив</button>
+          <button type="button" class="btn btn-primary toolbar-end">+ Доска</button>
+        </div>
+        <div class="content">
+          <div class="grid">
+            <div class="tile"><span class="tile-name">Sprint 24</span></div>
+            <div class="tile"><span class="tile-name">Бэклог</span></div>
+            <div class="tile"><span class="tile-name">Marketing</span></div>
+            <button type="button" class="tile-add"><span class="tile-add-icon">+</span><span>Новая доска</span></button>
+          </div>
+        </div>
+      </div>
+      <span class="rail-label">rail ← слева</span>
+    </div>
+  </section>
+
+  <!-- RIGHT RAIL -->
+  <section class="preview px" id="p-right">
+    <div class="shell shell--rail-right">
+      <div class="main">
+        <header class="topbar">
+          <div class="topbar-left">
+            <span class="breadcrumb">Пространства /</span>
+            <h1 class="topbar-title">Мой проект</h1>
+          </div>
+          <div class="topbar-actions">
+            <button type="button" class="btn btn-ghost">Поиск ⌘K</button>
+          </div>
+        </header>
+        <div class="toolbar">
+          <button type="button" class="btn btn-ghost">← Назад</button>
+          <button type="button" class="btn btn-ghost">Архив</button>
+          <button type="button" class="btn btn-primary toolbar-end">+ Доска</button>
+        </div>
+        <div class="content">
+          <div class="grid">
+            <div class="tile"><span class="tile-name">Sprint 24</span></div>
+            <div class="tile"><span class="tile-name">Бэклог</span></div>
+            <div class="tile"><span class="tile-name">Marketing</span></div>
+            <button type="button" class="tile-add"><span class="tile-add-icon">+</span><span>Новая доска</span></button>
+          </div>
+        </div>
+      </div>
+      <aside class="rail" aria-label="Навигация">
+        <span class="logo" aria-hidden="true"></span>
+        <button type="button" class="rail-btn active" title="Доски">▦</button>
+        <button type="button" class="rail-btn" title="Персонаж">⚔</button>
+        <button type="button" class="rail-btn" title="Приглашения">✉</button>
+        <button type="button" class="rail-btn" title="Настройки">⚙</button>
+        <div class="rail-spacer"></div>
+        <span class="avatar" title="Профиль">IK</span>
+      </aside>
+      <span class="rail-label">rail → справа</span>
+    </div>
+  </section>
+
+  <script>
+    document.querySelectorAll('.picker button[data-target]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.picker button').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.preview').forEach((p) => p.classList.remove('active'));
+        document.getElementById('p-' + btn.dataset.target).classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

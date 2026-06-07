@@ -16,11 +16,10 @@ import {
 import { isValidUsername, normalizeUsername, profilePathForUsername, updateUsername } from '@entities/user';
 import { api, formatApiError } from '@shared/api';
 import { navigate, SpaLink } from '@shared/lib';
-import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
 import { SettingsSwitch } from '@shared/ui/settings-switch/SettingsSwitch';
 import { SettingsPasswordPanel } from '@widgets/settings-password/SettingsPasswordPanel';
 import { SettingsDeleteAccountPanel } from '@widgets/settings-delete-account/SettingsDeleteAccountPanel';
-import { SettingsSecurityLog } from '@widgets/settings-security-log/SettingsSecurityLog';
+import { SettingsSecurityLogModal } from '@widgets/settings-security-log/SettingsSecurityLogModal';
 import { SettingsWebPushPanel } from '@widgets/settings-web-push/SettingsWebPushPanel';
 import {
   SETTINGS_TAB_LABELS,
@@ -82,6 +81,7 @@ export function SettingsPage(props: Props) {
   const [securityLoading, setSecurityLoading] = useState(false);
   const [sessionBusyId, setSessionBusyId] = useState<string | null>(null);
   const [revokeOthersBusy, setRevokeOthersBusy] = useState(false);
+  const [securityLogOpen, setSecurityLogOpen] = useState(false);
   const [usernameDraft, setUsernameDraft] = useState('');
   const [usernameBusy, setUsernameBusy] = useState(false);
   const [usernameMsg, setUsernameMsg] = useState<string | null>(null);
@@ -456,18 +456,27 @@ export function SettingsPage(props: Props) {
                   <>
                     <div className="trello-settings-card-head-row">
                       <h2 className="trello-settings-card-title">Устройства и сессии</h2>
-                      <button
-                        type="button"
-                        className="trello-btn trello-btn-ghost trello-btn-sm"
-                        disabled={
-                          revokeOthersBusy ||
-                          securityLoading ||
-                          otherActiveCount === 0
-                        }
-                        onClick={() => void handleRevokeOtherSessions()}
-                      >
-                        {revokeOthersBusy ? '…' : 'Завершить все другие'}
-                      </button>
+                      <div className="trello-settings-card-head-actions">
+                        <button
+                          type="button"
+                          className="trello-btn trello-btn-ghost trello-btn-sm"
+                          onClick={() => setSecurityLogOpen(true)}
+                        >
+                          Журнал безопасности
+                        </button>
+                        <button
+                          type="button"
+                          className="trello-btn trello-btn-ghost trello-btn-sm"
+                          disabled={
+                            revokeOthersBusy ||
+                            securityLoading ||
+                            otherActiveCount === 0
+                          }
+                          onClick={() => void handleRevokeOtherSessions()}
+                        >
+                          {revokeOthersBusy ? '…' : 'Завершить все другие'}
+                        </button>
+                      </div>
                     </div>
                     {securityLoading ? (
                       <p className="trello-settings-card-hint">Загрузка…</p>
@@ -504,7 +513,11 @@ export function SettingsPage(props: Props) {
               })()}
             </article>
 
-            <SettingsSecurityLog accessToken={props.accessToken} />
+            <SettingsSecurityLogModal
+              accessToken={props.accessToken}
+              open={securityLogOpen}
+              onClose={() => setSecurityLogOpen(false)}
+            />
           </div>
         );
 
@@ -697,16 +710,15 @@ export function SettingsPage(props: Props) {
               <span className="trello-logo" aria-hidden />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
+            <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/workspaces">
+              Назад
+            </SpaLink>
           </div>
           <h1 className="trello-topbar-stripe-center">Настройки</h1>
           <div className="trello-topbar-actions">
             <SpaLink className="trello-btn trello-btn-ghost" to="/profile/me">
               Профиль
             </SpaLink>
-            <SpaLink className="trello-btn trello-btn-ghost" to="/workspaces">
-              Назад
-            </SpaLink>
-            <ProfileToolbarAnchor />
           </div>
         </header>
 

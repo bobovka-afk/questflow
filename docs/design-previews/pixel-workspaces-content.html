@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="ru" class="theme-dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Questflow — 5 вариантов центра: рабочие пространства</title>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0810;
+      font-family: VT323, monospace;
+      font-size: 20px;
+      min-height: 100vh;
+    }
+
+    /* —— picker (вне shell) —— */
+    .picker {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 14px;
+      background: #1a1033;
+      border-bottom: 4px solid #000;
+    }
+    .picker span { color: #a898c8; font-size: 18px; margin-right: 4px; }
+    .picker button {
+      font: inherit;
+      padding: 4px 12px;
+      background: #2a1850;
+      color: #ffe566;
+      border: 3px solid #000;
+      box-shadow: inset -2px -2px 0 #1a1033, inset 2px 2px 0 #5c4a8a;
+      cursor: pointer;
+    }
+    .picker button.active { background: #4a6741; color: #d4edc9; }
+    .picker-hint { width: 100%; font-size: 16px; color: #666; line-height: 1.3; }
+
+    .preview { display: none; }
+    .preview.active { display: block; }
+
+    /* —— SNES tokens —— */
+    .px {
+      --bg: #1a1033;
+      --bg2: #2a1850;
+      --border: #000;
+      --accent: #ffe566;
+      --text: #f0e6d3;
+      --muted: #a898c8;
+      --tile1: #4a6741;
+      --tile2: #5c4a8a;
+      --tile3: #8b4513;
+      --green: #6bcb77;
+      --rail-edge: #5c4a8a;
+      --inset-dark: rgba(0,0,0,0.4);
+      --inset-light: rgba(255,255,255,0.12);
+      color: var(--text);
+      background: var(--bg);
+      image-rendering: pixelated;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* —— FIXED SHELL: rail + topbar (не меняется между вариантами) —— */
+    .shell { display: flex; min-height: calc(100vh - 56px); }
+
+    .rail {
+      width: 56px;
+      flex-shrink: 0;
+      background: var(--bg2);
+      border-right: 4px solid var(--border);
+      box-shadow: inset -3px 0 0 var(--rail-edge);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 0;
+      gap: 8px;
+    }
+    .rail-logo {
+      width: 28px; height: 28px;
+      background: #c9a227;
+      border: 3px solid var(--border);
+      box-shadow: inset -2px -2px 0 #8b6914, inset 2px 2px 0 var(--accent);
+      margin-bottom: 8px;
+    }
+    .rail-btn {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+      font: inherit; font-size: 18px;
+      cursor: pointer;
+      display: grid; place-items: center;
+    }
+    .rail-btn.active { background: #4a6741; color: #d4edc9; border-color: var(--accent); }
+    .rail-spacer { flex: 1; }
+    .rail-avatar {
+      width: 36px; height: 36px;
+      background: var(--green);
+      border: 3px solid var(--border);
+      display: grid; place-items: center;
+      font-size: 13px; color: var(--bg);
+    }
+
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: var(--bg2);
+      border-bottom: 4px solid var(--border);
+      gap: 12px;
+    }
+    .topbar-title {
+      font-size: 24px;
+      color: var(--accent);
+      text-shadow: 2px 2px 0 #000;
+    }
+    .btn {
+      font: inherit; font-size: 18px;
+      padding: 4px 10px;
+      background: var(--bg2);
+      color: var(--text);
+      border: 3px solid var(--border);
+      box-shadow: inset -2px -2px 0 var(--bg), inset 2px 2px 0 var(--rail-edge);
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+    .btn-primary { background: #4a6741; color: #d4edc9; }
+    .btn-ghost { background: transparent; box-shadow: none; border-color: var(--rail-edge); color: var(--muted); }
+    .btn-sm { font-size: 16px; padding: 2px 8px; }
+    .btn-danger { color: #ff9090; border-color: #803030; }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 16px;
+      border: 2px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+    }
+    .pill--owner { color: var(--accent); border-color: var(--accent); }
+    .pill--member { color: #a8d4ff; border-color: #4078a8; }
+
+    /* —— shared content wrapper —— */
+    .ws-content { padding: 20px; flex: 1; }
+
+    .ws-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      gap: 12px;
+    }
+    .ws-panel-title {
+      font-size: 22px;
+      color: var(--accent);
+      text-shadow: 1px 1px 0 #000;
+    }
+    .ws-hint { font-size: 17px; color: var(--muted); margin-bottom: 16px; line-height: 1.35; }
+
+    /* ═══ 1 · TABLE (как сейчас) ═══ */
+    .v1-panel {
+      border: 3px solid var(--border);
+      background: var(--bg2);
+      box-shadow: inset -2px -2px 0 var(--inset-dark), inset 2px 2px 0 var(--inset-light);
+    }
+    .v1-panel-head {
+      padding: 12px 16px;
+      border-bottom: 3px solid var(--border);
+      font-size: 20px;
+      color: var(--accent);
+    }
+    .v1-table { width: 100%; border-collapse: collapse; font-size: 18px; }
+    .v1-table th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 17px;
+      color: var(--muted);
+      border-bottom: 3px solid var(--border);
+      font-weight: 400;
+    }
+    .v1-table td { padding: 12px 14px; vertical-align: middle; }
+    .v1-table tbody tr { cursor: pointer; border-bottom: 2px solid rgba(0,0,0,0.35); }
+    .v1-table tbody tr:nth-child(odd) { background: rgba(255,255,255,0.03); }
+    .v1-table tbody tr:nth-child(even) { background: rgba(0,0,0,0.12); }
+    .v1-table tbody tr:hover { background: rgba(255,229,102,0.1); color: var(--accent); }
+    .v1-cell-title { font-size: 20px; }
+    .v1-cell-desc { color: var(--muted); font-size: 17px; max-width: 280px; }
+    .v1-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+    /* ═══ 2 · TILE GRID (как доски) ═══ */
+    .v2-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+      max-width: 1000px;
+    }
+    .v2-tile {
+      aspect-ratio: 1.55;
+      border: 4px solid var(--border);
+      box-shadow: inset -3px -3px 0 var(--inset-dark), inset 3px 3px 0 var(--inset-light);
+      padding: 12px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      position: relative;
+    }
+    .v2-tile--1 { background: var(--tile1); color: #d4edc9; }
+    .v2-tile--2 { background: var(--tile2); color: #e8dff5; }
+    .v2-tile--3 { background: var(--tile3); color: #ffe4c4; }
+    .v2-tile-name { font-size: 22px; line-height: 1.2; }
+    .v2-tile-meta { font-size: 15px; opacity: 0.85; margin-top: 4px; }
+    .v2-tile-role {
+      position: absolute;
+      top: 8px; left: 8px;
+      font-size: 14px;
+      padding: 2px 6px;
+      border: 2px solid var(--border);
+      background: rgba(0,0,0,0.35);
+    }
+    .v2-tile-add {
+      aspect-ratio: 1.55;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 6px;
+      background: var(--bg);
+      border: 4px dashed var(--rail-edge);
+      color: var(--muted);
+      box-shadow: none;
+      font: inherit;
+      cursor: pointer;
+      display: flex;
+    }
+    .v2-tile-add-icon { font-size: 28px; line-height: 1; }
+
+    /* ═══ 3 · COMPACT LIST ROWS ═══ */
+    .v3-list { display: flex; flex-direction: column; gap: 8px; max-width: 720px; }
+    .v3-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 4px solid var(--border);
+      background: var(--bg2);
+      cursor: pointer;
+      box-shadow: 3px 3px 0 #000;
+    }
+    .v3-row:hover { filter: brightness(1.08); transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #000; }
+    .v3-row:nth-child(1) { border-left: 6px solid #6bcb77; }
+    .v3-row:nth-child(2) { border-left: 6px solid #9b87c4; }
+    .v3-row:nth-child(3) { border-left: 6px solid #c9a227; }
+    .v3-row:nth-child(4) { border-left: 6px solid #70c0ff; }
+    .v3-name { font-size: 22px; }
+    .v3-desc { font-size: 16px; color: var(--muted); margin-top: 2px; }
+    .v3-arrow { color: var(--muted); font-size: 20px; }
+    .v3-fab {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      width: 56px; height: 56px;
+      font-size: 32px;
+      background: #4a6741;
+      color: #d4edc9;
+      border: 4px solid var(--border);
+      box-shadow: 4px 4px 0 #000;
+      cursor: pointer;
+      display: grid; place-items: center;
+    }
+
+    /* ═══ 4 · MASTER / DETAIL SPLIT ═══ */
+    .v4-split {
+      display: grid;
+      grid-template-columns: minmax(240px, 320px) 1fr;
+      gap: 16px;
+      min-height: 420px;
+    }
+    @media (max-width: 800px) {
+      .v4-split { grid-template-columns: 1fr; }
+    }
+    .v4-list {
+      border: 3px solid var(--border);
+      background: var(--bg2);
+      box-shadow: inset -2px -2px 0 var(--inset-dark), inset 2px 2px 0 var(--inset-light);
+      display: flex;
+      flex-direction: column;
+    }
+    .v4-list-head {
+      padding: 10px 14px;
+      border-bottom: 3px solid var(--border);
+      font-size: 18px;
+      color: var(--muted);
+    }
+    .v4-item {
+      padding: 12px 14px;
+      border-bottom: 2px solid rgba(0,0,0,0.3);
+      cursor: pointer;
+      font-size: 20px;
+    }
+    .v4-item:hover { background: rgba(255,229,102,0.08); }
+    .v4-item.active {
+      background: #4a6741;
+      color: #d4edc9;
+      border-left: 4px solid var(--accent);
+    }
+    .v4-item-sub { font-size: 15px; color: var(--muted); margin-top: 2px; }
+    .v4-item.active .v4-item-sub { color: rgba(212,237,201,0.75); }
+    .v4-detail {
+      border: 3px solid var(--border);
+      background: var(--bg);
+      box-shadow: inset -2px -2px 0 var(--inset-dark), inset 2px 2px 0 var(--inset-light);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .v4-detail-title { font-size: 28px; color: var(--accent); text-shadow: 2px 2px 0 #000; }
+    .v4-detail-desc { font-size: 18px; color: var(--muted); line-height: 1.4; max-width: 480px; }
+    .v4-stats {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .v4-stat {
+      padding: 8px 12px;
+      border: 3px solid var(--border);
+      background: var(--bg2);
+      font-size: 17px;
+    }
+    .v4-stat strong { color: var(--accent); font-weight: 400; }
+    .v4-detail-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 12px; }
+
+    /* ═══ 5 · RPG INVENTORY SLOTS ═══ */
+    .v5-frame {
+      border: 4px solid var(--border);
+      background: var(--bg2);
+      box-shadow: inset -3px -3px 0 var(--inset-dark), inset 3px 3px 0 var(--inset-light);
+      padding: 16px;
+      max-width: 820px;
+    }
+    .v5-frame-title {
+      text-align: center;
+      font-size: 22px;
+      color: var(--accent);
+      text-shadow: 2px 2px 0 #000;
+      margin-bottom: 4px;
+    }
+    .v5-frame-sub {
+      text-align: center;
+      font-size: 16px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .v5-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    .v5-slot {
+      aspect-ratio: 1;
+      border: 3px solid var(--border);
+      background: var(--bg);
+      box-shadow: inset 2px 2px 0 var(--inset-dark);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px;
+      text-align: center;
+      position: relative;
+    }
+    .v5-slot:hover { border-color: var(--accent); background: rgba(255,229,102,0.06); }
+    .v5-slot-icon {
+      width: 40px; height: 40px;
+      border: 2px solid var(--border);
+      display: grid; place-items: center;
+      font-size: 22px;
+    }
+    .v5-slot--1 .v5-slot-icon { background: var(--tile1); color: #d4edc9; }
+    .v5-slot--2 .v5-slot-icon { background: var(--tile2); color: #e8dff5; }
+    .v5-slot--3 .v5-slot-icon { background: var(--tile3); color: #ffe4c4; }
+    .v5-slot--4 .v5-slot-icon { background: #4078a8; color: #d0e8ff; }
+    .v5-slot-name { font-size: 16px; line-height: 1.15; color: var(--text); }
+    .v5-slot-badge {
+      position: absolute;
+      top: 4px; right: 4px;
+      font-size: 11px;
+      padding: 1px 4px;
+      border: 2px solid var(--border);
+      background: #4a6741;
+      color: #d4edc9;
+    }
+    .v5-slot-add {
+      border: 3px dashed var(--rail-edge);
+      box-shadow: none;
+      color: var(--muted);
+      font: inherit;
+    }
+    .v5-slot-add .v5-slot-icon {
+      background: transparent;
+      border-style: dashed;
+      font-size: 28px;
+    }
+    .v5-footer {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 3px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <nav class="picker">
+    <span>Центр (rail + шапка фиксированы):</span>
+    <button type="button" class="active" data-target="1">1 · Таблица</button>
+    <button type="button" data-target="2">2 · Плитки</button>
+    <button type="button" data-target="3">3 · Список + FAB</button>
+    <button type="button" data-target="4">4 · Split</button>
+    <button type="button" data-target="5">5 · RPG-слоты</button>
+    <p class="picker-hint">
+      Откройте файл в браузере. Меняется только область под шапкой «Рабочие пространства».
+      Левый icon rail и topbar одинаковы во всех вариантах.
+    </p>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       SHARED SHELL MARKUP — вынесен в JS-клон или дублируется.
+       Для автономности HTML — секции дублируют shell.
+       ═══════════════════════════════════════════════════════════ -->
+
+  <!-- 1 · TABLE -->
+  <section class="preview px active" id="p1">
+    <div class="shell">
+      <aside class="rail" aria-label="Навигация">
+        <div class="rail-logo"></div>
+        <button type="button" class="rail-btn active" title="Пространства">▦</button>
+        <button type="button" class="rail-btn" title="Персонаж">⚔</button>
+        <button type="button" class="rail-btn" title="Уведомления">🔔</button>
+        <button type="button" class="rail-btn" title="Сообщения">✉</button>
+        <button type="button" class="rail-btn" title="Настройки">⚙</button>
+        <div class="rail-spacer"></div>
+        <button type="button" class="rail-btn" title="Тема">☀</button>
+        <button type="button" class="rail-btn" title="Выход">⏻</button>
+        <span class="rail-avatar">IK</span>
+      </aside>
+      <div class="main">
+        <header class="topbar">
+          <h1 class="topbar-title">Рабочие пространства</h1>
+          <button type="button" class="btn btn-primary">+ Пространство</button>
+        </header>
+        <div class="ws-content">
+          <div class="v1-panel">
+            <div class="v1-panel-head">Ваши рабочие пространства</div>
+            <table class="v1-table">
+              <thead>
+                <tr>
+                  <th>Название</th>
+                  <th>Описание</th>
+                  <th>Роль</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="v1-cell-title">Questflow Dev</div></td>
+                  <td class="v1-cell-desc">Разработка и баги</td>
+                  <td><span class="pill pill--owner">Владелец</span></td>
+                  <td class="v1-actions">
+                    <button type="button" class="btn btn-ghost btn-sm">Участники</button>
+                    <button type="button" class="btn btn-ghost btn-sm">Изменить</button>
+                    <button type="button" class="btn btn-ghost btn-sm btn-danger">Удалить</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td><div class="v1-cell-title">Маркетинг</div></td>
+                  <td class="v1-cell-desc">Контент и кампании</td>
+                  <td><span class="pill pill--member">Участник</span></td>
+                  <td class="v1-actions">
+                    <button type="button" class="btn btn-ghost btn-sm">Участники</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td><div class="v1-cell-title">Личное</div></td>
+                  <td class="v1-cell-desc">—</td>
+                  <td><span class="pill pill--owner">Владелец</span></td>
+                  <td class="v1-actions">
+                    <button type="button" class="btn btn-ghost btn-sm">Участники</button>
+                    <button type="button" class="btn btn-ghost btn-sm">Изменить</button>
+                    <button type="button" class="btn btn-ghost btn-sm btn-danger">Удалить</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td><div class="v1-cell-title">Дизайн-система</div></td>
+                  <td class="v1-cell-desc">UI kit и превью</td>
+                  <td><span class="pill pill--member">Редактор</span></td>
+                  <td class="v1-actions">
+                    <button type="button" class="btn btn-ghost btn-sm">Участники</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · TILE GRID -->
+  <section class="preview px" id="p2">
+    <div class="shell">
+      <aside class="rail" aria-label="Навигация">
+        <div class="rail-logo"></div>
+        <button type="button" class="rail-btn active">▦</button>
+        <button type="button" class="rail-btn">⚔</button>
+        <button type="button" class="rail-btn">🔔</button>
+        <button type="button" class="rail-btn">✉</button>
+        <button type="button" class="rail-btn">⚙</button>
+        <div class="rail-spacer"></div>
+        <button type="button" class="rail-btn">☀</button>
+        <button type="button" class="rail-btn">⏻</button>
+        <span class="rail-avatar">IK</span>
+      </aside>
+      <div class="main">
+        <header class="topbar">
+          <h1 class="topbar-title">Рабочие пространства</h1>
+          <button type="button" class="btn btn-primary">+ Пространство</button>
+        </header>
+        <div class="ws-content">
+          <p class="ws-hint">Как доски внутри workspace — цветные плитки, быстрый визуальный выбор.</p>
+          <div class="v2-grid">
+            <div class="v2-tile v2-tile--1">
+              <span class="v2-tile-role">Владелец</span>
+              <span class="v2-tile-name">Questflow Dev</span>
+              <span class="v2-tile-meta">4 доски</span>
+            </div>
+            <div class="v2-tile v2-tile--2">
+              <span class="v2-tile-role">Участник</span>
+              <span class="v2-tile-name">Маркетинг</span>
+              <span class="v2-tile-meta">2 доски</span>
+            </div>
+            <div class="v2-tile v2-tile--3">
+              <span class="v2-tile-role">Владелец</span>
+              <span class="v2-tile-name">Личное</span>
+              <span class="v2-tile-meta">1 доска</span>
+            </div>
+            <div class="v2-tile v2-tile--1">
+              <span class="v2-tile-role">Редактор</span>
+              <span class="v2-tile-name">Дизайн-система</span>
+              <span class="v2-tile-meta">3 доски</span>
+            </div>
+            <button type="button" class="v2-tile-add">
+              <span class="v2-tile-add-icon">+</span>
+              <span>Новое пространство</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · LIST + FAB -->
+  <section class="preview px" id="p3">
+    <div class="shell">
+      <aside class="rail" aria-label="Навигация">
+        <div class="rail-logo"></div>
+        <button type="button" class="rail-btn active">▦</button>
+        <button type="button" class="rail-btn">⚔</button>
+        <button type="button" class="rail-btn">🔔</button>
+        <button type="button" class="rail-btn">✉</button>
+        <button type="button" class="rail-btn">⚙</button>
+        <div class="rail-spacer"></div>
+        <button type="button" class="rail-btn">☀</button>
+        <button type="button" class="rail-btn">⏻</button>
+        <span class="rail-avatar">IK</span>
+      </aside>
+      <div class="main">
+        <header class="topbar">
+          <h1 class="topbar-title">Рабочие пространства</h1>
+          <button type="button" class="btn btn-ghost">Поиск</button>
+        </header>
+        <div class="ws-content">
+          <div class="ws-panel-head">
+            <span class="ws-panel-title">4 пространства</span>
+          </div>
+          <div class="v3-list">
+            <div class="v3-row">
+              <div>
+                <div class="v3-name">Questflow Dev</div>
+                <div class="v3-desc">Разработка и баги · Владелец</div>
+              </div>
+              <span class="pill pill--owner">4 доски</span>
+              <span class="v3-arrow">→</span>
+            </div>
+            <div class="v3-row">
+              <div>
+                <div class="v3-name">Маркетинг</div>
+                <div class="v3-desc">Контент и кампании</div>
+              </div>
+              <span class="pill pill--member">2 доски</span>
+              <span class="v3-arrow">→</span>
+            </div>
+            <div class="v3-row">
+              <div>
+                <div class="v3-name">Личное</div>
+                <div class="v3-desc">Личные задачи</div>
+              </div>
+              <span class="pill pill--owner">1 доска</span>
+              <span class="v3-arrow">→</span>
+            </div>
+            <div class="v3-row">
+              <div>
+                <div class="v3-name">Дизайн-система</div>
+                <div class="v3-desc">UI kit и превью</div>
+              </div>
+              <span class="pill">3 доски</span>
+              <span class="v3-arrow">→</span>
+            </div>
+          </div>
+          <button type="button" class="v3-fab" title="Создать пространство">+</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · MASTER / DETAIL -->
+  <section class="preview px" id="p4">
+    <div class="shell">
+      <aside class="rail" aria-label="Навигация">
+        <div class="rail-logo"></div>
+        <button type="button" class="rail-btn active">▦</button>
+        <button type="button" class="rail-btn">⚔</button>
+        <button type="button" class="rail-btn">🔔</button>
+        <button type="button" class="rail-btn">✉</button>
+        <button type="button" class="rail-btn">⚙</button>
+        <div class="rail-spacer"></div>
+        <button type="button" class="rail-btn">☀</button>
+        <button type="button" class="rail-btn">⏻</button>
+        <span class="rail-avatar">IK</span>
+      </aside>
+      <div class="main">
+        <header class="topbar">
+          <h1 class="topbar-title">Рабочие пространства</h1>
+          <button type="button" class="btn btn-primary">+ Пространство</button>
+        </header>
+        <div class="ws-content">
+          <p class="ws-hint">Список слева — детали и действия справа без перехода на другую страницу.</p>
+          <div class="v4-split">
+            <div class="v4-list">
+              <div class="v4-list-head">Выберите пространство</div>
+              <div class="v4-item active">
+                Questflow Dev
+                <div class="v4-item-sub">Владелец · 4 доски</div>
+              </div>
+              <div class="v4-item">
+                Маркетинг
+                <div class="v4-item-sub">Участник · 2 доски</div>
+              </div>
+              <div class="v4-item">
+                Личное
+                <div class="v4-item-sub">Владелец · 1 доска</div>
+              </div>
+              <div class="v4-item">
+                Дизайн-система
+                <div class="v4-item-sub">Редактор · 3 доски</div>
+              </div>
+            </div>
+            <div class="v4-detail">
+              <h2 class="v4-detail-title">Questflow Dev</h2>
+              <p class="v4-detail-desc">Разработка и баги. Основное пространство команды: спринты, бэклог, hotfix-доска.</p>
+              <div class="v4-stats">
+                <div class="v4-stat"><strong>4</strong> доски</div>
+                <div class="v4-stat"><strong>6</strong> участников</div>
+                <div class="v4-stat">Роль: <strong>Владелец</strong></div>
+              </div>
+              <div class="v4-detail-actions">
+                <button type="button" class="btn btn-primary">Открыть доски →</button>
+                <button type="button" class="btn btn-ghost">Участники</button>
+                <button type="button" class="btn btn-ghost">Изменить</button>
+                <button type="button" class="btn btn-ghost btn-danger">Удалить</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · RPG INVENTORY -->
+  <section class="preview px" id="p5">
+    <div class="shell">
+      <aside class="rail" aria-label="Навигация">
+        <div class="rail-logo"></div>
+        <button type="button" class="rail-btn active">▦</button>
+        <button type="button" class="rail-btn">⚔</button>
+        <button type="button" class="rail-btn">🔔</button>
+        <button type="button" class="rail-btn">✉</button>
+        <button type="button" class="rail-btn">⚙</button>
+        <div class="rail-spacer"></div>
+        <button type="button" class="rail-btn">☀</button>
+        <button type="button" class="rail-btn">⏻</button>
+        <span class="rail-avatar">IK</span>
+      </aside>
+      <div class="main">
+        <header class="topbar">
+          <h1 class="topbar-title">Рабочие пространства</h1>
+          <button type="button" class="btn btn-ghost">Справка</button>
+        </header>
+        <div class="ws-content">
+          <div class="v5-frame">
+            <div class="v5-frame-title">◆ ХРАНИЛИЩЕ ПРОЕКТОВ ◆</div>
+            <div class="v5-frame-sub">Выберите мир для входа</div>
+            <div class="v5-grid">
+              <div class="v5-slot v5-slot--1">
+                <span class="v5-slot-badge">4</span>
+                <div class="v5-slot-icon">⚒</div>
+                <span class="v5-slot-name">Questflow Dev</span>
+              </div>
+              <div class="v5-slot v5-slot--2">
+                <span class="v5-slot-badge">2</span>
+                <div class="v5-slot-icon">📜</div>
+                <span class="v5-slot-name">Маркетинг</span>
+              </div>
+              <div class="v5-slot v5-slot--3">
+                <span class="v5-slot-badge">1</span>
+                <div class="v5-slot-icon">🏠</div>
+                <span class="v5-slot-name">Личное</span>
+              </div>
+              <div class="v5-slot v5-slot--4">
+                <span class="v5-slot-badge">3</span>
+                <div class="v5-slot-icon">🎨</div>
+                <span class="v5-slot-name">Дизайн</span>
+              </div>
+              <button type="button" class="v5-slot v5-slot-add">
+                <div class="v5-slot-icon">+</div>
+                <span class="v5-slot-name">Новый мир</span>
+              </button>
+              <div class="v5-slot" style="opacity:0.35; cursor:default" aria-hidden="true"></div>
+              <div class="v5-slot" style="opacity:0.35; cursor:default" aria-hidden="true"></div>
+              <div class="v5-slot" style="opacity:0.35; cursor:default" aria-hidden="true"></div>
+            </div>
+            <div class="v5-footer">
+              <button type="button" class="btn btn-primary">+ Пространство</button>
+              <button type="button" class="btn btn-ghost">Управление доступом</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    document.querySelectorAll('.picker button[data-target]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.picker button').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.preview').forEach((p) => p.classList.remove('active'));
+        document.getElementById('p' + btn.dataset.target).classList.add('active');
+      });
+    });
+
+    /* v4: клик по пунктам списка (демо) */
+    document.querySelectorAll('#p4 .v4-item').forEach((item) => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('#p4 .v4-item').forEach((i) => i.classList.remove('active'));
+        item.classList.add('active');
+        const title = item.childNodes[0].textContent.trim();
+        document.querySelector('#p4 .v4-detail-title').textContent = title;
+      });
+    });
+  </script>
+</body>
+</html>

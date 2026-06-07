@@ -8,7 +8,6 @@ import { getCharacterXpTowardNext } from '@entities/character/lib/level-curve';
 import { SpaLink } from '@shared/lib/navigation';
 import { navigate } from '@shared/lib/navigation-core';
 import { userProfilePath } from '@entities/user';
-import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
 import { SocialUserBlockButton } from '@widgets/social-user-block/SocialUserBlockButton';
 import {
   acceptFriendRequest,
@@ -149,14 +148,12 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
                 <span className="trello-logo" aria-hidden />
                 <span className="trello-top-left-brand-text">Questflow</span>
               </SpaLink>
-            </div>
-            <h1 className="trello-topbar-stripe-center">Персонаж</h1>
-            <div className="trello-topbar-actions">
-              <button type="button" className="trello-btn trello-btn-ghost" onClick={goBack}>
+              <button type="button" className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" onClick={goBack}>
                 Назад
               </button>
-              <ProfileToolbarAnchor />
             </div>
+            <h1 className="trello-topbar-stripe-center">Персонаж</h1>
+            <div className="trello-topbar-actions" />
           </header>
           <section className="trello-panel">
             <div className="trello-empty" style={{ padding: 24 }}>
@@ -181,14 +178,12 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
                 <span className="trello-logo" aria-hidden />
                 <span className="trello-top-left-brand-text">Questflow</span>
               </SpaLink>
-            </div>
-            <h1 className="trello-topbar-stripe-center">Персонаж</h1>
-            <div className="trello-topbar-actions">
-              <button type="button" className="trello-btn trello-btn-ghost" onClick={goBack}>
+              <button type="button" className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" onClick={goBack}>
                 Назад
               </button>
-              <ProfileToolbarAnchor />
             </div>
+            <h1 className="trello-topbar-stripe-center">Персонаж</h1>
+            <div className="trello-topbar-actions" />
           </header>
           <section className="trello-panel">
             <div className="trello-empty" style={{ padding: 24 }}>
@@ -220,16 +215,14 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
               <span className="trello-logo" aria-hidden />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
+            <button type="button" className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" onClick={goBack}>
+              Профиль
+            </button>
           </div>
           <h1 className="trello-topbar-stripe-center trello-topbar-stripe-center--ellipsis" title={character.name}>
             {character.name}
           </h1>
-          <div className="trello-topbar-actions">
-            <button type="button" className="trello-btn trello-btn-ghost" onClick={goBack}>
-              Профиль
-            </button>
-            <ProfileToolbarAnchor />
-          </div>
+          <div className="trello-topbar-actions" />
         </header>
 
         {socialMsg && <div className="trello-banner trello-banner-error">{socialMsg}</div>}

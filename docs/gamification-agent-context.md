@@ -7,6 +7,7 @@
 - [gamification-roadmap.md](gamification-roadmap.md) — продуктовый план, фазы, баланс, квесты, сундуки
 - [gamification-assets.md](gamification-assets.md) — ТЗ на графику (размеры, ключи, папки)
 - [profile-settings-roadmap.md](profile-settings-roadmap.md) — профиль аккаунта, `/settings`, privacy (не геймификация)
+- [ui-themes.md](ui-themes.md) — pixel UI темы: default + разблокировка 2–5 из сундука (backlog)
 - [README.md](../README.md) — обзор приложения
 
 

@@ -41,49 +41,50 @@
 21. **E2E-регрессия геймификации** — сброс лимита 5 XP, идемпотентность карточки, cron HP, квест → сундук (см. Phase 4 roadmap).
 22. **Единый `GAME_DAY_TZ` в UI** — подпись «игровые сутки до …» на профиле персонажа и в гайде.
 23. **Интеграция привычек → XP** — после блока «Привычки»: закрытие Daily/To-Do/Habit+ даёт XP с отдельными лимитами и типами `XpEvent` (не ломая лимит карточек).
+24. **UI-темы из сундука** — default: Royal Purple (dark) + Parchment (light); темы 2–5 каждого режима — дроп в loot table. Спека: [ui-themes.md](ui-themes.md).
 
 ---
 
 ## Профиль, приватность, настройки
 
-24. **Публичный @username или slug** — стабильная ссылка `/profile/@nick` вместо только numeric id (редирект со старого id).
-25. **Bio на `/profile/me`** — 1–2 строки, видимость: все / друзья+коллеги / только я.
-26. **Синхронизация темы в аккаунте** — light/dark в `UserSettings`, не только localStorage.
-27. **2FA TOTP** — включение в security, backup codes, обязательный re-login при смене пароля с 2FA.
-28. **Google: привязка / отвязка** — UI в security без потери единственного способа входа.
-29. **Блокировка пользователя** — не видеть профиль, не писать в DM, не приглашать в пати.
-30. **Push-уведомления (Web Push)** — отдельные тогглы от email; минимум: assign, mention, friend request.
-31. **Timezone в профиле** — отображение дедлайнов и «игрового дня» по выбору пользователя (серверный TZ остаётся для cron).
-32. **Canonical redirect legacy URL** — `/profile/user/:id` → `/profile/:id` через `replaceState` (роутер уже dual-match).
+25. **Публичный @username или slug** — стабильная ссылка `/profile/@nick` вместо только numeric id (редирект со старого id).
+26. **Bio на `/profile/me`** — 1–2 строки, видимость: все / друзья+коллеги / только я.
+27. **Синхронизация темы в аккаунте** — light/dark в `UserSettings`, не только localStorage.
+28. **2FA TOTP** — включение в security, backup codes, обязательный re-login при смене пароля с 2FA.
+29. **Google: привязка / отвязка** — UI в security без потери единственного способа входа.
+30. **Блокировка пользователя** — не видеть профиль, не писать в DM, не приглашать в пати.
+31. **Push-уведомления (Web Push)** — отдельные тогглы от email; минимум: assign, mention, friend request.
+32. **Timezone в профиле** — отображение дедлайнов и «игрового дня» по выбору пользователя (серверный TZ остаётся для cron).
+33. **Canonical redirect legacy URL** — `/profile/user/:id` → `/profile/:id` через `replaceState` (роутер уже dual-match).
 
 ---
 
 ## Безопасность и доверие
 
-33. **Аудит чувствительных действий** — смена email, пароль, 2FA, удаление аккаунта, revoke all sessions — в security log с IP/UA.
-34. **Rate limits по сценариям** — invite spam, reset password, friend code brute; понятные коды API.
-35. **Session anomaly (опционально)** — email security при входе с нового устройства/страны (уже есть тоггл — расширить эвристику).
-36. **Workspace: запрет приглашений вне домена** — allowlist email domain для корпоративных WS.
-37. **Ротация refresh и отзыв** — уже есть; must-have: UI «это устройство» на всех клиентах + предупреждение при revoke текущей.
+34. **Аудит чувствительных действий** — смена email, пароль, 2FA, удаление аккаунта, revoke all sessions — в security log с IP/UA.
+35. **Rate limits по сценариям** — invite spam, reset password, friend code brute; понятные коды API.
+36. **Session anomaly (опционально)** — email security при входе с нового устройства/страны (уже есть тоггл — расширить эвристику).
+37. **Workspace: запрет приглашений вне домена** — allowlist email domain для корпоративных WS.
+38. **Ротация refresh и отзыв** — уже есть; must-have: UI «это устройство» на всех клиентах + предупреждение при revoke текущей.
 
 ---
 
 ## Социальное и коммуникации
 
-38. **WebSocket или SSE для DM** — вместо poll 5 с; fallback на poll.
-39. **Групповой чат воркспейса** — канал #general или привязка к доске (не замена карточкам).
-40. **Поиск друзей по имени персонажа** — с opt-in privacy «разрешить находить по имени».
-41. **Статус «в сети» / last seen** — только для друзей, настройка в privacy.
-42. **Приглашение в party из карточки рейда** — deep link + toast на профиле персонажа.
+39. **WebSocket или SSE для DM** — вместо poll 5 с; fallback на poll.
+40. **Групповой чат воркспейса** — канал #general или привязка к доске (не замена карточкам).
+41. **Поиск друзей по имени персонажа** — с opt-in privacy «разрешить находить по имени».
+42. **Статус «в сети» / last seen** — только для друзей, настройка в privacy.
+43. **Приглашение в party из карточки рейда** — deep link + toast на профиле персонажа.
 
 ---
 
 ## Наблюдаемость и качество продукта
 
-43. **Health dashboard для админа** — очередь cron, failed emails, Redis, миграции (внутренний экран или Grafana).
-44. **Feature flags** — party raid, habits beta, leaderboard per workspace без деплоя.
-45. **Локализация RU/EN** — строки UI + форматы дат; backend messages уже частично RU.
-46. **PWA / офлайн-чтение доски** — кеш последней открытой доски, sync при online.
+44. **Health dashboard для админа** — очередь cron, failed emails, Redis, миграции (внутренний экран или Grafana).
+45. **Feature flags** — party raid, habits beta, leaderboard per workspace без деплоя.
+46. **Локализация RU/EN** — строки UI + форматы дат; backend messages уже частично RU.
+47. **PWA / офлайн-чтение доски** — кеш последней открытой доски, sync при online.
 
 ---
 

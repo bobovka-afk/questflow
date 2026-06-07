@@ -181,11 +181,33 @@ export class ChestService {
   }
 
   async listInventory(userId: number) {
-    return this.prisma.inventoryItem.findMany({
-      where: { userId },
-      include: { cosmeticItem: true },
-      orderBy: { obtainedAt: 'desc' },
-    });
+    const [items, character] = await Promise.all([
+      this.prisma.inventoryItem.findMany({
+        where: { userId },
+        include: { cosmeticItem: true },
+        orderBy: { obtainedAt: 'desc' },
+      }),
+      this.prisma.character.findUnique({
+        where: { userId },
+        select: {
+          equippedPortraitFrameKey: true,
+          equippedProfileBackgroundKey: true,
+          avatarPreset: true,
+        },
+      }),
+    ]);
+
+    return items.map((item) => ({
+      ...item,
+      equipped:
+        item.equipped ||
+        (item.cosmeticItem.type === 'PORTRAIT_FRAME' &&
+          item.cosmeticItem.key === character?.equippedPortraitFrameKey) ||
+        (item.cosmeticItem.type === 'PROFILE_BACKGROUND' &&
+          item.cosmeticItem.key === character?.equippedProfileBackgroundKey) ||
+        (item.cosmeticItem.type === 'AVATAR_PRESET' &&
+          item.cosmeticItem.key === character?.avatarPreset),
+    }));
   }
 
   async equipCosmetic(
@@ -258,15 +280,27 @@ export class ChestService {
         });
       }
 
-      if (!item.equipped) {
+      const character = await tx.character.findUnique({
+        where: { userId },
+        select: {
+          equippedPortraitFrameKey: true,
+          equippedProfileBackgroundKey: true,
+        },
+      });
+      const wornOnCharacter = character?.[field] === item.cosmeticItem.key;
+
+      if (!item.equipped && !wornOnCharacter) {
         throw new BadRequestException({
           code: 'COSMETIC_NOT_EQUIPPED',
           message: 'This cosmetic is not equipped',
         });
       }
 
-      await tx.inventoryItem.update({
-        where: { id: inventoryItemId },
+      await tx.inventoryItem.updateMany({
+        where: {
+          userId,
+          cosmeticItem: { type: item.cosmeticItem.type },
+        },
         data: { equipped: false },
       });
 

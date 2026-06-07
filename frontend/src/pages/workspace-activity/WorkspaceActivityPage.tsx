@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, formatApiError, isRateLimitMessage } from '@shared/api';
 import { SpaLink } from '@shared/lib/navigation';
-import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
 import { formatWorkspaceRole } from '@entities/workspace';
 
 type Props = {
@@ -19,16 +18,15 @@ type ActivityRow = {
 
 const PAGE_SIZE = 25;
 
-const ACTIVITY_TYPES = [
-  '',
-  'WORKSPACE_CREATED',
-  'WORKSPACE_UPDATED',
-  'MEMBER_INVITED',
-  'INVITE_CANCELLED',
-  'INVITE_ACCEPTED',
-  'INVITE_DECLINED',
-  'MEMBER_REMOVED',
-  'MEMBER_LEFT',
+const ACTIVITY_TYPE_OPTIONS = [
+  { value: 'WORKSPACE_CREATED', label: 'Пространство создано' },
+  { value: 'WORKSPACE_UPDATED', label: 'Пространство обновлено' },
+  { value: 'MEMBER_INVITED', label: 'Приглашение отправлено' },
+  { value: 'INVITE_CANCELLED', label: 'Приглашение отменено' },
+  { value: 'INVITE_ACCEPTED', label: 'Приглашение принято' },
+  { value: 'INVITE_DECLINED', label: 'Приглашение отклонено' },
+  { value: 'MEMBER_REMOVED', label: 'Участник исключён' },
+  { value: 'MEMBER_LEFT', label: 'Участник вышел' },
 ] as const;
 
 function formatError(e: unknown) {
@@ -172,16 +170,14 @@ export function WorkspaceActivityPage({ accessToken, workspaceId }: Props) {
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
             <SpaLink
-              className="trello-btn trello-btn-sm trello-btn-topbar-nav"
+              className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn"
               to={`/workspaces/${workspaceId}/members`}
             >
               ← Участники
             </SpaLink>
           </div>
           <h1 className="trello-topbar-stripe-center">Журнал активности</h1>
-          <div className="trello-topbar-actions">
-            {accessToken ? <ProfileToolbarAnchor /> : null}
-          </div>
+          <div className="trello-topbar-actions" />
         </header>
 
         {!accessToken && (
@@ -214,9 +210,9 @@ export function WorkspaceActivityPage({ accessToken, workspaceId }: Props) {
               onChange={(e) => setTypeFilter(e.target.value)}
             >
               <option value="">Все</option>
-              {ACTIVITY_TYPES.filter(Boolean).map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              {ACTIVITY_TYPE_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
                 </option>
               ))}
             </select>

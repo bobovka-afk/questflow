@@ -85,7 +85,6 @@ export function WorkspaceSearchModal({ accessToken, workspaceId, open, onClose }
         <div className="trello-modal-body">
           <input
             className="trello-input trello-search-modal-input"
-            placeholder="Карточки (мин. 2 символа) · ⌘K"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             autoFocus

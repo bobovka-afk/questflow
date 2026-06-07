@@ -11,7 +11,6 @@ import {
   canManageWorkspaceLegacy,
   type WorkspacePermissions,
 } from '@entities/workspace';
-import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
 import { WorkspaceOnboardingBanner } from '@widgets/workspace-onboarding/WorkspaceOnboardingBanner';
 import { WorkspaceSearchModal } from '@widgets/workspace-search/WorkspaceSearchModal';
 import { useWorkspaceSearchHotkey } from '@shared/lib/useWorkspaceSearchHotkey';
@@ -48,13 +47,7 @@ function nextBoardPosition(rows: BoardRow[]): number {
   return rows.reduce((max, row) => (row.position > max ? row.position : max), rows[0].position) + 1;
 }
 
-const TILE_GRADIENTS = [
-  'linear-gradient(135deg, #d29034 0%, #cd5a91 100%)',
-  'linear-gradient(135deg, #61bd4f 0%, #2d8a54 100%)',
-  'linear-gradient(135deg, #b04632 0%, #89609e 100%)',
-  'linear-gradient(135deg, #89609e 0%, #cd5a91 100%)',
-  'linear-gradient(135deg, #c3771d 0%, #b04632 100%)',
-];
+const TILE_VARIANTS = ['px-tile--1', 'px-tile--2', 'px-tile--3'] as const;
 
 export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
   const [boards, setBoards] = useState<BoardRow[]>([]);
@@ -254,70 +247,81 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
   }
 
   return (
-    <div className="trello-app-shell">
-      <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
-          <div className="trello-topbar-stripe-left">
-            <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-              <span className="trello-logo" aria-hidden />
-              <span className="trello-top-left-brand-text">Questflow</span>
-            </SpaLink>
-          </div>
-          <h1 className="trello-topbar-stripe-center">{workspaceTitle || '…'}</h1>
-          <div className="trello-topbar-actions">
-            <SpaLink
-              className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn"
-              to="/workspaces"
+    <div className="px-page">
+      <header className="px-topbar">
+        <div className="px-topbar-left">
+          <SpaLink className="px-btn px-btn--ghost" to="/workspaces">
+            ← Назад
+          </SpaLink>
+          <span className="px-breadcrumb">Пространства /</span>
+          <h1 className="px-topbar-title">{workspaceTitle || '…'}</h1>
+        </div>
+        <div className="px-topbar-actions">
+          {accessToken ? (
+            <button
+              type="button"
+              className="px-btn px-btn--ghost"
+              onClick={() => setSearchOpen(true)}
+              title="Поиск (⌘K / Ctrl+K)"
             >
-              ← Рабочие пространства
-            </SpaLink>
-            {accessToken ? (
-              <>
-                <button
-                  type="button"
-                  className="trello-btn trello-btn-ghost"
-                  onClick={() => setSearchOpen(true)}
-                  title="Поиск (⌘K / Ctrl+K)"
-                >
-                  Поиск
-                </button>
-                {canArchive ? (
-                  <button
-                    type="button"
-                    className="trello-btn trello-btn-ghost"
-                    onClick={() => setArchiveOpen((o) => !o)}
-                  >
-                    Архив
-                  </button>
-                ) : null}
-                <ProfileToolbarAnchor />
-              </>
-            ) : null}
-          </div>
-        </header>
+              Поиск ⌘K
+            </button>
+          ) : null}
+        </div>
+      </header>
 
-        {!accessToken && (
+      {accessToken ? (
+        <div className="px-toolbar">
+          {canArchive ? (
+            <button
+              type="button"
+              className="px-btn px-btn--ghost"
+              onClick={() => setArchiveOpen((o) => !o)}
+            >
+              Архив
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="px-btn px-btn--primary px-toolbar-end"
+            onClick={() => {
+              setCreateOpen(true);
+              setMsg(null);
+            }}
+          >
+            + Доска
+          </button>
+        </div>
+      ) : null}
+
+      {!accessToken && (
+        <div className="px-content">
           <div className="trello-banner trello-banner-warn">
             Войдите на главной, чтобы видеть доски.
             <SpaLink className="trello-inline-link" to="/">
               Войти
             </SpaLink>
           </div>
-        )}
+        </div>
+      )}
 
-        {msg && <div className="trello-banner trello-banner-error">{msg}</div>}
+      {msg && (
+        <div className="px-content">
+          <div className="trello-banner trello-banner-error">{msg}</div>
+        </div>
+      )}
 
+      <div className="px-content">
         {loading ? (
-          <div className="trello-empty">Загрузка досок…</div>
+          <p className="px-empty">Загрузка досок…</p>
         ) : boards.length === 0 && accessToken ? (
           <WorkspaceOnboardingBanner onCreateBoard={() => setCreateOpen(true)} />
         ) : (
-          <div className="trello-boards-grid">
+          <div className="px-tile-grid">
             {boards.map((b, i) => (
               <div
                 key={b.id}
-                className="trello-board-tile"
-                style={{ background: TILE_GRADIENTS[i % TILE_GRADIENTS.length] }}
+                className={`px-tile ${TILE_VARIANTS[i % TILE_VARIANTS.length]}`}
                 onClick={(e) =>
                   handleSpaTileClick(e, `/workspaces/${workspaceId}/boards/${b.id}`)
                 }
@@ -348,20 +352,20 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
                     ✎
                   </button>
                 ) : null}
-                <span className="trello-board-tile-name">{b.name}</span>
+                <span className="px-tile-name">{b.name}</span>
               </div>
             ))}
             {accessToken && (
               <button
                 type="button"
-                className="trello-board-tile trello-board-tile-add"
+                className="px-tile px-tile-add"
                 onClick={() => {
                   setCreateOpen(true);
                   setMsg(null);
                 }}
               >
-                <span className="trello-board-tile-add-icon">+</span>
-                <span>Создать доску</span>
+                <span className="px-tile-add-icon">+</span>
+                <span>Новая доска</span>
               </button>
             )}
           </div>

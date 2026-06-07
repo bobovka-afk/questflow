@@ -69,8 +69,12 @@ export function ChestLootOddsModal(props: Props) {
                     >
                       {CHEST_TIER_LABEL_RU[row.cosmeticTier]}
                     </span>
-                    <span className="trello-chest-loot-odds-row-name">{row.nameRu}</span>
-                    <span className="trello-chest-loot-odds-row-percent">{formatLootOddsPercent(row.percent)}</span>
+                    <div className="trello-chest-loot-odds-row-details">
+                      <span className="trello-chest-loot-odds-row-name">{row.nameRu}</span>
+                      <span className="trello-chest-loot-odds-row-percent">
+                        {formatLootOddsPercent(row.percent)}
+                      </span>
+                    </div>
                   </div>
                 </li>
               );

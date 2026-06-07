@@ -7,7 +7,6 @@ import {
 } from '@entities/invite';
 import { SpaLink } from '@shared/lib/navigation';
 import { navigate } from '@shared/lib/navigation-core';
-import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
 
 function formatError(e: unknown) {
   return formatApiError(e);
@@ -65,14 +64,15 @@ export function InviteAcceptPage({ accessToken }: Props) {
               <span className="trello-logo" aria-hidden />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
-          </div>
-          <h1 className="trello-topbar-stripe-center">Приглашение</h1>
-          <div className="trello-topbar-actions">
-            <SpaLink className="trello-btn trello-btn-ghost" to={accessToken ? '/workspaces' : '/'}>
+            <SpaLink
+              className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn"
+              to={accessToken ? '/workspaces' : '/'}
+            >
               {accessToken ? 'К пространствам' : 'На главную'}
             </SpaLink>
-            {accessToken ? <ProfileToolbarAnchor /> : null}
           </div>
+          <h1 className="trello-topbar-stripe-center">Приглашение</h1>
+          <div className="trello-topbar-actions" />
         </header>
 
         <section className="trello-panel">

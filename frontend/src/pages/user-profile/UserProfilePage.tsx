@@ -9,7 +9,6 @@ import {
 import { avatarInitials, avatarSrcFromPath, userCharacterPath, type UserProfileView } from '@entities/user';
 import { SpaLink } from '@shared/lib/navigation';
 import { navigate } from '@shared/lib/navigation-core';
-import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar';
 import { SocialUserBlockButton } from '@widgets/social-user-block/SocialUserBlockButton';
 
 function formatRegisteredRU(isoDate: string) {
@@ -150,14 +149,12 @@ export function UserProfilePage({ accessToken, userId, currentUserId }: Props) {
               <span className="trello-logo" aria-hidden />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
-          </div>
-          <h1 className="trello-topbar-stripe-center">Профиль участника</h1>
-          <div className="trello-topbar-actions">
-            <button type="button" className="trello-btn trello-btn-ghost" onClick={goBack}>
+            <button type="button" className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" onClick={goBack}>
               Назад
             </button>
-            <ProfileToolbarAnchor />
           </div>
+          <h1 className="trello-topbar-stripe-center">Профиль участника</h1>
+          <div className="trello-topbar-actions" />
         </header>
 
         {msg ? (

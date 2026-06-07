@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="ru" class="px-ui">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Questflow — 5 вариантов /profile/character</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --px-font: 'VT323', ui-monospace, monospace;
+        --px-bg: #f0e6d0;
+        --px-bg2: #e4d4b8;
+        --px-border: #2a2018;
+        --px-accent: #8b4513;
+        --px-text: #2a2018;
+        --px-muted: #7a6858;
+        --px-active-rail: #6b8c5a;
+        --px-active-rail-text: #f8fff0;
+        --px-inset-dark: rgba(42, 32, 24, 0.18);
+        --px-inset-light: rgba(255, 255, 255, 0.5);
+        --px-green: #4a8a50;
+        --px-ghost-border: #b8a888;
+        --mock-excluded: #c8b898;
+        --mock-excluded-text: #7a6858;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--px-font);
+        font-size: 20px;
+        line-height: 1.35;
+        color: var(--px-text);
+        background: var(--px-bg);
+        image-rendering: pixelated;
+      }
+
+      /* —— Переключатель вариантов (только для мокапа) —— */
+      .mock-picker {
+        position: sticky;
+        top: 0;
+        z-index: 200;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 10px 16px;
+        background: #2a2018;
+        color: #f0e6d0;
+        border-bottom: 4px solid #000;
+        font-size: 18px;
+      }
+
+      .mock-picker strong {
+        margin-right: 8px;
+      }
+
+      .mock-picker a {
+        color: #f0e6d0;
+        text-decoration: none;
+        padding: 4px 10px;
+        border: 2px solid #7a6858;
+        background: #4a3828;
+      }
+
+      .mock-picker a:hover,
+      .mock-picker a.is-active {
+        border-color: var(--px-green);
+        background: var(--px-active-rail);
+        color: var(--px-active-rail-text);
+      }
+
+      .mock-note {
+        margin: 0;
+        padding: 8px 16px;
+        background: var(--px-bg2);
+        border-bottom: 3px solid var(--px-border);
+        color: var(--px-muted);
+        font-size: 18px;
+      }
+
+      /* —— Заглушки: шапка и левое меню НЕ трогаем —— */
+      .mock-shell {
+        display: flex;
+        min-height: calc(100vh - 88px);
+      }
+
+      .mock-rail {
+        width: 56px;
+        flex-shrink: 0;
+        background: var(--px-bg2);
+        border-right: 4px solid var(--px-border);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 12px 0;
+        gap: 8px;
+        position: relative;
+      }
+
+      .mock-rail::after {
+        content: 'rail';
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        writing-mode: vertical-rl;
+        font-size: 14px;
+        color: var(--mock-excluded-text);
+        background: repeating-linear-gradient(
+          -45deg,
+          transparent,
+          transparent 6px,
+          rgba(42, 32, 24, 0.04) 6px,
+          rgba(42, 32, 24, 0.04) 12px
+        );
+        pointer-events: none;
+      }
+
+      .mock-rail-icon {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--mock-excluded);
+        background: var(--px-bg);
+        opacity: 0.45;
+      }
+
+      .mock-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .mock-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 20px;
+        background: var(--px-bg2);
+        border-bottom: 4px solid var(--px-border);
+        position: relative;
+        opacity: 0.55;
+      }
+
+      .mock-topbar::after {
+        content: 'topbar — не трогаем';
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: rgba(240, 230, 208, 0.35);
+        color: var(--mock-excluded-text);
+        font-size: 22px;
+        pointer-events: none;
+      }
+
+      .mock-topbar h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 400;
+      }
+
+      .mock-content {
+        flex: 1;
+        width: 100%;
+        padding: 20px 24px 40px;
+      }
+
+      .variant {
+        display: none;
+        width: 100%;
+      }
+
+      .variant.is-visible {
+        display: block;
+      }
+
+      /* —— Общие pixel-компоненты —— */
+      .px-box {
+        width: 100%;
+        border: 3px solid var(--px-border);
+        background: var(--px-bg2);
+        box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
+      }
+
+      .px-panel {
+        border: 3px solid var(--px-border);
+        background: var(--px-bg);
+        box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
+        padding: 12px 14px;
+      }
+
+      .px-btn {
+        border: 3px solid var(--px-border);
+        background: var(--px-active-rail);
+        color: var(--px-active-rail-text);
+        font: inherit;
+        font-size: 20px;
+        padding: 8px 14px;
+        cursor: default;
+        box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
+      }
+
+      .px-btn--ghost {
+        background: var(--px-bg);
+        color: var(--px-text);
+      }
+
+      .px-tab {
+        border: 3px solid var(--px-border);
+        background: var(--px-bg);
+        color: var(--px-text);
+        font: inherit;
+        font-size: 17px;
+        padding: 10px 12px;
+        cursor: default;
+        box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
+      }
+
+      .px-tab--active {
+        background: var(--px-active-rail);
+        color: var(--px-active-rail-text);
+        border-color: var(--px-accent);
+      }
+
+      .px-tab--active::before {
+        content: '▶ ';
+      }
+
+      .portrait {
+        width: 100%;
+        aspect-ratio: 1;
+        max-width: 280px;
+        background: linear-gradient(180deg, #3a2850 0%, #2a1838 100%);
+        border: 4px solid var(--px-border);
+        box-shadow: inset -3px -3px 0 var(--px-inset-dark), inset 3px 3px 0 var(--px-inset-light);
+        display: grid;
+        place-items: center;
+        color: #c8b0e8;
+        font-size: 64px;
+      }
+
+      .portrait--sm {
+        max-width: 120px;
+        font-size: 36px;
+      }
+
+      .portrait--xs {
+        width: 48px;
+        height: 48px;
+        max-width: none;
+        font-size: 24px;
+        border-width: 3px;
+      }
+
+      .stat-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 10px;
+      }
+
+      .stat-pill {
+        border: 3px solid var(--px-border);
+        background: var(--px-bg);
+        padding: 8px 10px;
+        box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
+      }
+
+      .stat-pill label {
+        display: block;
+        font-size: 15px;
+        color: var(--px-muted);
+        margin-bottom: 4px;
+      }
+
+      .stat-bar {
+        height: 22px;
+        border: 2px solid var(--px-border);
+        background: var(--px-bg2);
+        position: relative;
+      }
+
+      .stat-bar span {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-size: 16px;
+        z-index: 1;
+      }
+
+      .stat-bar i {
+        display: block;
+        height: 100%;
+        background: var(--px-green);
+        width: var(--w, 60%);
+      }
+
+      .streak {
+        text-align: center;
+        padding: 8px;
+        border: 3px dashed var(--px-ghost-border);
+        background: var(--px-bg2);
+        color: var(--px-muted);
+      }
+
+      .chip-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 12px;
+        margin-bottom: 12px;
+      }
+
+      .chip {
+        border: 2px solid var(--px-border);
+        background: var(--px-bg2);
+        padding: 4px 10px;
+        font-size: 17px;
+      }
+
+      .placeholder-content {
+        min-height: 180px;
+        display: grid;
+        place-items: center;
+        color: var(--px-muted);
+        text-align: center;
+        padding: 24px;
+      }
+
+      .variant-title {
+        margin: 0 0 6px;
+        font-size: 28px;
+        font-weight: 400;
+      }
+
+      .variant-desc {
+        margin: 0 0 16px;
+        color: var(--px-muted);
+        font-size: 18px;
+        max-width: 720px;
+      }
+
+      /* —— V1: SNES Status Screen —— */
+      .v1-shell {
+        display: grid;
+        grid-template-columns: minmax(220px, 320px) 1fr;
+        gap: 16px;
+        padding: 16px;
+        width: 100%;
+      }
+
+      .v1-hero {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+      }
+
+      .v1-right {
+        display: grid;
+        grid-template-columns: minmax(160px, 200px) minmax(0, 1fr);
+        gap: 12px;
+        min-height: 420px;
+        min-width: 0;
+      }
+
+      .v1-menu {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .v1-menu .px-tab {
+        text-align: left;
+      }
+
+      /* —— V2: Stat bar hub —— */
+      .v2-statbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        padding: 10px 14px;
+        margin-bottom: 14px;
+      }
+
+      .v2-statbar .stat-pill {
+        flex: 1;
+        min-width: 100px;
+      }
+
+      .v2-body {
+        display: grid;
+        grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
+        gap: 16px;
+        padding: 16px;
+        width: 100%;
+      }
+
+      .v2-tabs-primary,
+      .v2-tabs-secondary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 0 16px 12px;
+      }
+
+      .v2-tabs-secondary {
+        border-top: 3px dashed var(--px-ghost-border);
+        padding-top: 12px;
+      }
+
+      /* —— V3: Full-width tabs —— */
+      .v3-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 16px 16px 0;
+      }
+
+      .v3-character-hero {
+        padding: 16px;
+        text-align: center;
+      }
+
+      .v3-character-hero .portrait {
+        margin: 0 auto 12px;
+      }
+
+      .v3-full {
+        padding: 16px;
+      }
+
+      .v3-full .chip-bar {
+        margin-bottom: 0;
+        border-bottom: none;
+      }
+
+      /* —— V4: Inner icon rail —— */
+      .v4-shell {
+        display: grid;
+        grid-template-columns: 52px minmax(0, 1fr);
+        min-height: 460px;
+        width: 100%;
+      }
+
+      .v4-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px 6px;
+        border-right: 3px solid var(--px-border);
+        background: var(--px-bg2);
+      }
+
+      .v4-nav-btn {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--px-border);
+        background: var(--px-bg);
+        font: inherit;
+        font-size: 18px;
+        cursor: default;
+        display: grid;
+        place-items: center;
+        padding: 0;
+      }
+
+      .v4-nav-btn--active {
+        background: var(--px-active-rail);
+        color: var(--px-active-rail-text);
+      }
+
+      .v4-content {
+        padding: 16px;
+        min-width: 0;
+      }
+
+      .v4-content-grid {
+        display: grid;
+        grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
+        gap: 16px;
+        width: 100%;
+      }
+
+      /* —— V5: Tavern dock —— */
+      .v5-sign {
+        margin: 16px 16px 0;
+        padding: 10px 16px;
+        text-align: center;
+        background: var(--px-accent);
+        color: #f8fff0;
+        border: 4px solid var(--px-border);
+        box-shadow: 4px 4px 0 #000;
+        font-size: 24px;
+        letter-spacing: 0.06em;
+      }
+
+      .v5-body {
+        display: grid;
+        grid-template-columns: minmax(140px, 240px) minmax(0, 1fr);
+        gap: 14px;
+        padding: 16px;
+        width: 100%;
+      }
+
+      .v5-window {
+        min-height: 280px;
+      }
+
+      .v5-dock {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 16px 16px;
+        border-top: 4px solid var(--px-border);
+        background: var(--px-bg2);
+      }
+
+      .v5-dock .px-tab {
+        min-width: 96px;
+        text-align: center;
+        position: relative;
+      }
+
+      .v5-dock .px-tab--active {
+        box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light),
+          0 4px 0 var(--px-green);
+      }
+
+      .v5-dock .px-tab--active::before {
+        content: none;
+      }
+
+      @media (max-width: 720px) {
+        .v1-shell,
+        .v1-right,
+        .v2-body,
+        .v5-body {
+          grid-template-columns: 1fr;
+        }
+
+        .v4-shell {
+          grid-template-columns: 44px 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="mock-picker" aria-label="Выбор варианта">
+      <strong>Макет:</strong>
+      <a href="#v1" data-variant="v1" class="is-active">1 SNES</a>
+      <a href="#v2" data-variant="v2">2 Hub</a>
+      <a href="#v3" data-variant="v3">3 Full-width</a>
+      <a href="#v4" data-variant="v4">4 Icon-rail</a>
+      <a href="#v5" data-variant="v5">5 Tavern</a>
+    </nav>
+    <p class="mock-note">
+      Только зона контента под topbar. Шапка и левый rail — заглушки (не меняем). Открыть:
+      <code>/mockups/profile-character-layout-variants.html</code>
+    </p>
+
+    <div class="mock-shell">
+      <aside class="mock-rail" aria-hidden="true">
+        <div class="mock-rail-icon"></div>
+        <div class="mock-rail-icon"></div>
+        <div class="mock-rail-icon"></div>
+        <div class="mock-rail-icon"></div>
+        <div class="mock-rail-icon"></div>
+      </aside>
+
+      <div class="mock-main">
+        <header class="mock-topbar">
+          <span>← Назад</span>
+          <h1>Архимаг_Игорь</h1>
+          <span>Аккаунт</span>
+        </header>
+
+        <!-- ═══ V1: SNES Status Screen ═══ -->
+        <div id="v1" class="mock-content variant is-visible">
+          <h2 class="variant-title">Вариант 1 — Экран статуса SNES</h2>
+          <p class="variant-desc">
+            Слева фиксированный герой; справа вертикальное меню + контент. Вкладки не в grid сверху.
+          </p>
+          <div class="px-box v1-shell">
+            <div class="v1-hero">
+              <div class="portrait" aria-hidden>⚔</div>
+              <button type="button" class="px-btn" style="width: 100%">Редактировать</button>
+              <div class="streak" style="width: 100%">🔥 Стрик: 7 дней</div>
+              <div class="stat-row" style="width: 100%">
+                <div class="stat-pill">
+                  <label>УРОВЕНЬ</label>
+                  <div class="stat-bar"><i style="--w: 100%"></i><span>12</span></div>
+                </div>
+                <div class="stat-pill">
+                  <label>HP</label>
+                  <div class="stat-bar"><i style="--w: 75%"></i><span>75/100</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="v1-right">
+              <nav class="v1-menu" aria-label="Разделы">
+                <button type="button" class="px-tab px-tab--active">Персонаж</button>
+                <button type="button" class="px-tab">Задания</button>
+                <button type="button" class="px-tab">Хранилище</button>
+                <button type="button" class="px-tab">Магазин</button>
+                <button type="button" class="px-tab">Достижения</button>
+                <button type="button" class="px-tab">Друзья</button>
+                <button type="button" class="px-tab">Сообщения</button>
+                <button type="button" class="px-tab">Рейд</button>
+                <button type="button" class="px-tab">Правила</button>
+              </nav>
+              <div class="px-panel">
+                <div class="stat-row">
+                  <div class="stat-pill">
+                    <label>ОПЫТ</label>
+                    <div class="stat-bar"><i style="--w: 62%"></i><span>310 / 500</span></div>
+                  </div>
+                  <div class="stat-pill">
+                    <label>МАНА</label>
+                    <div class="stat-bar"><i style="--w: 40%"></i><span>4 / 10</span></div>
+                  </div>
+                  <div class="stat-pill">
+                    <label>ПЫЛЬ</label>
+                    <div class="stat-bar"><i style="--w: 30%"></i><span>240</span></div>
+                  </div>
+                </div>
+                <div class="placeholder-content" style="min-height: 140px; margin-top: 12px">
+                  Контент вкладки «Персонаж» — статы, гайд
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ V2: Hub + stat bar ═══ -->
+        <div id="v2" class="mock-content variant">
+          <h2 class="variant-title">Вариант 2 — Хаб с полосой статов</h2>
+          <p class="variant-desc">
+            Компактная stat-bar всегда сверху; две строки вкладок; портрет только на «Персонаж».
+          </p>
+          <div class="px-box">
+            <div class="v2-statbar px-panel" style="margin: 0; border: none; box-shadow: none">
+              <div class="stat-pill" style="max-width: 90px"><label>LV</label><strong>12</strong></div>
+              <div class="stat-pill" style="flex: 2">
+                <label>XP</label>
+                <div class="stat-bar"><i style="--w: 62%"></i><span>310/500</span></div>
+              </div>
+              <div class="stat-pill" style="flex: 1">
+                <label>HP</label>
+                <div class="stat-bar"><i style="--w: 75%"></i><span>75</span></div>
+              </div>
+              <span class="chip">🔥 7</span>
+              <button type="button" class="px-btn px-btn--ghost" style="margin-left: auto">✎</button>
+            </div>
+            <div class="v2-tabs-primary">
+              <button type="button" class="px-tab px-tab--active">Персонаж</button>
+              <button type="button" class="px-tab">Задания</button>
+              <button type="button" class="px-tab">Хранилище</button>
+              <button type="button" class="px-tab">Магазин</button>
+              <button type="button" class="px-tab">Достижения</button>
+            </div>
+            <div class="v2-tabs-secondary">
+              <button type="button" class="px-tab">Друзья</button>
+              <button type="button" class="px-tab">Сообщения</button>
+              <button type="button" class="px-tab">Рейд</button>
+              <button type="button" class="px-tab">Правила</button>
+            </div>
+            <div class="v2-body">
+              <div>
+                <div class="portrait portrait--sm">⚔</div>
+                <div class="streak" style="margin-top: 8px">🔥 7 дней</div>
+              </div>
+              <div class="px-panel placeholder-content">Контент активной вкладки</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ V3: Full-width tabs ═══ -->
+        <div id="v3" class="mock-content variant">
+          <h2 class="variant-title">Вариант 3 — Полноширинные вкладки</h2>
+          <p class="variant-desc">
+            «Персонаж» — большой hero; остальные вкладки без портрета, chip-bar + контент на 100%.
+          </p>
+          <div class="px-box">
+            <div class="v3-tabs">
+              <button type="button" class="px-tab">Персонаж</button>
+              <button type="button" class="px-tab px-tab--active">Магазин</button>
+              <button type="button" class="px-tab">Хранилище</button>
+              <button type="button" class="px-tab">Задания</button>
+              <button type="button" class="px-tab">…</button>
+            </div>
+
+            <!-- sub-view A: character (hidden in demo, shown as comment) -->
+            <div class="v3-character-hero" hidden>
+              <div class="portrait">⚔</div>
+              <div class="stat-row" style="max-width: 640px; margin: 0 auto">
+                <div class="stat-pill"><label>УРОВЕНЬ</label><div class="stat-bar"><i style="--w:100%"></i><span>12</span></div></div>
+                <div class="stat-pill"><label>XP</label><div class="stat-bar"><i style="--w:62%"></i><span>310/500</span></div></div>
+              </div>
+            </div>
+
+            <!-- sub-view B: shop (active) -->
+            <div class="v3-full">
+              <div class="px-panel chip-bar">
+                <div class="portrait portrait--xs">⚔</div>
+                <span class="chip">Lv. 12</span>
+                <span class="chip">✨ 240 пыли</span>
+                <span class="chip">💧 4 маны</span>
+              </div>
+              <div class="px-panel placeholder-content" style="min-height: 320px">
+                Сетка сундуков / магазин — на всю ширину<br />
+                (без левой колонки портрета)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ V4: Inner icon rail ═══ -->
+        <div id="v4" class="mock-content variant">
+          <h2 class="variant-title">Вариант 4 — Внутренний icon-rail</h2>
+          <p class="variant-desc">
+            Узкая навигация внутри shell; контент справа на полную высоту. Портрет только на ⚔.
+          </p>
+          <div class="px-box v4-shell">
+            <nav class="v4-nav" aria-label="Разделы персонажа">
+              <button type="button" class="v4-nav-btn v4-nav-btn--active" title="Персонаж">⚔</button>
+              <button type="button" class="v4-nav-btn" title="Задания">📜</button>
+              <button type="button" class="v4-nav-btn" title="Хранилище">🎒</button>
+              <button type="button" class="v4-nav-btn" title="Магазин">🛒</button>
+              <button type="button" class="v4-nav-btn" title="Достижения">🏆</button>
+              <button type="button" class="v4-nav-btn" title="Друзья">👥</button>
+              <button type="button" class="v4-nav-btn" title="Сообщения">✉</button>
+              <button type="button" class="v4-nav-btn" title="Рейд">🐉</button>
+              <button type="button" class="v4-nav-btn" title="Правила">?</button>
+            </nav>
+            <div class="v4-content">
+              <div class="v4-content-grid">
+                <div>
+                  <div class="portrait portrait--sm">⚔</div>
+                  <button type="button" class="px-btn" style="width: 100%; margin-top: 8px">Редактировать</button>
+                </div>
+                <div class="px-panel">
+                  <div class="stat-row">
+                    <div class="stat-pill"><label>УРОВЕНЬ</label><div class="stat-bar"><i style="--w:100%"></i><span>12</span></div></div>
+                    <div class="stat-pill"><label>XP</label><div class="stat-bar"><i style="--w:62%"></i><span>310/500</span></div></div>
+                    <div class="stat-pill"><label>HP</label><div class="stat-bar"><i style="--w:75%"></i><span>75</span></div></div>
+                  </div>
+                  <div class="placeholder-content" style="min-height: 160px; margin-top: 12px">
+                    Вкладка «Персонаж» — на других вкладках портрет скрыт
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ V5: Tavern dock ═══ -->
+        <div id="v5" class="mock-content variant">
+          <h2 class="variant-title">Вариант 5 — Таверна / dock снизу</h2>
+          <p class="variant-desc">Декоративная «вывеска», окно контента, hotbar вкладок снизу.</p>
+          <div class="px-box">
+            <div class="v5-sign">☆ TAVERN · Ур. 12 · 🔥 7 дней ☆</div>
+            <div class="v5-body">
+              <div class="portrait portrait--sm">⚔</div>
+              <div class="px-panel v5-window placeholder-content">
+                Окно контента (задания, лут, правила…)<br />
+                Рамка «SNES window»
+              </div>
+            </div>
+            <div class="v5-dock" role="tablist">
+              <button type="button" class="px-tab px-tab--active">Перс</button>
+              <button type="button" class="px-tab">Задания</button>
+              <button type="button" class="px-tab">🎒</button>
+              <button type="button" class="px-tab">🛒</button>
+              <button type="button" class="px-tab">🏆</button>
+              <button type="button" class="px-tab">👥</button>
+              <button type="button" class="px-tab">✉</button>
+              <button type="button" class="px-tab">🐉</button>
+              <button type="button" class="px-tab">?</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const links = document.querySelectorAll('[data-variant]');
+      const variants = document.querySelectorAll('.variant');
+
+      function show(id) {
+        variants.forEach((v) => v.classList.toggle('is-visible', v.id === id));
+        links.forEach((a) => a.classList.toggle('is-active', a.dataset.variant === id));
+      }
+
+      links.forEach((a) => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          show(a.dataset.variant);
+          history.replaceState(null, '', '#' + a.dataset.variant);
+        });
+      });
+
+      const hash = location.hash.replace('#', '');
+      if (hash && document.getElementById(hash)) show(hash);
+    </script>
+  </body>
+</html>

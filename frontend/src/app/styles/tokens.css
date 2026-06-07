@@ -1,9 +1,36 @@
 :root {
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial,
-    'Apple Color Emoji', 'Segoe UI Emoji';
+  --px-font: 'VT323', ui-monospace, monospace;
+  font-family: var(--px-font);
   line-height: 1.4;
   color: var(--qf-text);
   background: var(--qf-body-bg);
+
+  /* Pixel theme defaults (light / Parchment) — overridden by applyPixelThemeToDocument */
+  --px-bg: #f0e6d0;
+  --px-bg2: #e4d4b8;
+  --px-border: #2a2018;
+  --px-accent: #8b4513;
+  --px-text: #2a2018;
+  --px-muted: #7a6858;
+  --px-tile-1: #6b8c5a;
+  --px-tile-2: #9a7a58;
+  --px-tile-3: #b87840;
+  --px-green: #4a8a50;
+  --px-rail-edge: #c8b898;
+  --px-rail-width: 64px;
+  --px-topbar-bg: color-mix(in srgb, var(--px-bg) 80%, var(--px-border));
+  --px-btn-edge: #c8b898;
+  --px-logo-bg: #c9a030;
+  --px-logo-shadow: #8b6914;
+  --px-active-rail: #6b8c5a;
+  --px-active-rail-text: #f8fff0;
+  --px-primary-bg: #6b8c5a;
+  --px-primary-text: #f8fff0;
+  --px-ghost-border: #b8a888;
+  --px-tile-add-border: #b8a888;
+  --px-title-shadow: rgba(42, 32, 24, 0.15);
+  --px-inset-dark: rgba(42, 32, 24, 0.18);
+  --px-inset-light: rgba(255, 255, 255, 0.5);
 
   /* Accent (legacy name kept for existing var() usages) */
   --trello-primary: #4f46e5;

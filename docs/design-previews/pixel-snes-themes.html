@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Questflow — Icon rail · темы</title>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #08080c;
+      font-family: VT323, monospace;
+      font-size: 20px;
+      min-height: 100vh;
+    }
+
+    .picker {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 14px;
+      background: #14141c;
+      border-bottom: 4px solid #000;
+    }
+    .picker-label { color: #888; font-size: 16px; margin-right: 2px; }
+    .picker-divider { width: 1px; height: 24px; background: #333; margin: 0 4px; }
+    .picker button {
+      font: inherit;
+      font-size: 17px;
+      padding: 3px 12px;
+      background: #222;
+      color: #ccc;
+      border: 3px solid #000;
+      box-shadow: inset -2px -2px 0 #111, inset 2px 2px 0 #444;
+      cursor: pointer;
+    }
+    .picker button.active { background: #3a5a40; color: #d4edc9; }
+    .picker button.mode-active { background: #2a3a6a; color: #a8c8ff; }
+    .theme-btns { display: contents; }
+    .picker-hint {
+      width: 100%;
+      font-size: 15px;
+      color: #555;
+      margin-top: 2px;
+    }
+    .theme-desc {
+      width: 100%;
+      font-size: 16px;
+      color: #777;
+    }
+
+    .px {
+      --bg: #1a1033;
+      --bg2: #2a1850;
+      --border: #000;
+      --accent: #ffe566;
+      --text: #f0e6d3;
+      --muted: #a898c8;
+      --tile1: #4a6741;
+      --tile2: #5c4a8a;
+      --tile3: #8b4513;
+      --green: #6bcb77;
+      --inset-dark: rgba(0,0,0,0.35);
+      --inset-light: rgba(255,255,255,0.12);
+      --rail-edge: #5c4a8a;
+      --btn-edge: #5c4a8a;
+      --logo-bg: #c9a227;
+      --logo-shadow: #8b6914;
+      --active-rail: #4a6741;
+      --active-rail-text: #d4edc9;
+      --primary-bg: #4a6741;
+      --primary-text: #d4edc9;
+      --ghost-border: #5c4a8a;
+      --tile-add-border: #5c4a8a;
+      --title-shadow: #000;
+      color: var(--text);
+      background: var(--bg);
+      image-rendering: pixelated;
+      min-height: calc(100vh - 80px);
+    }
+
+    .shell { display: flex; min-height: calc(100vh - 80px); }
+
+    .rail {
+      width: 56px;
+      flex-shrink: 0;
+      background: var(--bg2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 0;
+      gap: 8px;
+      border-right: 4px solid var(--border);
+      box-shadow: inset -3px 0 0 var(--rail-edge);
+    }
+    .logo {
+      width: 28px; height: 28px;
+      background: var(--logo-bg);
+      border: 3px solid var(--border);
+      box-shadow: inset -2px -2px 0 var(--logo-shadow), inset 2px 2px 0 var(--accent);
+      margin-bottom: 8px;
+    }
+    .rail-btn {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+      font: inherit;
+      font-size: 18px;
+      cursor: pointer;
+      display: grid; place-items: center;
+    }
+    .rail-btn.active {
+      background: var(--active-rail);
+      color: var(--active-rail-text);
+      border-color: var(--accent);
+    }
+    .rail-spacer { flex: 1; }
+    .avatar {
+      width: 36px; height: 36px;
+      background: var(--green);
+      border: 3px solid var(--border);
+      display: grid; place-items: center;
+      font-size: 12px;
+      color: var(--border);
+    }
+
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: var(--bg2);
+      border-bottom: 4px solid var(--border);
+      gap: 12px;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .topbar-title {
+      font-size: 24px;
+      color: var(--accent);
+      text-shadow: 2px 2px 0 var(--title-shadow);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .breadcrumb { font-size: 16px; color: var(--muted); white-space: nowrap; }
+    .topbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    .btn {
+      font: inherit;
+      font-size: 18px;
+      padding: 4px 10px;
+      background: var(--bg2);
+      color: var(--text);
+      border: 3px solid var(--border);
+      box-shadow: inset -2px -2px 0 var(--bg), inset 2px 2px 0 var(--btn-edge);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--primary-bg); color: var(--primary-text); }
+    .btn-ghost { background: transparent; box-shadow: none; border-color: var(--ghost-border); color: var(--muted); }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 12px 20px;
+      border-bottom: 3px solid var(--rail-edge);
+      flex-wrap: wrap;
+    }
+    .toolbar-end { margin-left: auto; }
+
+    .content { padding: 20px; flex: 1; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+      max-width: 1000px;
+    }
+    .tile {
+      aspect-ratio: 1.55;
+      border: 4px solid var(--border);
+      box-shadow: inset -3px -3px 0 var(--inset-dark), inset 3px 3px 0 var(--inset-light);
+      padding: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-end;
+    }
+    .tile-name { font-size: 22px; line-height: 1.2; }
+    .tile:nth-child(1) { background: var(--tile1); }
+    .tile:nth-child(2) { background: var(--tile2); }
+    .tile:nth-child(3) { background: var(--tile3); }
+    .tile-add {
+      aspect-ratio: 1.55;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 6px;
+      background: var(--bg);
+      border: 4px dashed var(--tile-add-border);
+      color: var(--muted);
+      box-shadow: none;
+      font: inherit;
+      cursor: pointer;
+    }
+    .tile-add-icon { font-size: 28px; line-height: 1; }
+
+    .swatches {
+      display: flex;
+      gap: 6px;
+      padding: 8px 20px 16px;
+      flex-wrap: wrap;
+    }
+    .swatch {
+      width: 28px; height: 28px;
+      border: 3px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <nav class="picker" id="picker">
+    <span class="picker-label">Режим:</span>
+    <button type="button" class="mode-btn mode-active" data-mode="dark">Тёмная</button>
+    <button type="button" class="mode-btn" data-mode="light">Светлая</button>
+    <span class="picker-divider"></span>
+    <span class="picker-label">Тема:</span>
+    <div class="theme-btns" id="theme-btns"></div>
+    <p class="picker-hint">Layout: icon rail слева · без LV/XP · SNES pixel</p>
+    <p class="theme-desc" id="theme-desc"></p>
+  </nav>
+
+  <div class="px" id="app">
+    <div class="shell">
+      <aside class="rail" aria-label="Навигация">
+        <span class="logo" aria-hidden="true"></span>
+        <button type="button" class="rail-btn active" title="Доски">▦</button>
+        <button type="button" class="rail-btn" title="Персонаж">⚔</button>
+        <button type="button" class="rail-btn" title="Приглашения">✉</button>
+        <button type="button" class="rail-btn" title="Настройки">⚙</button>
+        <div class="rail-spacer"></div>
+        <span class="avatar" title="Профиль">IK</span>
+      </aside>
+      <div class="main">
+        <header class="topbar">
+          <div class="topbar-left">
+            <span class="breadcrumb">Пространства /</span>
+            <h1 class="topbar-title">Мой проект</h1>
+          </div>
+          <div class="topbar-actions">
+            <button type="button" class="btn btn-ghost">Поиск ⌘K</button>
+          </div>
+        </header>
+        <div class="toolbar">
+          <button type="button" class="btn btn-ghost">← Назад</button>
+          <button type="button" class="btn btn-ghost">Архив</button>
+          <button type="button" class="btn btn-primary toolbar-end">+ Доска</button>
+        </div>
+        <div class="content">
+          <div class="grid">
+            <div class="tile"><span class="tile-name">Sprint 24</span></div>
+            <div class="tile"><span class="tile-name">Бэклог</span></div>
+            <div class="tile"><span class="tile-name">Marketing</span></div>
+            <button type="button" class="tile-add"><span class="tile-add-icon">+</span><span>Новая доска</span></button>
+          </div>
+          <div class="swatches" id="swatches" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const THEMES = {
+      dark: [
+        {
+          id: 'royal',
+          label: '1 Royal',
+          desc: 'Royal Purple — базовый SNES: фиолетовый фон, золото, зелёные плитки.',
+          vars: {
+            bg: '#1a1033', bg2: '#2a1850', border: '#000', accent: '#ffe566',
+            text: '#f0e6d3', muted: '#a898c8',
+            tile1: '#4a6741', tile2: '#5c4a8a', tile3: '#8b4513',
+            green: '#6bcb77', railEdge: '#5c4a8a', btnEdge: '#5c4a8a',
+            logoBg: '#c9a227', logoShadow: '#8b6914',
+            activeRail: '#4a6741', activeRailText: '#d4edc9',
+            primaryBg: '#4a6741', primaryText: '#d4edc9',
+            ghostBorder: '#5c4a8a', tileAddBorder: '#5c4a8a',
+            titleShadow: '#000', insetDark: 'rgba(0,0,0,0.4)', insetLight: 'rgba(255,255,255,0.12)',
+          },
+        },
+        {
+          id: 'forest',
+          label: '2 Forest',
+          desc: 'Forest Night — глубокий лес, изумруд, медь и янтарный акцент.',
+          vars: {
+            bg: '#0f1a14', bg2: '#1a2e22', border: '#000', accent: '#e8b84a',
+            text: '#d8e8d0', muted: '#7a9a82',
+            tile1: '#2d5a3d', tile2: '#3a6b52', tile3: '#6b4a2a',
+            green: '#5cb86a', railEdge: '#3a6b52', btnEdge: '#3a6b52',
+            logoBg: '#b87333', logoShadow: '#7a4f22',
+            activeRail: '#2d5a3d', activeRailText: '#c8f0c8',
+            primaryBg: '#2d5a3d', primaryText: '#c8f0c8',
+            ghostBorder: '#3a6b52', tileAddBorder: '#3a6b52',
+            titleShadow: '#000', insetDark: 'rgba(0,0,0,0.45)', insetLight: 'rgba(255,255,255,0.1)',
+          },
+        },
+        {
+          id: 'crimson',
+          label: '3 Crimson',
+          desc: 'Crimson Keep — бордовый замок, латунь, тёмно-красные плитки.',
+          vars: {
+            bg: '#1a0a10', bg2: '#2e1420', border: '#000', accent: '#f0c060',
+            text: '#f0ddd8', muted: '#b08090',
+            tile1: '#6b2030', tile2: '#4a2848', tile3: '#8b5020',
+            green: '#c07060', railEdge: '#5a3040', btnEdge: '#5a3040',
+            logoBg: '#c9a030', logoShadow: '#8b6018',
+            activeRail: '#6b2030', activeRailText: '#ffd8d0',
+            primaryBg: '#6b2030', primaryText: '#ffd8d0',
+            ghostBorder: '#5a3040', tileAddBorder: '#5a3040',
+            titleShadow: '#000', insetDark: 'rgba(0,0,0,0.45)', insetLight: 'rgba(255,255,255,0.1)',
+          },
+        },
+        {
+          id: 'ocean',
+          label: '4 Ocean',
+          desc: 'Deep Ocean — navy, бирюза, янтарные огни как в подводном данже.',
+          vars: {
+            bg: '#0a1428', bg2: '#142040', border: '#000', accent: '#ffd080',
+            text: '#d0e0f0', muted: '#7090b8',
+            tile1: '#1a5070', tile2: '#284878', tile3: '#3a6888',
+            green: '#40c8b0', railEdge: '#284878', btnEdge: '#284878',
+            logoBg: '#d0a040', logoShadow: '#906820',
+            activeRail: '#1a5070', activeRailText: '#b0f0e8',
+            primaryBg: '#1a5070', primaryText: '#b0f0e8',
+            ghostBorder: '#284878', tileAddBorder: '#284878',
+            titleShadow: '#000', insetDark: 'rgba(0,0,0,0.45)', insetLight: 'rgba(255,255,255,0.12)',
+          },
+        },
+        {
+          id: 'slate',
+          label: '5 Slate',
+          desc: 'Slate Dungeon — нейтральный графит, холодный синий акцент, серебро.',
+          vars: {
+            bg: '#141820', bg2: '#222830', border: '#000', accent: '#90c0ff',
+            text: '#e0e4ec', muted: '#8898a8',
+            tile1: '#3a4858', tile2: '#4a5870', tile3: '#586878',
+            green: '#70a890', railEdge: '#4a5870', btnEdge: '#4a5870',
+            logoBg: '#8898a8', logoShadow: '#586878',
+            activeRail: '#3a5878', activeRailText: '#c0d8f0',
+            primaryBg: '#3a5878', primaryText: '#c0d8f0',
+            ghostBorder: '#4a5870', tileAddBorder: '#586878',
+            titleShadow: '#000', insetDark: 'rgba(0,0,0,0.4)', insetLight: 'rgba(255,255,255,0.14)',
+          },
+        },
+      ],
+      light: [
+        {
+          id: 'parchment',
+          label: '1 Parchment',
+          desc: 'Parchment Quest — тёплая бумага, сепия, коричневые чернила.',
+          vars: {
+            bg: '#f0e6d0', bg2: '#e4d4b8', border: '#2a2018', accent: '#8b4513',
+            text: '#2a2018', muted: '#7a6858',
+            tile1: '#6b8c5a', tile2: '#9a7a58', tile3: '#b87840',
+            green: '#4a8a50', railEdge: '#c8b898', btnEdge: '#c8b898',
+            logoBg: '#c9a030', logoShadow: '#8b6914',
+            activeRail: '#6b8c5a', activeRailText: '#f8fff0',
+            primaryBg: '#6b8c5a', primaryText: '#f8fff0',
+            ghostBorder: '#b8a888', tileAddBorder: '#b8a888',
+            titleShadow: 'rgba(42,32,24,0.15)', insetDark: 'rgba(42,32,24,0.18)', insetLight: 'rgba(255,255,255,0.5)',
+          },
+        },
+        {
+          id: 'sky',
+          label: '2 Sky',
+          desc: 'Sky Castle — светлое небо, белые стены, королевский синий.',
+          vars: {
+            bg: '#e8f0f8', bg2: '#d8e4f0', border: '#1a2840', accent: '#2858a8',
+            text: '#1a2840', muted: '#5878a0',
+            tile1: '#4888c8', tile2: '#6898d0', tile3: '#90b8e0',
+            green: '#48a868', railEdge: '#b0c8e0', btnEdge: '#b0c8e0',
+            logoBg: '#ffd040', logoShadow: '#c9a020',
+            activeRail: '#2858a8', activeRailText: '#f0f8ff',
+            primaryBg: '#2858a8', primaryText: '#f0f8ff',
+            ghostBorder: '#98b8d8', tileAddBorder: '#98b8d8',
+            titleShadow: 'rgba(26,40,64,0.12)', insetDark: 'rgba(26,40,64,0.15)', insetLight: 'rgba(255,255,255,0.6)',
+          },
+        },
+        {
+          id: 'meadow',
+          label: '3 Meadow',
+          desc: 'Meadow Day — луг, шалфей, солнечный жёлтый.',
+          vars: {
+            bg: '#e8f0e0', bg2: '#d8e8cc', border: '#1a2818', accent: '#c89818',
+            text: '#1a2818', muted: '#587850',
+            tile1: '#5a9858', tile2: '#78a868', tile3: '#a8c878',
+            green: '#48a050', railEdge: '#a8c898', btnEdge: '#a8c898',
+            logoBg: '#e8b830', logoShadow: '#a87818',
+            activeRail: '#5a9858', activeRailText: '#f0fff0',
+            primaryBg: '#5a9858', primaryText: '#f0fff0',
+            ghostBorder: '#98b890', tileAddBorder: '#98b890',
+            titleShadow: 'rgba(26,40,24,0.12)', insetDark: 'rgba(26,40,24,0.15)', insetLight: 'rgba(255,255,255,0.55)',
+          },
+        },
+        {
+          id: 'rose',
+          label: '4 Rose',
+          desc: 'Rose Quill — пыльная роза, крем, золотые заголовки.',
+          vars: {
+            bg: '#f8ece8', bg2: '#f0dcd4', border: '#281820', accent: '#a84858',
+            text: '#281820', muted: '#987880',
+            tile1: '#c87888', tile2: '#d898a0', tile3: '#e8b8b0',
+            green: '#68a878', railEdge: '#d8b8b0', btnEdge: '#d8b8b0',
+            logoBg: '#e8b040', logoShadow: '#a87828',
+            activeRail: '#a84858', activeRailText: '#fff8f0',
+            primaryBg: '#a84858', primaryText: '#fff8f0',
+            ghostBorder: '#c8a8a0', tileAddBorder: '#c8a8a0',
+            titleShadow: 'rgba(40,24,32,0.12)', insetDark: 'rgba(40,24,32,0.14)', insetLight: 'rgba(255,255,255,0.55)',
+          },
+        },
+        {
+          id: 'frost',
+          label: '5 Frost',
+          desc: 'Frost Pixels — холодный серый, лёд, стальной синий.',
+          vars: {
+            bg: '#e8ecef', bg2: '#d8dfe4', border: '#1a2028', accent: '#4078a8',
+            text: '#1a2028', muted: '#687888',
+            tile1: '#6888a0', tile2: '#7898b0', tile3: '#98b0c0',
+            green: '#58a088', railEdge: '#b0bcc8', btnEdge: '#b0bcc8',
+            logoBg: '#7898b0', logoShadow: '#506878',
+            activeRail: '#4078a8', activeRailText: '#f0f8ff',
+            primaryBg: '#4078a8', primaryText: '#f0f8ff',
+            ghostBorder: '#98a8b8', tileAddBorder: '#98a8b8',
+            titleShadow: 'rgba(26,32,40,0.12)', insetDark: 'rgba(26,32,40,0.14)', insetLight: 'rgba(255,255,255,0.6)',
+          },
+        },
+      ],
+    };
+
+    const SWATCH_KEYS = ['bg', 'bg2', 'accent', 'tile1', 'tile2', 'tile3', 'green'];
+
+    let mode = 'dark';
+    let themeId = 'royal';
+
+    const app = document.getElementById('app');
+    const themeBtns = document.getElementById('theme-btns');
+    const themeDesc = document.getElementById('theme-desc');
+    const swatches = document.getElementById('swatches');
+
+    function applyTheme(theme) {
+      const v = theme.vars;
+      const root = app.style;
+      root.setProperty('--bg', v.bg);
+      root.setProperty('--bg2', v.bg2);
+      root.setProperty('--border', v.border);
+      root.setProperty('--accent', v.accent);
+      root.setProperty('--text', v.text);
+      root.setProperty('--muted', v.muted);
+      root.setProperty('--tile1', v.tile1);
+      root.setProperty('--tile2', v.tile2);
+      root.setProperty('--tile3', v.tile3);
+      root.setProperty('--green', v.green);
+      root.setProperty('--rail-edge', v.railEdge);
+      root.setProperty('--btn-edge', v.btnEdge);
+      root.setProperty('--logo-bg', v.logoBg);
+      root.setProperty('--logo-shadow', v.logoShadow);
+      root.setProperty('--active-rail', v.activeRail);
+      root.setProperty('--active-rail-text', v.activeRailText);
+      root.setProperty('--primary-bg', v.primaryBg);
+      root.setProperty('--primary-text', v.primaryText);
+      root.setProperty('--ghost-border', v.ghostBorder);
+      root.setProperty('--tile-add-border', v.tileAddBorder);
+      root.setProperty('--title-shadow', v.titleShadow);
+      root.setProperty('--inset-dark', v.insetDark);
+      root.setProperty('--inset-light', v.insetLight);
+
+      themeDesc.textContent = theme.desc;
+      swatches.innerHTML = SWATCH_KEYS.map((k) =>
+        `<span class="swatch" style="background:${v[k]}" title="${k}"></span>`
+      ).join('');
+    }
+
+    function renderThemeButtons() {
+      themeBtns.innerHTML = '';
+      THEMES[mode].forEach((t) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = t.label;
+        btn.dataset.themeId = t.id;
+        if (t.id === themeId) btn.classList.add('active');
+        btn.addEventListener('click', () => {
+          themeId = t.id;
+          renderThemeButtons();
+          applyTheme(t);
+        });
+        themeBtns.appendChild(btn);
+      });
+      const current = THEMES[mode].find((t) => t.id === themeId) || THEMES[mode][0];
+      themeId = current.id;
+      applyTheme(current);
+    }
+
+    document.querySelectorAll('.mode-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mode = btn.dataset.mode;
+        document.querySelectorAll('.mode-btn').forEach((b) => b.classList.remove('mode-active'));
+        btn.classList.add('mode-active');
+        const prevIdx = THEMES[mode === 'dark' ? 'light' : 'dark'].findIndex((t) => t.id === themeId);
+        themeId = THEMES[mode][Math.min(prevIdx >= 0 ? prevIdx : 0, 4)].id;
+        renderThemeButtons();
+      });
+    });
+
+    renderThemeButtons();
+  </script>
+</body>
+</html>
