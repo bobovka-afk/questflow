@@ -20,6 +20,7 @@ import { XpEventType } from '../generated/prisma/enums';
 import { XP_PER_TASK_COMPLETED } from '../gamification/config/rewards';
 import { NotificationService } from '../notification/notification.service';
 import { UserNotificationType } from '../generated/prisma/enums';
+import { CardAttachmentService } from './card-attachment.service';
 
 @Injectable()
 export class CardService {
@@ -29,6 +30,7 @@ export class CardService {
     private readonly questProgressService: QuestProgressService,
     private readonly achievementService: AchievementService,
     private readonly notificationService: NotificationService,
+    private readonly cardAttachmentService: CardAttachmentService,
   ) {}
 
   async getCards(listId: number) {
@@ -43,11 +45,26 @@ export class CardService {
             },
           },
         },
+        coverAttachment: {
+          select: {
+            previewPath: true,
+            storagePath: true,
+            mimeType: true,
+          },
+        },
+        _count: { select: { attachments: true, comments: true } },
       },
     });
     return cards.map((c) => ({
       ...c,
       labels: c.labels.map((cl) => cl.label),
+      attachmentCount: c._count.attachments,
+      commentCount: c._count.comments,
+      coverImageUrl: this.cardAttachmentService.coverPreviewUrl(
+        c.coverAttachment,
+      ),
+      coverAttachment: undefined,
+      _count: undefined,
     }));
   }
 

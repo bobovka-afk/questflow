@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,8 +9,16 @@ import {
   Patch,
   Post,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import * as fs from 'fs';
+import * as path from 'path';
+import { randomUUID } from 'crypto';
+import type { File as MulterFile } from 'multer';
 import { CardService } from './card.service';
 import { JwtAuthGuard } from '../auth/guards/auth.guard';
 import { WorkspaceAccessGuard } from '../common/guards/workspace-access.guard';
@@ -20,6 +29,11 @@ import { SetCardCompletionDto } from './dto/set-card-completion.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import { SetCardLabelsDto } from './dto/set-card-labels.dto';
 import { WorkspaceLabelService } from '../workspace/workspace-label.service';
+import { CardAttachmentService } from './card-attachment.service';
+import { AddCardAttachmentLinkDto } from './dto/add-card-attachment-link.dto';
+import { SetCardCoverDto } from './dto/set-card-cover.dto';
+import { CARD_ATTACHMENT_MAX_BYTES } from './config/card-attachment-limits';
+import type { CardAttachmentView } from './interface/card-attachment.interface';
 import {
   ApiBody,
   ApiBearerAuth,
@@ -39,6 +53,7 @@ export class CardController {
   constructor(
     private readonly cardService: CardService,
     private readonly labelService: WorkspaceLabelService,
+    private readonly cardAttachmentService: CardAttachmentService,
   ) {}
 
   @Get('lists/:listId/cards')
@@ -132,6 +147,97 @@ export class CardController {
     @Body() dto: SetCardLabelsDto,
   ): Promise<{ ok: boolean }> {
     await this.labelService.setCardLabels(cardId, dto.labelIds);
+    return { ok: true };
+  }
+
+  @Get('cards/:cardId/attachments')
+  @ApiOperation({ summary: 'List card attachments' })
+  async listAttachments(
+    @Param('workspaceId', ParseIntPipe) workspaceId: number,
+    @Param('cardId', ParseIntPipe) cardId: number,
+  ): Promise<CardAttachmentView[]> {
+    return this.cardAttachmentService.listForCard(cardId, workspaceId);
+  }
+
+  @Post('cards/:cardId/attachments')
+  @ApiOperation({ summary: 'Upload file attachment (max 10 MB, no video)' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          const dir = path.join(process.cwd(), 'uploads', 'card-attachments', '_tmp');
+          fs.mkdirSync(dir, { recursive: true });
+          cb(null, dir);
+        },
+        filename: (_req, _file, cb) => {
+          cb(null, `${Date.now()}-${randomUUID()}.upload`);
+        },
+      }),
+      limits: { fileSize: CARD_ATTACHMENT_MAX_BYTES },
+    }),
+  )
+  async uploadAttachment(
+    @Req() req: AuthedRequest,
+    @Param('workspaceId', ParseIntPipe) workspaceId: number,
+    @Param('cardId', ParseIntPipe) cardId: number,
+    @UploadedFile() file?: MulterFile,
+  ): Promise<CardAttachmentView> {
+    return this.cardAttachmentService.uploadFile(
+      cardId,
+      workspaceId,
+      req.user.id,
+      file as MulterFile,
+    );
+  }
+
+  @Post('cards/:cardId/attachments/link')
+  @ApiOperation({ summary: 'Attach URL (videos as links only)' })
+  async addAttachmentLink(
+    @Req() req: AuthedRequest,
+    @Param('workspaceId', ParseIntPipe) workspaceId: number,
+    @Param('cardId', ParseIntPipe) cardId: number,
+    @Body() body: AddCardAttachmentLinkDto,
+  ): Promise<CardAttachmentView> {
+    return this.cardAttachmentService.addLink(
+      cardId,
+      workspaceId,
+      req.user.id,
+      body.url,
+      body.fileName,
+    );
+  }
+
+  @Delete('cards/:cardId/attachments/:attachmentId')
+  @ApiOperation({ summary: 'Delete card attachment' })
+  async deleteAttachment(
+    @Param('workspaceId', ParseIntPipe) workspaceId: number,
+    @Param('cardId', ParseIntPipe) cardId: number,
+    @Param('attachmentId', ParseIntPipe) attachmentId: number,
+  ): Promise<{ ok: boolean }> {
+    await this.cardAttachmentService.deleteAttachment(
+      cardId,
+      workspaceId,
+      attachmentId,
+    );
+    return { ok: true };
+  }
+
+  @Patch('cards/:cardId/cover')
+  @ApiOperation({ summary: 'Set or clear card cover image' })
+  async setCardCover(
+    @Param('workspaceId', ParseIntPipe) workspaceId: number,
+    @Param('cardId', ParseIntPipe) cardId: number,
+    @Body() body: SetCardCoverDto,
+  ): Promise<{ ok: boolean }> {
+    const id =
+      body.attachmentId === undefined ? null : body.attachmentId;
+    if (id != null && typeof id !== 'number') {
+      throw new BadRequestException({
+        code: 'INVALID_COVER',
+        message: 'Invalid cover attachment id',
+      });
+    }
+    await this.cardAttachmentService.setCover(cardId, workspaceId, id);
     return { ok: true };
   }
 

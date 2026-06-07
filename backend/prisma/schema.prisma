@@ -204,6 +204,7 @@ model User {
   workspaceInvitesSent WorkspaceInvite[]
   workspaceActivities  WorkspaceActivity[]
   assignedCards        Card[]
+  cardAttachments      CardAttachment[]
   comments             Comment[]
   character            Character?
   xpEvents             XpEvent[]
@@ -330,6 +331,11 @@ model List {
   cards Card[]
 }
 
+enum CardAttachmentKind {
+  FILE
+  LINK
+}
+
 model Card {
   id                    Int       @id @default(autoincrement())
   listId                Int       @map("list_id")
@@ -341,14 +347,37 @@ model Card {
   position              Int       @default(0)
   assigneeId            Int?      @map("assignee_id")
   isCompleted           Boolean   @default(false) @map("is_completed")
+  coverAttachmentId     Int?      @unique @map("cover_attachment_id")
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
 
-  list     List        @relation(fields: [listId], references: [id], onDelete: Cascade)
-  assignee User?       @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
-  comments Comment[]
-  xpEvents XpEvent[]
-  labels   CardLabel[]
+  list            List             @relation(fields: [listId], references: [id], onDelete: Cascade)
+  assignee        User?            @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  comments        Comment[]
+  xpEvents        XpEvent[]
+  labels          CardLabel[]
+  attachments     CardAttachment[]
+  coverAttachment CardAttachment?  @relation("CardCover", fields: [coverAttachmentId], references: [id], onDelete: SetNull)
+}
+
+model CardAttachment {
+  id           Int                @id @default(autoincrement())
+  cardId       Int                @map("card_id")
+  uploaderId   Int                @map("uploader_id")
+  kind         CardAttachmentKind
+  fileName     String             @map("file_name")
+  mimeType     String?            @map("mime_type")
+  sizeBytes    Int?               @map("size_bytes")
+  storagePath  String?            @map("storage_path")
+  previewPath  String?            @map("preview_path")
+  externalUrl  String?            @map("external_url")
+  createdAt    DateTime           @default(now()) @map("created_at")
+
+  card         Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  uploader     User  @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  coverForCard Card? @relation("CardCover")
+
+  @@index([cardId])
 }
 
 model WorkspaceLabel {

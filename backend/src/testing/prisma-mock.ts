@@ -46,6 +46,14 @@ export function createPrismaMock(): any {
       findUnique: mockFn(),
       create: mockFn(),
       update: mockFn(),
+      updateMany: mockFn(),
+      delete: mockFn(),
+    },
+    cardAttachment: {
+      findMany: mockFn(),
+      findFirst: mockFn(),
+      count: mockFn(),
+      create: mockFn(),
       delete: mockFn(),
     },
     list: {

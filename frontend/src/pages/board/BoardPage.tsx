@@ -37,9 +37,7 @@ import {
 	type XpGrantRewards
 } from '@entities/reward'
 import { useGamificationSettings } from '@entities/user-settings'
-import { avatarInitials, avatarSrcFromPath, userProfilePath } from '@entities/user'
 import { SpaLink } from '@shared/lib/navigation'
-import { handleSpaTileAuxClick, handleSpaTileClick } from '@shared/lib/navigation-core'
 import { ProfileToolbarAnchor } from '@shared/ui/profile-toolbar'
 import type { BoardRow } from '@pages/workspace-boards/WorkspaceBoardsPage'
 import {
@@ -51,13 +49,11 @@ import {
 } from '@entities/workspace'
 import {
 	filterBoardCards,
-	CARD_REMINDER_OPTIONS,
-	formatMentionToken,
 	type BoardCardFilter,
 	type WorkspaceLabelRow,
 } from '@features/board/lib/boardCardFilters'
 import { CardLabelStrip } from '@features/board/ui/CardLabelStrip'
-import { CommentBodyText } from '@features/board/ui/CommentBodyText'
+import { CardDetailModalTrello } from '@widgets/card-detail/CardDetailModalTrello'
 import { WorkspaceSearchModal } from '@widgets/workspace-search/WorkspaceSearchModal'
 import { WorkspaceLabelsModal } from '@widgets/workspace-labels/WorkspaceLabelsModal'
 import { useWorkspaceSearchHotkey } from '@shared/lib/useWorkspaceSearchHotkey'
@@ -84,6 +80,9 @@ export type CardRow = {
 	assigneeId: number | null
 	isCompleted?: boolean
 	labels?: WorkspaceLabelRow[]
+	coverImageUrl?: string | null
+	attachmentCount?: number
+	commentCount?: number
 	createdAt: string
 	updatedAt: string
 }
@@ -245,36 +244,6 @@ function inputValueToIsoOrNull(v: string): string | null {
 	return d.toISOString()
 }
 
-/** Как на странице участников: «28 марта 2026 12:41» без «г.» и сокращений месяца */
-function formatCardLogWhen(iso: string): string {
-	try {
-		const d = new Date(iso)
-		if (Number.isNaN(d.getTime())) return '—'
-		const months = [
-			'января',
-			'февраля',
-			'марта',
-			'апреля',
-			'мая',
-			'июня',
-			'июля',
-			'августа',
-			'сентября',
-			'октября',
-			'ноября',
-			'декабря'
-		]
-		const day = d.getDate()
-		const mon = months[d.getMonth()] ?? ''
-		const y = d.getFullYear()
-		const h = String(d.getHours()).padStart(2, '0')
-		const min = String(d.getMinutes()).padStart(2, '0')
-		return `${day} ${mon} ${y} ${h}:${min}`
-	} catch {
-		return '—'
-	}
-}
-
 /** Относительное время для комментариев (Intl, ru). */
 function formatCommentRelativeAgo(iso: string, nowMs: number): string {
 	const then = new Date(iso).getTime()
@@ -294,44 +263,6 @@ function formatCommentRelativeAgo(iso: string, nowMs: number): string {
 	if (days < 365) return rtf.format(-months, 'month')
 	const years = Math.floor(days / 365)
 	return rtf.format(-years, 'year')
-}
-
-function CommentAvatarBubble({
-	name,
-	avatarPath,
-	profileTo
-}: {
-	name: string
-	avatarPath?: string | null
-	profileTo: string
-}) {
-	const [broken, setBroken] = useState(false)
-	const src = avatarSrcFromPath(avatarPath)
-	return (
-		<button
-			type='button'
-			className='trello-card-comment-avatar trello-card-comment-avatar-btn'
-			aria-label={`Профиль: ${name}`}
-			onClick={e => handleSpaTileClick(e, profileTo)}
-			onAuxClick={e => handleSpaTileAuxClick(e, profileTo)}
-		>
-			{src && !broken ? (
-				<img
-					src={src}
-					alt=''
-					className='trello-card-comment-avatar-img'
-					onError={() => setBroken(true)}
-				/>
-			) : (
-				<span
-					className='trello-card-comment-avatar-fallback'
-					aria-hidden
-				>
-					{avatarInitials(name)}
-				</span>
-			)}
-		</button>
-	)
 }
 
 export function BoardPage({
@@ -469,7 +400,7 @@ export function BoardPage({
 	)
 
 	const [cardTitleEditing, setCardTitleEditing] = useState(false)
-	const cardTitleInputRef = useRef<HTMLInputElement>(null)
+	const cardTitleInputRef = useRef<HTMLTextAreaElement>(null)
 	const boardListsScrollRef = useRef<HTMLDivElement>(null)
 	const boardHpanRef = useRef<{ id: number | null; lastX: number }>({
 		id: null,
@@ -561,6 +492,12 @@ export function BoardPage({
 		if (!editCard) return ''
 		return lists.find(l => l.id === editCard.listId)?.name ?? 'Колонка'
 	}, [editCard, lists])
+
+	const currentUserName = useMemo(() => {
+		if (currentUserId == null) return 'Участник'
+		const m = workspaceMembers.find(w => w.user.id === currentUserId)
+		return m?.user.name ?? 'Участник'
+	}, [currentUserId, workspaceMembers])
 
 	const load = useCallback(async () => {
 		if (!accessToken) {
@@ -991,6 +928,22 @@ export function BoardPage({
 		}
 	}
 
+	async function refreshEditCardFromBoard() {
+		if (!accessToken || !editCard) return
+		try {
+			const raw = await api<CardRow[]>(
+				`/workspace/${workspaceId}/lists/${editCard.listId}/cards`,
+				{ method: 'GET', accessToken },
+			)
+			const cards = Array.isArray(raw) ? raw : []
+			setCardsByListId(prev => ({ ...prev, [editCard.listId]: cards }))
+			const fresh = cards.find(c => c.id === editCard.id)
+			if (fresh) setEditCard(fresh)
+		} catch {
+			await loadCards()
+		}
+	}
+
 	function openCardDetail(card: CardRow) {
 		setEditCard(card)
 		setEditCardTitle(card.title)
@@ -1041,6 +994,29 @@ export function BoardPage({
 		if (!editCard) return
 		setEditCardTitle(editCard.title)
 		setCardTitleEditing(false)
+	}
+
+	async function saveCardDescriptionInline() {
+		if (!accessToken || !editCard) return
+		const description = editCardDesc.trim() || null
+		const prev = editCard.description?.trim() || null
+		if (description === prev) return
+		setEditCardBusy(true)
+		try {
+			await api(`/workspace/${workspaceId}/cards/${editCard.id}`, {
+				method: 'PATCH',
+				accessToken,
+				json: { description },
+			})
+			const next = { ...editCard, description }
+			setEditCard(next)
+			await loadCards()
+		} catch (e) {
+			setAlertText(formatError(e))
+			setAlertOpen(true)
+		} finally {
+			setEditCardBusy(false)
+		}
 	}
 
 	const toggleCardCompletion = useCallback(
@@ -1483,6 +1459,9 @@ export function BoardPage({
 																							: '',
 																						card.isCompleted
 																							? 'trello-card--completed'
+																							: '',
+																						card.coverImageUrl
+																							? 'trello-card--has-cover'
 																							: ''
 																					]
 																						.filter(
@@ -1493,84 +1472,154 @@ export function BoardPage({
 																						)}
 																				>
 																					<div className='trello-card-inner'>
+																						{card.coverImageUrl ? (
+																							<div
+																								className='trello-card-cover-wrap'
+																								role='button'
+																								tabIndex={0}
+																								onClick={() =>
+																									openCardDetail(
+																										card
+																									)
+																								}
+																								onKeyDown={e => {
+																									if (
+																										e.key ===
+																											'Enter' ||
+																										e.key ===
+																											' '
+																									) {
+																										e.preventDefault()
+																										openCardDetail(
+																											card
+																										)
+																									}
+																								}}
+																							>
+																								<img
+																									className='trello-card-cover-img'
+																									src={
+																										card.coverImageUrl
+																									}
+																									alt=''
+																								/>
+																							</div>
+																						) : null}
 																						<CardLabelStrip
 																							labels={
 																								card.labels
 																							}
 																						/>
-																						<div className='trello-card-complete-slot'>
-																							<button
-																								type='button'
-																								className={
-																									card.isCompleted
-																										? 'trello-card-complete-btn trello-card-complete-btn--done'
-																										: 'trello-card-complete-btn'
-																								}
-																								aria-label={
-																									card.isCompleted
-																										? 'Отметить как невыполненную'
-																										: 'Отметить как выполненную'
-																								}
-																								aria-pressed={Boolean(
-																									card.isCompleted
-																								)}
-																								disabled={
-																									completionBusyId ===
-																									card.id
-																								}
-																								onClick={e =>
-																									void toggleCardCompletion(
-																										card,
-																										e
-																									)
-																								}
-																								onMouseDown={e =>
-																									e.stopPropagation()
-																								}
-																							>
-																								{card.isCompleted ? (
-																									<span
-																										className='trello-card-complete-check'
-																										aria-hidden
-																									>
-																										✓
-																									</span>
+																						<div className='trello-card-body-row'>
+																							<div className='trello-card-complete-slot'>
+																								<button
+																									type='button'
+																									className={
+																										card.isCompleted
+																											? 'trello-card-complete-btn trello-card-complete-btn--done'
+																											: 'trello-card-complete-btn'
+																									}
+																									aria-label={
+																										card.isCompleted
+																											? 'Отметить как невыполненную'
+																											: 'Отметить как выполненную'
+																									}
+																									aria-pressed={Boolean(
+																										card.isCompleted
+																									)}
+																									disabled={
+																										completionBusyId ===
+																										card.id
+																									}
+																									onClick={e =>
+																										void toggleCardCompletion(
+																											card,
+																											e
+																										)
+																									}
+																									onMouseDown={e =>
+																										e.stopPropagation()
+																									}
+																								>
+																									{card.isCompleted ? (
+																										<span
+																											className='trello-card-complete-check'
+																											aria-hidden
+																										>
+																											✓
+																										</span>
+																									) : null}
+																								</button>
+																							</div>
+																							<div className='trello-card-text-block'>
+																								<div
+																									className={
+																										card.isCompleted
+																											? 'trello-card-title trello-card-title--in-list trello-card-title--done'
+																											: 'trello-card-title trello-card-title--in-list'
+																									}
+																									role='button'
+																									tabIndex={
+																										0
+																									}
+																									aria-label={`Карточка: ${card.title}`}
+																									onClick={() =>
+																										openCardDetail(
+																											card
+																										)
+																									}
+																									onKeyDown={e => {
+																										if (
+																											e.key ===
+																												'Enter' ||
+																											e.key ===
+																												' '
+																										) {
+																											e.preventDefault()
+																											openCardDetail(
+																												card
+																											)
+																										}
+																									}}
+																								>
+																									{
+																										card.title
+																									}
+																								</div>
+																								{(card.attachmentCount ?? 0) > 0 ||
+																								(card.commentCount ?? 0) > 0 ? (
+																									<div className='trello-card-badges'>
+																										{(card.attachmentCount ?? 0) > 0 ? (
+																											<span
+																												className='trello-card-badge'
+																												title='Вложения'
+																											>
+																												<span
+																													className='trello-card-badge-icon'
+																													aria-hidden
+																												>
+																													📎
+																												</span>
+																												{card.attachmentCount}
+																											</span>
+																										) : null}
+																										{(card.commentCount ?? 0) > 0 ? (
+																											<span
+																												className='trello-card-badge'
+																												title='Комментарии'
+																											>
+																												<span
+																													className='trello-card-badge-icon'
+																													aria-hidden
+																												>
+																													💬
+																												</span>
+																												{card.commentCount}
+																											</span>
+																										) : null}
+																									</div>
 																								) : null}
-																							</button>
-																						</div>
-																						<div
-																							className={
-																								card.isCompleted
-																									? 'trello-card-title trello-card-title--in-list trello-card-title--done'
-																									: 'trello-card-title trello-card-title--in-list'
-																							}
-																							role='button'
-																							tabIndex={
-																								0
-																							}
-																							aria-label={`Карточка: ${card.title}`}
-																							onClick={() =>
-																								openCardDetail(
-																									card
-																								)
-																							}
-																							onKeyDown={e => {
-																								if (
-																									e.key ===
-																										'Enter' ||
-																									e.key ===
-																										' '
-																								) {
-																									e.preventDefault()
-																									openCardDetail(
-																										card
-																									)
-																								}
-																							}}
-																						>
-																							{
-																								card.title
-																							}
+																							</div>
 																						</div>
 																					</div>
 																				</div>
@@ -1963,540 +2012,84 @@ export function BoardPage({
 			)}
 
 			{editCard && (
-				<div
-					className='trello-modal-backdrop'
-					role='presentation'
-					onClick={() => !editCardBusy && setEditCard(null)}
-				>
-					<div
-						className='trello-modal trello-modal-card-detail trello-modal-card-detail--wide'
-						role='dialog'
-						aria-modal
-						onClick={e => e.stopPropagation()}
-					>
-						<div className='trello-modal-head'>
-							<h2
-								className='trello-modal-title trello-modal-title--card-detail'
-								title={listNameForCard}
-							>
-								{listNameForCard}
-							</h2>
-							<button
-								type='button'
-								className='trello-modal-close'
-								onClick={() =>
-									!editCardBusy && setEditCard(null)
-								}
-								aria-label='Закрыть'
-							>
-								×
-							</button>
-						</div>
-						<div className='trello-modal-body trello-card-detail-body trello-card-detail-body--with-comments'>
-							<div className='trello-card-detail-main'>
-								<div className='trello-card-detail-title-block'>
-									{cardTitleEditing ? (
-										<div className='trello-profile-name-edit trello-card-detail-title-edit'>
-											<input
-												ref={cardTitleInputRef}
-												className='trello-input trello-profile-name-input trello-card-detail-title-input'
-												value={editCardTitle}
-												onChange={e =>
-													setEditCardTitle(
-														e.target.value
-													)
-												}
-												maxLength={50}
-												disabled={editCardBusy}
-												onKeyDown={e => {
-													if (e.key === 'Enter') {
-														e.preventDefault()
-														void saveCardTitleInline()
-													}
-													if (e.key === 'Escape') {
-														e.preventDefault()
-														cancelCardTitleEdit()
-													}
-												}}
-												aria-label='Название карточки'
-											/>
-											<div className='trello-profile-name-edit-actions'>
-												<button
-													type='button'
-													className='trello-btn trello-btn-primary trello-btn-sm'
-													disabled={editCardBusy}
-													onClick={() =>
-														void saveCardTitleInline()
-													}
-												>
-													{editCardBusy
-														? '…'
-														: 'Сохранить'}
-												</button>
-												<button
-													type='button'
-													className='trello-btn trello-btn-ghost trello-btn-sm'
-													disabled={editCardBusy}
-													onClick={() =>
-														cancelCardTitleEdit()
-													}
-												>
-													Отмена
-												</button>
-											</div>
-										</div>
-									) : (
-										<button
-											type='button'
-											className='trello-profile-display-name trello-card-detail-card-title-btn'
-											onClick={() => {
-												if (editCardBusy) return
-												setCardTitleEditing(true)
-											}}
-											disabled={editCardBusy}
-											title='Нажмите, чтобы изменить название'
-										>
-											{editCardTitle.trim() ||
-												editCard.title}
-										</button>
-									)}
-								</div>
-								<label className='trello-field'>
-									<span className='trello-label'>
-										Описание
-									</span>
-									<textarea
-										className='trello-textarea'
-										value={editCardDesc}
-										onChange={e =>
-											setEditCardDesc(e.target.value)
-										}
-										rows={6}
-										maxLength={2000}
-									/>
-								</label>
-								<label className='trello-field'>
-									<span className='trello-label'>Срок</span>
-									<input
-										className='trello-input'
-										type='datetime-local'
-										value={editCardDue}
-										onChange={e =>
-											setEditCardDue(e.target.value)
-										}
-									/>
-								</label>
-								<label className='trello-field'>
-									<span className='trello-label'>
-										Напоминание (in-app)
-									</span>
-									<select
-										className='trello-input'
-										value={editCardReminder}
-										onChange={e =>
-											setEditCardReminder(e.target.value)
-										}
-										disabled={editCardBusy || !editCardDue}
-									>
-										{CARD_REMINDER_OPTIONS.map(o => (
-											<option key={o.value} value={o.value}>
-												{o.label}
-											</option>
-										))}
-									</select>
-								</label>
-								{wsLabels.length > 0 && (
-									<div className='trello-field'>
-										<span className='trello-label'>Метки</span>
-										<div className='trello-card-label-picks'>
-											{wsLabels.map(l => {
-												const on = editCardLabelIds.includes(
-													l.id
-												)
-												return (
-													<button
-														key={l.id}
-														type='button'
-														className={`trello-label-chip${on ? ' trello-label-chip--on' : ''}`}
-														onClick={() =>
-															setEditCardLabelIds(prev =>
-																on
-																	? prev.filter(
-																			id => id !== l.id
-																		)
-																	: [...prev, l.id]
-															)
-														}
-													>
-														{l.name}
-													</button>
-												)
-											})}
-										</div>
-									</div>
-								)}
-								<div className='trello-card-detail-aside-block trello-card-detail-meta-in-main'>
-									<h3 className='trello-card-detail-aside-heading-plain'>
-										Исполнитель
-									</h3>
-									<select
-										className='trello-input trello-card-assignee-select'
-										value={
-											editCardAssigneeId == null
-												? ''
-												: String(editCardAssigneeId)
-										}
-										onChange={e => {
-											const v = e.target.value
-											setEditCardAssigneeId(
-												v === '' ? null : Number(v)
-											)
-										}}
-										disabled={editCardBusy}
-									>
-										<option value=''>Не назначен</option>
-										{workspaceMembers.map(m => (
-											<option
-												key={m.user.id}
-												value={m.user.id}
-											>
-												{m.user.name}
-											</option>
-										))}
-									</select>
-								</div>
-								<div className='trello-card-detail-aside-block trello-card-detail-meta-in-main'>
-									<h3 className='trello-card-detail-aside-title'>
-										История
-									</h3>
-									<ul className='trello-card-detail-log'>
-										<li className='trello-card-detail-log-item'>
-											<span className='trello-card-detail-log-label'>
-												Создано
-											</span>
-											<span className='trello-card-detail-log-value'>
-												{formatCardLogWhen(
-													editCard.createdAt
-												)}
-											</span>
-										</li>
-										<li className='trello-card-detail-log-item'>
-											<span className='trello-card-detail-log-label'>
-												Обновлено
-											</span>
-											<span className='trello-card-detail-log-value'>
-												{formatCardLogWhen(
-													editCard.updatedAt
-												)}
-											</span>
-										</li>
-									</ul>
-								</div>
-							</div>
-							<aside
-								className='trello-card-comments-panel'
-								aria-label='Комментарии и события'
-							>
-								<div className='trello-card-comments-panel-header'>
-									<span className='trello-card-comments-panel-header-inner'>
-										<svg
-											className='trello-card-comments-panel-msg-icon'
-											viewBox='0 0 24 24'
-											width={18}
-											height={18}
-											aria-hidden
-										>
-											<path
-												fill='currentColor'
-												d='M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z'
-											/>
-										</svg>
-										<span>Комментарии и события</span>
-									</span>
-								</div>
-								{accessToken ? (
-									<>
-										<div className='trello-card-comments-compose'>
-											{workspaceMembers.length > 0 && (
-												<div className='trello-mention-picks'>
-													{workspaceMembers.map(m => (
-														<button
-															key={m.user.id}
-															type='button'
-															className='trello-btn trello-btn-sm trello-btn-ghost'
-															onClick={() =>
-																setCommentDraft(
-																	prev =>
-																		`${prev}${prev.endsWith(' ') || prev === '' ? '' : ' '}${formatMentionToken(m.user.id)} `
-																)
-															}
-														>
-															@{m.user.name}
-														</button>
-													))}
-												</div>
-											)}
-											<textarea
-												className='trello-textarea trello-card-comments-textarea'
-												value={commentDraft}
-												onChange={e =>
-													setCommentDraft(
-														e.target.value
-													)
-												}
-												rows={3}
-												maxLength={2000}
-												disabled={commentSubmitBusy}
-												spellCheck
-												autoComplete='off'
-											/>
-										</div>
-										<div className='trello-card-comments-compose-actions'>
-											<button
-												type='button'
-												className='trello-btn trello-btn-primary trello-btn-sm'
-												disabled={
-													commentDraft.trim()
-														.length === 0 ||
-													commentSubmitBusy
-												}
-												onClick={() =>
-													void submitComment()
-												}
-											>
-												{commentSubmitBusy
-													? 'Отправка…'
-													: 'Отправить'}
-											</button>
-										</div>
-									</>
-								) : (
-									<p className='trello-card-comments-guest-hint'>
-										Войдите, чтобы комментировать.
-									</p>
-								)}
-								<div className='trello-card-comments-list-wrap'>
-									{commentsLoading ? (
-										<p className='trello-card-comments-loading'>
-											Загрузка комментариев…
-										</p>
-									) : comments.length === 0 ? (
-										<p className='trello-card-comments-empty'>
-											Пока нет комментариев.
-										</p>
-									) : (
-										<ul className='trello-card-comments-list'>
-											{comments.map(c => {
-												const isAuthor =
-													currentUserId != null &&
-													c.userId === currentUserId
-												const canDelete =
-													isAuthor ||
-													canManageWorkspace(myRole)
-												const showEdit = isAuthor
-												const authorProfileTo =
-													isAuthor
-														? '/profile/me'
-														: userProfilePath(c.userId)
-												return (
-													<li
-														key={c.id}
-														className={
-															editingCommentId ===
-															c.id
-																? 'trello-card-comment-item trello-card-comment-item--editing'
-																: 'trello-card-comment-item'
-														}
-													>
-														<div className='trello-card-comment-row'>
-															<CommentAvatarBubble
-																name={c.user.name}
-																avatarPath={c.user.avatarPath}
-																profileTo={authorProfileTo}
-															/>
-															<div className='trello-card-comment-main'>
-																<div className='trello-card-comment-head'>
-																	<button
-																		type='button'
-																		className='trello-card-comment-author trello-card-comment-author-link'
-																		onClick={e =>
-																			handleSpaTileClick(e, authorProfileTo)
-																		}
-																		onAuxClick={e =>
-																			handleSpaTileAuxClick(e, authorProfileTo)
-																		}
-																	>
-																		{c.user.name}
-																	</button>
-																	<time
-																		className='trello-card-comment-when'
-																		dateTime={
-																			c.createdAt
-																		}
-																	>
-																		{formatCommentRelativeAgo(
-																			c.createdAt,
-																			nowTick
-																		)}
-																	</time>
-																</div>
-																{editingCommentId ===
-																c.id ? (
-																	<div className='trello-card-comment-edit'>
-																		<textarea
-																			className='trello-textarea trello-card-comments-textarea'
-																			value={
-																				editCommentDraft
-																			}
-																			onChange={e =>
-																				setEditCommentDraft(
-																					e
-																						.target
-																						.value
-																				)
-																			}
-																			rows={
-																				4
-																			}
-																			maxLength={
-																				2000
-																			}
-																			disabled={
-																				commentEditBusy
-																			}
-																		/>
-																		<div className='trello-card-comment-edit-actions'>
-																			<button
-																				type='button'
-																				className='trello-btn trello-btn-primary trello-btn-sm'
-																				disabled={
-																					editCommentDraft.trim()
-																						.length ===
-																						0 ||
-																					commentEditBusy
-																				}
-																				onClick={() =>
-																					void saveCommentEdit(
-																						c.id
-																					)
-																				}
-																			>
-																				{commentEditBusy
-																					? 'Сохранение…'
-																					: 'Сохранить'}
-																			</button>
-																			<button
-																				type='button'
-																				className='trello-btn trello-btn-ghost trello-btn-sm'
-																				disabled={
-																					commentEditBusy
-																				}
-																				onClick={() => {
-																					setEditingCommentId(
-																						null
-																					)
-																					setEditCommentDraft(
-																						''
-																					)
-																				}}
-																			>
-																				Отмена
-																			</button>
-																		</div>
-																	</div>
-																) : (
-																	<>
-																		<CommentBodyText
-																			body={c.body}
-																			members={
-																				workspaceMembers
-																			}
-																		/>
-																		{(showEdit ||
-																			canDelete) && (
-																			<div className='trello-card-comment-actions'>
-																				{showEdit ? (
-																					<button
-																						type='button'
-																						className='trello-card-comment-link'
-																						onClick={() => {
-																							setEditingCommentId(
-																								c.id
-																							)
-																							setEditCommentDraft(
-																								c.body
-																							)
-																						}}
-																					>
-																						Редактировать
-																					</button>
-																				) : null}
-																				{canDelete ? (
-																					<button
-																						type='button'
-																						className='trello-card-comment-link trello-card-comment-link-danger'
-																						onClick={() =>
-																							setDeleteCommentTarget(
-																								c
-																							)
-																						}
-																					>
-																						Удалить
-																					</button>
-																				) : null}
-																			</div>
-																		)}
-																	</>
-																)}
-															</div>
-														</div>
-													</li>
-												)
-											})}
-										</ul>
-									)}
-								</div>
-							</aside>
-						</div>
-						<div className='trello-modal-foot trello-modal-foot-split'>
-							<button
-								type='button'
-								className='trello-btn trello-btn-danger'
-								disabled={editCardBusy}
-								onClick={() => {
-									const row = editCard
-									if (!row) return
-									setEditCard(null)
-									setDeleteCardRow(row)
-								}}
-							>
-								Удалить
-							</button>
-							<div className='trello-modal-foot-actions'>
-								<button
-									type='button'
-									className='trello-btn trello-btn-ghost'
-									onClick={() =>
-										!editCardBusy && setEditCard(null)
-									}
-								>
-									Закрыть
-								</button>
-								<button
-									type='button'
-									className='trello-btn trello-btn-primary'
-									disabled={
-										editCardTitle.trim().length < 3 ||
-										editCardBusy
-									}
-									onClick={() => void submitEditCard()}
-								>
-									{editCardBusy ? 'Сохранение…' : 'Сохранить'}
-								</button>
-							</div>
-						</div>
-					</div>
-				</div>
+				<CardDetailModalTrello
+					card={{
+						id: editCard.id,
+						title: editCard.title,
+						isCompleted: editCard.isCompleted,
+						coverImageUrl: editCard.coverImageUrl,
+						attachmentCount: editCard.attachmentCount,
+						labels: editCard.labels,
+						createdAt: editCard.createdAt,
+					}}
+					listName={listNameForCard}
+					workspaceId={workspaceId}
+					accessToken={accessToken}
+					currentUserId={currentUserId}
+					currentUserName={currentUserName}
+					busy={editCardBusy}
+					onClose={() => !editCardBusy && setEditCard(null)}
+					onSave={() => void submitEditCard()}
+					onDelete={() => {
+						const row = editCard
+						setEditCard(null)
+						setDeleteCardRow(row)
+					}}
+					onCoverChange={() => void refreshEditCardFromBoard()}
+					title={editCardTitle}
+					onTitleChange={setEditCardTitle}
+					titleEditing={cardTitleEditing}
+					onTitleEditStart={() => {
+						if (editCardBusy) return
+						setCardTitleEditing(true)
+					}}
+					onTitleSave={() => void saveCardTitleInline()}
+					onTitleCancel={cancelCardTitleEdit}
+					titleInputRef={cardTitleInputRef}
+					description={editCardDesc}
+					onDescriptionChange={setEditCardDesc}
+					onDescriptionSave={() => void saveCardDescriptionInline()}
+					onDescriptionCancel={() => {
+						if (!editCard) return
+						setEditCardDesc(editCard.description ?? '')
+					}}
+					due={editCardDue}
+					onDueChange={setEditCardDue}
+					reminder={editCardReminder}
+					onReminderChange={setEditCardReminder}
+					assigneeId={editCardAssigneeId}
+					onAssigneeChange={setEditCardAssigneeId}
+					labelIds={editCardLabelIds}
+					onLabelIdsChange={setEditCardLabelIds}
+					wsLabels={wsLabels}
+					members={workspaceMembers}
+					canManageWorkspace={canManageWorkspace(myRole)}
+					comments={comments}
+					commentsLoading={commentsLoading}
+					commentDraft={commentDraft}
+					onCommentDraftChange={setCommentDraft}
+					commentSubmitBusy={commentSubmitBusy}
+					onSubmitComment={() => void submitComment()}
+					formatCommentRelativeAgo={formatCommentRelativeAgo}
+					nowTick={nowTick}
+					editingCommentId={editingCommentId}
+					editCommentDraft={editCommentDraft}
+					onEditCommentDraftChange={setEditCommentDraft}
+					commentEditBusy={commentEditBusy}
+					onStartEditComment={c => {
+						setEditingCommentId(c.id)
+						setEditCommentDraft(c.body)
+					}}
+					onCancelEditComment={() => {
+						setEditingCommentId(null)
+						setEditCommentDraft('')
+					}}
+					onSaveCommentEdit={id => void saveCommentEdit(id)}
+					onDeleteComment={c => {
+						const row = comments.find(x => x.id === c.id)
+						if (row) setDeleteCommentTarget(row)
+					}}
+				/>
 			)}
 
 			{deleteCardRow && (
