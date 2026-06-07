@@ -27,7 +27,7 @@ describe('PartyService', () => {
       prisma.partyRaidMember!.count!.mockResolvedValue(0);
       prisma.partyRaidMember!.findFirst!.mockResolvedValue(null);
       prisma.friendRequest!.findFirst!.mockResolvedValue(null);
-      await expect(service.createRaid(1, 'nasadka', [2])).rejects.toThrow(
+      await expect(service.createRaid(1, 'rust_king', [2])).rejects.toThrow(
         ForbiddenException,
       );
     });

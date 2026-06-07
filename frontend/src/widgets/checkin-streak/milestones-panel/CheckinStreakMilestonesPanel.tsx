@@ -1,6 +1,16 @@
 import { CHECKIN_STREAK_MILESTONES } from '@entities/character/lib/checkinStreakMilestones';
 import { dayLabelRu } from '@entities/character/lib/checkinStreakProgress';
+import {
+  achievementIconUrl,
+  ACHIEVEMENT_ICON_LIST_SIZE,
+} from '@entities/achievement/lib/achievementAssets';
 import { STREAK_LABEL } from '@entities/reward';
+
+const STREAK_MILESTONE_ICON_KEY: Record<number, string> = {
+  7: 'streak_7',
+  14: 'streak_14',
+  30: 'streak_30',
+};
 
 type Props = {
   streak: number;
@@ -17,6 +27,7 @@ export function CheckinStreakMilestonesPanel(props: Props) {
       <ul className="trello-streak-milestones-list">
         {CHECKIN_STREAK_MILESTONES.map((m) => {
           const completed = streak >= m.days;
+          const iconKey = STREAK_MILESTONE_ICON_KEY[m.days];
           return (
             <li
               key={m.days}
@@ -26,9 +37,25 @@ export function CheckinStreakMilestonesPanel(props: Props) {
                   : 'trello-streak-milestones-item'
               }
             >
-              <span className="trello-streak-milestones-item-marker" aria-hidden>
-                {completed ? '✓' : '○'}
-              </span>
+              {iconKey ? (
+                <img
+                  src={achievementIconUrl(iconKey)}
+                  alt=""
+                  width={ACHIEVEMENT_ICON_LIST_SIZE}
+                  height={ACHIEVEMENT_ICON_LIST_SIZE}
+                  className={
+                    completed
+                      ? 'trello-streak-milestones-item-icon'
+                      : 'trello-streak-milestones-item-icon trello-streak-milestones-item-icon--locked'
+                  }
+                  loading="lazy"
+                  draggable={false}
+                />
+              ) : (
+                <span className="trello-streak-milestones-item-marker" aria-hidden>
+                  {completed ? '✓' : '○'}
+                </span>
+              )}
               <span className="trello-streak-milestones-item-days">
                 {m.days} {dayLabelRu(m.days)}
               </span>

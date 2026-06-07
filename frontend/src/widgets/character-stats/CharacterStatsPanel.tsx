@@ -1,6 +1,7 @@
 import type { CharacterDto } from '@entities/character';
 import { CHARACTER_HEALTH_MAX, MANA_MAX } from '@entities/reward';
-import { healthStatIconUrl, levelStatIconUrl, xpToastIconUrl } from '@shared/assets/uiAssets';
+import { healthStatIconUrl, levelStatIconUrl, manaStatIconUrl, xpToastIconUrl } from '@shared/assets/uiAssets';
+import { DustIcon } from '@widgets/dust/icon/DustIcon';
 
 type XpToward = {
   atMaxLevel: boolean;
@@ -109,6 +110,7 @@ export function CharacterStatsPanel({ character, xpToward }: Props) {
         <div className="trello-character-stat-pill trello-character-stat-pill--mana">
           <div className="trello-character-stat-label-row">
             <span className="trello-character-stat-label">МАНА</span>
+            <img src={manaStatIconUrl()} alt="" className="trello-character-stat-icon" loading="lazy" />
           </div>
           <div
             className="trello-character-stat-meter"
@@ -130,6 +132,7 @@ export function CharacterStatsPanel({ character, xpToward }: Props) {
         <div className="trello-character-stat-pill trello-character-stat-pill--dust">
           <div className="trello-character-stat-label-row">
             <span className="trello-character-stat-label">ПЫЛЬ</span>
+            <DustIcon size={24} />
           </div>
           <div className="trello-character-stat-meter trello-character-stat-meter--dust" role="img" aria-label={`Пыль ${character.dust}`}>
             <span className="trello-character-stat-meter-value trello-character-stat-meter-value--dust">

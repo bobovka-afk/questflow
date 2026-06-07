@@ -1,6 +1,5 @@
 import { Type } from 'class-transformer';
 import {
-  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -11,7 +10,6 @@ import {
   MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { BOARD_TEMPLATE_KEYS } from '../lib/board-templates';
 
 export class CreateBoardDto {
   @ApiProperty({
@@ -51,14 +49,4 @@ export class CreateBoardDto {
   @Min(0)
   @Max(100000)
   position?: number;
-
-  @ApiPropertyOptional({
-    example: 'kanban-dev',
-    description: 'Board template: empty | kanban-dev | backlog',
-    enum: BOARD_TEMPLATE_KEYS,
-  })
-  @IsOptional()
-  @IsString()
-  @IsIn(BOARD_TEMPLATE_KEYS)
-  template?: (typeof BOARD_TEMPLATE_KEYS)[number];
 }

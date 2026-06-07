@@ -1,6 +1,6 @@
 import { API_URL } from '@shared/api';
 
-const DUST_ICON_PATH = 'dust/dust.png';
+const DUST_ICON_PATH = 'ui/dust/dust.png';
 
 export function dustIconUrl(): string {
   return `${API_URL}/uploads/${DUST_ICON_PATH}`;

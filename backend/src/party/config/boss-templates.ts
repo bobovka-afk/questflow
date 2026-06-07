@@ -10,23 +10,24 @@ export type BossTemplate = {
 
 export const BOSS_TEMPLATES: BossTemplate[] = [
   {
-    key: 'nasadka',
-    nameRu: 'Насадка',
+    key: 'rust_king',
+    nameRu: 'Ржавый Король',
     descriptionRu: 'Лёгкий босс для первого рейда. Сундук с базовой рейдовой косметикой.',
     chestTier: 'COMMON',
     sortOrder: 1,
   },
   {
-    key: 'borovik',
-    nameRu: 'Боровик',
+    key: 'colossus',
+    nameRu: 'Залмарат',
     descriptionRu: 'Средний босс. Редкий boss-сундук с улучшенным лутом.',
     chestTier: 'RARE',
     sortOrder: 2,
   },
   {
-    key: 'mukhomor',
-    nameRu: 'Мухомор',
-    descriptionRu: 'Тяжёлый босс. Эпический boss-сундук для опытной пати.',
+    key: 'maw_of_void',
+    nameRu: 'Бездна-Пасть',
+    descriptionRu:
+      'Тяжёлый босс. Разрыв между мирами — эпический boss-сундук для опытной пати.',
     chestTier: 'EPIC',
     sortOrder: 3,
   },

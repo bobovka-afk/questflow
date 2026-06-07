@@ -34,10 +34,10 @@ import {
   isQuestAvatarPreset,
 } from './config/quest-avatar-presets';
 import {
-  DEFAULT_GAME_DAY_TZ,
   XP_EVENT_TYPES_REQUIRING_DAY_KEY,
 } from '../gamification/constants';
 import { getTodayGameDayKey } from '../gamification/core/game-day';
+import { resolveGameDayTimeZone } from '../gamification/lib/resolve-game-day-timezone';
 import { QuestProgressService } from '../gamification/quest/quest-progress.service';
 import { AchievementService } from '../gamification/achievement/achievement.service';
 import { AchievementMetric } from '../generated/prisma/enums';
@@ -181,8 +181,7 @@ export class CharacterService {
   }
 
   async dailyCheckin(userId: number): Promise<XpGrantResult> {
-    const timeZone =
-      this.configService.get<string>('GAME_DAY_TZ') ?? DEFAULT_GAME_DAY_TZ;
+    const timeZone = this.getGameDayTimeZone();
     const dayKey = getTodayGameDayKey(timeZone);
     return this.addExperience(
       userId,
@@ -490,8 +489,8 @@ export class CharacterService {
   }
 
   private getGameDayTimeZone(): string {
-    return (
-      this.configService.get<string>('GAME_DAY_TZ') ?? DEFAULT_GAME_DAY_TZ
+    return resolveGameDayTimeZone(
+      this.configService.get<string>('GAME_DAY_TZ'),
     );
   }
 

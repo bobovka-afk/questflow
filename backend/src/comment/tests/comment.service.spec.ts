@@ -16,16 +16,12 @@ describe('CommentService', () => {
     const questProgressService = {
       recordCommentCreated: jest.fn().mockResolvedValue([]),
     };
-    const achievementService = {
-      recordIncrement: jest.fn().mockResolvedValue(undefined),
-    };
     const notificationService = {
       create: jest.fn().mockResolvedValue(undefined),
     };
     service = new CommentService(
       prisma as unknown as PrismaService,
       questProgressService as never,
-      achievementService as never,
       notificationService as never,
     );
   });

@@ -10,7 +10,7 @@ import {
 import { NotificationService } from '../../notification/notification.service';
 import { AchievementService } from '../achievement/achievement.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { DEFAULT_GAME_DAY_TZ } from '../constants';
+import { resolveGameDayTimeZone } from '../lib/resolve-game-day-timezone';
 import { ChestService } from '../chest/chest.service';
 import { getGameDayKey, getTodayGameDayKey } from '../core/game-day';
 import type { ChestTier } from '../../generated/prisma/enums';
@@ -38,8 +38,8 @@ export class QuestProgressService {
   ) {}
 
   private getTimeZone(): string {
-    return (
-      this.configService.get<string>('GAME_DAY_TZ') ?? DEFAULT_GAME_DAY_TZ
+    return resolveGameDayTimeZone(
+      this.configService.get<string>('GAME_DAY_TZ'),
     );
   }
 

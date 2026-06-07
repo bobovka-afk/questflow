@@ -3,43 +3,19 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
 import type { Board } from '../generated/prisma/client';
-import { BOARD_TEMPLATES, isBoardTemplateKey } from './lib/board-templates';
 
 @Injectable()
 export class BoardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createBoard(workspaceId: number, dto: CreateBoardDto): Promise<Board> {
-    if (dto.template && !isBoardTemplateKey(dto.template)) {
-      throw new BadRequestException({
-        code: 'BOARD_TEMPLATE_INVALID',
-        message: 'Invalid board template',
-      });
-    }
-
-    return this.prisma.$transaction(async (tx) => {
-      const board = await tx.board.create({
-        data: {
-          name: dto.name,
-          description: dto.description,
-          position: dto.position ?? 0,
-          workspaceId,
-        },
-      });
-
-      const templateKey = dto.template ?? 'empty';
-      const lists = BOARD_TEMPLATES[templateKey].lists;
-      for (let i = 0; i < lists.length; i++) {
-        await tx.list.create({
-          data: {
-            boardId: board.id,
-            name: lists[i],
-            position: i,
-          },
-        });
-      }
-
-      return board;
+    return this.prisma.board.create({
+      data: {
+        name: dto.name,
+        description: dto.description,
+        position: dto.position ?? 0,
+        workspaceId,
+      },
     });
   }
 

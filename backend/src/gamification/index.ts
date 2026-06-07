@@ -3,6 +3,7 @@ export { GamificationCronService } from './cron/gamification-cron.service';
 export { ChestService } from './chest/chest.service';
 export { QuestProgressService } from './quest/quest-progress.service';
 export { DEFAULT_GAME_DAY_TZ } from './constants';
+export { resolveGameDayTimeZone } from './lib/resolve-game-day-timezone';
 export * from './config/rewards';
 export * from './core/game-day';
 export * from './core/checkin-streak';

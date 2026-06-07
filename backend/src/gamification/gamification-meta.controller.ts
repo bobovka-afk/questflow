@@ -1,9 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { DEFAULT_GAME_DAY_TZ } from './constants';
 import { getNextGameDayResetAt } from './lib/next-game-day-reset';
-
+import { resolveGameDayTimeZone } from './lib/resolve-game-day-timezone';
 export type GamificationMetaView = {
   gameDayTz: string;
   nextGameDayResetAt: string;
@@ -18,8 +17,9 @@ export class GamificationMetaController {
   @ApiOperation({ summary: 'Public gamification clock (game day timezone)' })
   @ApiResponse({ status: 200 })
   getMeta(): GamificationMetaView {
-    const gameDayTz =
-      this.configService.get<string>('GAME_DAY_TZ') ?? DEFAULT_GAME_DAY_TZ;
+    const gameDayTz = resolveGameDayTimeZone(
+      this.configService.get<string>('GAME_DAY_TZ'),
+    );
     return {
       gameDayTz,
       nextGameDayResetAt: getNextGameDayResetAt(gameDayTz).toISOString(),

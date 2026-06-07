@@ -6,6 +6,7 @@ import { Prisma } from '../../generated/prisma/client';
 import { HealthEventReason } from '../../generated/prisma/enums';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DEFAULT_GAME_DAY_TZ } from '../constants';
+import { resolveGameDayTimeZone } from '../lib/resolve-game-day-timezone';
 import {
   CHARACTER_GRACE_PERIOD_MS,
   HP_INACTIVITY_PENALTY,
@@ -45,8 +46,9 @@ export class GamificationCronService implements OnModuleInit {
   }
 
   getGameDayTimeZone(): string {
-    return (
-      this.configService.get<string>('GAME_DAY_TZ') ?? DEFAULT_GAME_DAY_TZ
+    return resolveGameDayTimeZone(
+      this.configService.get<string>('GAME_DAY_TZ'),
+      this.logger,
     );
   }
 

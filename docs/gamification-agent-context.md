@@ -135,7 +135,9 @@ questflow/
 │   ├── src/ChestTapOpenModal.tsx      ← tap-to-open (Clash Royale), большой сундук
 │   ├── src/lib/dustAssets.ts          ← dust/dust.png
 │   ├── src/DustIcon.tsx               ← иконка пыли (24 / 48 px)
-│   ├── src/lib/achievementAssets.ts   ← иконки achievements (unlocked / locked)
+│   ├── entities/achievement/lib/achievementAssets.ts   ← иконки achievements по key + universal fallback
+│   ├── shared/assets/uiAssets.ts   ← xp, check, level, health, mana, intro
+│   ├── entities/party/lib/bossAssets.ts   ← иконки боссов рейда
 │   ├── src/lib/uiAssets.ts            ← UI-иконки геймификации (xp toast)
 │   ├── src/lib/portraitLayout.ts      ← bbox/inset/классы (блок 2a assets)
 │   ├── src/entities/social/           ← API, useMessagePolling (5 s)

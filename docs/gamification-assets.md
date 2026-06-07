@@ -34,11 +34,13 @@ backend/uploads/
 │   ├── common/                 # COMMON: 0.png … 4.png (tap-to-open)
 │   ├── rare/                   # RARE: 0.png … 4.png (0 = иконка + кадр 0)
 │   ├── epic/                   # EPIC: 0.png … 4.png
-│   └── boss/                   # boss/{nasadka|borovik|mukhomor}/0–4.png
-├── bosses/                     # иконки боссов для UI рейда (≠ boss-сундуки)
-├── ui/                         # mana, checkin, social, …
-├── dust/                       # пыль
-└── achievements/               # иконки достижений
+│   └── boss/                   # boss/{rust_king|colossus|maw_of_void}/0–4.png
+├── bosses/                     # иконки боссов для промтов генерации (≠ ui/bosses)
+├── ui/                         # xp, mana, health, level, check, dust, achievments, bosses, intro
+│   ├── achievments/            # медали достижений + universal.png fallback
+│   ├── bosses/                 # rust_king, colossus, void (maw_of_void)
+│   ├── dust/
+│   └── …
 ```
 
 Публичный URL (как у портретов): `{API_URL}/uploads/...`
@@ -248,7 +250,7 @@ frame:   trello-character-profile-portrait-frame
 | Эпический сундук (иконка + кадр 0) | `chests/epic/0.png` | Epic | **1024×1024** | Закрытый epic |
 | Эпический сундук (тапы 1–4) | `chests/epic/1.png` … `chests/epic/4.png` | Epic | **1024×1024** | Tap-to-open |
 
-**Party boss (Phase 5.party):** иконки существ — `bosses/{nasadka|borovik|mukhomor}.png` (**512×512**); boss-сундуки награды — `chests/boss/{key}/0–4.png` (**1024×1024**, отдельно от tier-сундуков и от иконки босса). Промты: [promt.md](promt.md).
+**Party boss (Phase 5.party):** иконки в UI — `ui/bosses/{rust_king|colossus|void}.png` (**512×512** в промте, в UI 48–64 px); промты сущностей — `bosses/{key}.png`; boss-сундуки — `chests/boss/{key}/0–4.png`. Промты: [promt.md](promt.md).
 
 **Использование в UI:**
 
@@ -303,13 +305,13 @@ frame:   trello-character-profile-portrait-frame
 
 | Назначение | Файл | Размер | Описание |
 |------------|------|--------|----------|
-| Основная иконка | `dust/dust.png` | **64×64 px** (в проекте может быть 1024) | Кристалл/искры магической пыли, фиолетово-голубой, читается на светлом фоне |
+| Основная иконка | `ui/dust/dust.png` | **64×64 px** (в проекте может быть 1024) | Кристалл/искры магической пыли, фиолетово-голубой, читается на светлом фоне |
 | Мелкая (в строке текста) | тот же файл | **24×24** в UI | Баланс, цена в магазине, награда ачивки — `DustIcon` |
 | Крупная (модалка дубликата) | тот же файл | **48×48** в UI | Баннер дубликата при открытии сундука |
 
 **Опционально @2x:** `dust@2x.png` — **128×128 px**.
 
-**Не путать с:** наградой «Собиратель пыли» (ачивка) — отдельная иконка в блоке 10.
+**Не путать с:** наградой «Коллекционер пыли» (ачивка) — отдельная иконка в блоке 10.
 
 ---
 
@@ -321,9 +323,12 @@ frame:   trello-character-profile-portrait-frame
 |---------|--------|----------|
 | Иллюстрация intro-модалки | **800×450 px** | «Доска + герой», для `GamificationIntroModal`; лёгкий, без мелких деталей |
 | Иконка XP (toast на доске) | **32×32** | Звезда/молния опыта, золотая |
-| Иконка чекина (toast, счётчик) | **64×64** → `ui/checkin/check.png` | Пламя дня; перерисовка placeholder на месте |
-| Иконка HP +5 | 32×32 | Сердце/крест здоровья, зелёный |
-| Медали порогов серии **7 / 14 / 30** | **48×48** в модалке | **7** и **30** — те же файлы, что `achievements/streak_7.png` и `streak_30.png`; **14** — только `achievements/streak_14.png` (в сиде achievement нет). Папки `ui/streak/` не создавать |
+| Иконка чекина (toast, счётчик) | **64×64** → `ui/check/check.png` | Пламя дня; перерисовка placeholder на месте |
+| Иконка HP +5 | 32×32 → `ui/health/health.png` | Сердце/крест здоровья, зелёный |
+| Иконка уровня | 32×32 → `ui/level/level.png` | Бейдж ранга / стрелка вверх |
+| Иконка маны | 32×32 → `ui/mana/mana.png` | Капля/кристалл маны |
+| Иконки боссов рейда | 48–64 → `ui/bosses/{rust_king,colossus,void}.png` | `void.png` = ключ `maw_of_void` |
+| Медали порогов серии **7 / 14 / 30** | **48×48** в модалке | **7** и **30** — те же файлы, что `ui/achievments/streak_7.png` и `streak_30.png`; **14** — только `ui/achievments/streak_14.png` (в сиде achievement нет). Папки `ui/streak/` не создавать |
 | Логотип Questflow | **32×32**, **180×40** | Если заменить CSS `.trello-logo` на PNG/SVG |
 
 ---
@@ -355,9 +360,9 @@ frame:   trello-character-profile-portrait-frame
 
 ---
 
-## Блок 10. Достижения (15 шт.) — перенесено в конец (MVP сначала, разнообразие потом)
+## Блок 10. Достижения (11 шт.) — перенесено в конец (MVP сначала, разнообразие потом)
 
-Список соответствует сиду `AchievementTemplate`. В UI на профиле сейчас MVP: подключены 2 тестовые иконки состояний (цветная/серая) из `uploads/achievments/`. После стабилизации функционала заменить на полный набор по key.
+Список соответствует сиду `AchievementTemplate`. В UI: `ui/achievments/{key}.png` через `achievementAssets.ts`; неизвестный key → `universal.png`. Заблокировано — **CSS grayscale** на той же иконке.
 
 **Общий шаблон иконки:**
 
@@ -373,54 +378,40 @@ frame:   trello-character-profile-portrait-frame
 
 | key | Файл | Описание пиктограммы |
 |-----|------|----------------------|
-| `first_card` | `achievements/first_card.png` | Одна карточка с галочкой |
-| `cards_25` | `achievements/cards_25.png` | Стопка из 3 карт, цифра «25» мелко или намёк на объём |
-| `cards_100` | `achievements/cards_100.png` | Высокая стопка / башня карт, «ветеран закрытий» |
+| `first_card` | `ui/achievments/first_card.png` | Одна карточка с галочкой |
+| `cards_25` | `ui/achievments/cards_25.png` | Стопка из 3 карт, цифра «25» мелко или намёк на объём |
+| `cards_100` | `ui/achievments/cards_100.png` | Высокая стопка / башня карт, «ветеран закрытий» |
 
-### 10.2 Комментарии
-
-| key | Файл | Описание |
-|-----|------|----------|
-| `first_comment` | `achievements/first_comment.png` | Один облачко диалога |
-| `comments_20` | `achievements/comments_20.png` | Два–три облачка, активное обсуждение |
-
-### 10.3 Серия за день
+### 10.2 Серия за день
 
 | key | Файл | Описание |
 |-----|------|----------|
-| `streak_7` | `achievements/streak_7.png` | Пламя + цифра 7; тот же файл — milestone **7** дней в модалке серии |
-| `streak_30` | `achievements/streak_30.png` | Сильное пламя / корона огня + 30; тот же файл — milestone **30** дней |
-| *(milestone only)* | `achievements/streak_14.png` | Milestone **14** дней (`CHECKIN_STREAK_MILESTONES`); ключа achievement в сиде нет |
+| `streak_7` | `ui/achievments/streak_7.png` | Пламя + цифра 7; тот же файл — milestone **7** дней в модалке серии |
+| `streak_30` | `ui/achievments/streak_30.png` | Сильное пламя / корона огня + 30; тот же файл — milestone **30** дней |
+| *(milestone only)* | `ui/achievments/streak_14.png` | Milestone **14** дней (`CHECKIN_STREAK_MILESTONES`); ключа achievement в сиде нет |
 
-### 10.4 Уровень персонажа
-
-| key | Файл | Описание |
-|-----|------|----------|
-| `level_5` | `achievements/level_5.png` | Щит с римской/арабской «5» |
-| `level_10` | `achievements/level_10.png` | Щит с «10», богаче отделка |
-
-### 10.5 Квесты
+### 10.3 Уровень персонажа
 
 | key | Файл | Описание |
 |-----|------|----------|
-| `first_quest` | `achievements/first_quest.png` | Свиток с печатью |
-| `quests_20` | `achievements/quests_20.png` | Компас или несколько свитков |
+| `level_5` | `ui/achievments/level_5.png` | Щит с римской/арабской «5» |
+| `level_10` | `ui/achievments/level_10.png` | Щит с «10», богаче отделка |
 
-### 10.6 Сундуки
-
-| key | Файл | Описание |
-|-----|------|----------|
-| `first_chest` | `achievements/first_chest.png` | Сундук приоткрыт, луч света |
-| `chests_10` | `achievements/chests_10.png` | Группа сундуков или сундук с «10» |
-
-### 10.7 Пыль и коллекция
+### 10.4 Квесты
 
 | key | Файл | Описание |
 |-----|------|----------|
-| `dust_100` | `achievements/dust_100.png` | Мешочек/куча кристаллов пыли (не копия `dust.png` 1:1 — крупнее сюжет) |
-| `cosmetics_5` | `achievements/cosmetics_5.png` | Вешалка/манекен или 5 звёзд в ряд — «коллекционер» |
+| `first_quest` | `ui/achievments/first_quest.png` | Свиток с печатью |
+| `quests_20` | `ui/achievments/quest_20.png` | Компас или несколько свитков |
 
-**Заблокированное состояние:** **CSS `grayscale`** на цветной иконке; отдельные `achievements/{key}_locked.png` **не генерировать**.
+### 10.5 Пыль и коллекция
+
+| key | Файл | Описание |
+|-----|------|----------|
+| `dust_100` | `ui/achievments/dust_100.png` | «Коллекционер пыли» — мешочек/куча кристаллов (не копия `dust.png` 1:1) |
+| `cosmetics_10` | `ui/achievments/cosmetics_10.png` | Вешалка/манекен или 10 предметов — «Коллекционер» |
+
+**Заблокированное состояние:** **CSS `grayscale`** на цветной иконке; отдельные `ui/achievments/{key}_locked.png` **не генерировать**.
 
 ---
 
@@ -433,7 +424,7 @@ frame:   trello-character-profile-portrait-frame
 | 4. Сундуки | 3 (+3 spritesheet опц.) | Высокий |
 | 9. Квестовый портрет | 1–2 | Высокий |
 | 5. Пыль | 1 | Средний |
-| 6. Достижения | 15 (+15 locked опц.) | Средний |
+| 6. Достижения | 11 (+11 locked опц.) | Средний |
 | 1. Портреты 12 ролей | 0 (есть) / 12 при редизайне | Низкий |
 | 7. UI опционально | 5–10 | Низкий |
 

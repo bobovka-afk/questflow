@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsInt, IsString, Max, Min } from 'class-validator';
 
 export class CreatePartyRaidDto {
-  @ApiProperty({ example: 'nasadka' })
+  @ApiProperty({ example: 'rust_king' })
   @IsString()
   bossKey!: string;
 

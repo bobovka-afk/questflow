@@ -37,7 +37,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+
+.trello-party-raid-head .trello-party-raid-title {
+  flex: 1;
+  min-width: 0;
 }
 
 .trello-party-raid-title {
@@ -118,33 +123,163 @@
   margin-top: 12px;
 }
 
+.trello-party-create {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trello-party-create-subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
 .trello-party-boss-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 8px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 4px;
 }
 
 .trello-party-boss-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  text-align: left;
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(92, 74, 50, 0.18);
-  background: transparent;
+  align-items: stretch;
+  gap: 0;
+  text-align: center;
+  padding: 0;
+  border-radius: 12px;
+  border: 2px solid rgba(92, 74, 50, 0.22);
+  background: linear-gradient(180deg, #f7ecd3, #ebdbb7);
   cursor: pointer;
+  overflow: hidden;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.trello-party-boss-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(38, 22, 8, 0.14);
+}
+
+.trello-party-boss-card-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 156px;
+  padding: 12px 10px 8px;
+  background: linear-gradient(180deg, #2a2118 0%, #1a1410 100%);
+  border-bottom: 1px solid rgba(92, 74, 50, 0.35);
+}
+
+.trello-party-boss-card[data-boss-tier='common'] .trello-party-boss-card-visual {
+  background: linear-gradient(180deg, #3d2a1a 0%, #241810 100%);
+  box-shadow: inset 0 -24px 32px rgba(192, 96, 32, 0.12);
+}
+
+.trello-party-boss-card[data-boss-tier='rare'] .trello-party-boss-card-visual {
+  background: linear-gradient(180deg, #1e2848 0%, #121828 100%);
+  box-shadow: inset 0 -24px 32px rgba(91, 124, 255, 0.14);
+}
+
+.trello-party-boss-card[data-boss-tier='epic'] .trello-party-boss-card-visual {
+  background: linear-gradient(180deg, #2a1840 0%, #140c20 100%);
+  box-shadow: inset 0 -24px 32px rgba(155, 89, 182, 0.16);
+}
+
+.trello-party-boss-icon {
+  display: block;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  flex-shrink: 0;
+}
+
+.trello-party-boss-icon--pick {
+  width: min(100%, 132px);
+  height: auto;
+  max-height: 132px;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+}
+
+.trello-party-boss-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px 12px;
+}
+
+.trello-party-boss-card-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #172b4d;
+}
+
+.trello-party-boss-card-desc {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #42526e;
 }
 
 .trello-party-boss-card--active {
   border-color: #5b7cff;
-  box-shadow: 0 0 0 1px rgba(91, 124, 255, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(91, 124, 255, 0.45),
+    0 8px 20px rgba(38, 22, 8, 0.18);
 }
 
-.trello-party-boss-card span {
-  font-size: 0.78rem;
-  opacity: 0.8;
+.trello-party-boss-card--active[data-boss-tier='common'] {
+  border-color: #c0682a;
+  box-shadow:
+    0 0 0 1px rgba(192, 104, 42, 0.5),
+    0 8px 20px rgba(38, 22, 8, 0.18);
+}
+
+.trello-party-boss-card--active[data-boss-tier='rare'] {
+  border-color: #5b7cff;
+}
+
+.trello-party-boss-card--active[data-boss-tier='epic'] {
+  border-color: #9b59b6;
+  box-shadow:
+    0 0 0 1px rgba(155, 89, 182, 0.5),
+    0 8px 20px rgba(38, 22, 8, 0.18);
+}
+
+.theme-dark .trello-party-boss-card {
+  border-color: rgba(209, 160, 84, 0.28);
+  background: linear-gradient(180deg, #3b2b1d, #2f2217);
+}
+
+.theme-dark .trello-party-boss-card-name {
+  color: #f4f5f7;
+}
+
+.theme-dark .trello-party-boss-card-desc {
+  color: #b6c2cf;
+}
+
+.theme-dark .trello-party-boss-card--active {
+  border-color: #7c9cff;
+}
+
+@media (max-width: 720px) {
+  .trello-party-boss-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trello-party-boss-card-visual {
+    min-height: 180px;
+  }
+
+  .trello-party-boss-icon--pick {
+    width: min(100%, 148px);
+    max-height: 148px;
+  }
 }
 
 .trello-party-kick-vote {

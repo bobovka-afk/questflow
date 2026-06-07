@@ -4,23 +4,32 @@ export const XP_TOAST_ICON_SIZE = 32;
 export const CHECKIN_TOAST_ICON_SIZE = 32;
 export const INTRO_ILLUSTRATION_WIDTH = 800;
 export const INTRO_ILLUSTRATION_HEIGHT = 450;
+export const STAT_ICON_SIZE = 32;
+
+function uiAsset(path: string): string {
+  return `${API_URL}/uploads/ui/${path}`;
+}
 
 export function xpToastIconUrl(): string {
-  return `${API_URL}/uploads/ui/xp/xp.png`;
+  return uiAsset('xp/xp.png');
 }
 
 export function checkinToastIconUrl(): string {
-  return `${API_URL}/uploads/ui/checkin/check.png`;
+  return uiAsset('check/check.png');
 }
 
 export function gamificationIntroIllustrationUrl(): string {
-  return `${API_URL}/uploads/ui/intro/intro.png`;
+  return uiAsset('intro/intro.png');
 }
 
 export function levelStatIconUrl(): string {
-  return `${API_URL}/uploads/ui/xp/xp.png`;
+  return uiAsset('level/level.png');
 }
 
 export function healthStatIconUrl(): string {
-  return `${API_URL}/uploads/ui/xp/xp.png`;
+  return uiAsset('health/health.png');
+}
+
+export function manaStatIconUrl(): string {
+  return uiAsset('mana/mana.png');
 }

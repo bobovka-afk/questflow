@@ -23,6 +23,6 @@ describe('boss-damage', () => {
   });
 
   it('buildBossChestSource is unique per raid', () => {
-    expect(buildBossChestSource('nasadka', 1)).toBe('BOSS:nasadka:1');
+    expect(buildBossChestSource('rust_king', 1)).toBe('BOSS:rust_king:1');
   });
 });

@@ -17,6 +17,7 @@ import {
   type BossCatalogItem,
   type PartyRaidView,
 } from '@entities/party';
+import { BOSS_ICON_SIZE, BOSS_ICON_SIZE_PICK, BOSS_ICON_SIZE_SM, bossIconUrl } from '@entities/party/lib/bossAssets';
 
 type Props = {
   accessToken: string;
@@ -128,6 +129,15 @@ export function RaidPanel({
     return (
       <div key={r.id} className="trello-party-raid-card">
         <div className="trello-party-raid-head">
+          <img
+            src={bossIconUrl(r.bossKey)}
+            alt=""
+            width={BOSS_ICON_SIZE_SM}
+            height={BOSS_ICON_SIZE_SM}
+            className="trello-party-boss-icon"
+            loading="lazy"
+            draggable={false}
+          />
           <h3 className="trello-party-raid-title">{r.bossNameRu}</h3>
           <span className="trello-party-raid-status">{r.status}</span>
         </div>
@@ -336,7 +346,7 @@ export function RaidPanel({
             </button>
           ) : (
             <div className="trello-party-create">
-              <h3>Выберите босса</h3>
+              <h3 className="trello-party-create-subtitle">Выберите босса</h3>
               <div className="trello-party-boss-grid">
                 {bosses.map((b) => (
                   <button
@@ -347,14 +357,28 @@ export function RaidPanel({
                         ? 'trello-party-boss-card trello-party-boss-card--active'
                         : 'trello-party-boss-card'
                     }
+                    data-boss-tier={b.chestTier.toLowerCase()}
                     onClick={() => setSelectedBoss(b.key)}
                   >
-                    <strong>{b.nameRu}</strong>
-                    <span>{b.descriptionRu}</span>
+                    <div className="trello-party-boss-card-visual">
+                      <img
+                        src={bossIconUrl(b.key)}
+                        alt=""
+                        width={BOSS_ICON_SIZE_PICK}
+                        height={BOSS_ICON_SIZE_PICK}
+                        className="trello-party-boss-icon trello-party-boss-icon--pick"
+                        loading="lazy"
+                        draggable={false}
+                      />
+                    </div>
+                    <div className="trello-party-boss-card-body">
+                      <strong className="trello-party-boss-card-name">{b.nameRu}</strong>
+                      <span className="trello-party-boss-card-desc">{b.descriptionRu}</span>
+                    </div>
                   </button>
                 ))}
               </div>
-              <h3>Друзья</h3>
+              <h3 className="trello-party-create-subtitle">Друзья</h3>
               {friends.length === 0 ? (
                 <p>Добавьте друзей, чтобы начать рейд.</p>
               ) : (

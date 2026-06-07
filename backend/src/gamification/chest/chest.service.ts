@@ -159,11 +159,6 @@ export class ChestService {
       };
     });
 
-    await this.achievementService.recordIncrement(
-      userId,
-      AchievementMetric.CHESTS_OPENED_TOTAL,
-      1,
-    );
     if (result.dustGranted > 0) {
       await this.achievementService.recordIncrement(
         userId,

@@ -7,17 +7,17 @@ import {
 
 /** Per-boss loot weights (tier still gates fallback table). */
 export const BOSS_LOOT_BY_KEY: Record<string, LootEntry[]> = {
-  nasadka: [
+  rust_king: [
     { cosmeticKey: 'frame_bronze', weight: 40 },
     { cosmeticKey: 'bg_meadow', weight: 35 },
     { cosmeticKey: 'bg_woods', weight: 25 },
   ],
-  borovik: [
+  colossus: [
     { cosmeticKey: 'frame_silver', weight: 30 },
     { cosmeticKey: 'frame_gold', weight: 35 },
     { cosmeticKey: 'bg_night', weight: 35 },
   ],
-  mukhomor: [
+  maw_of_void: [
     { cosmeticKey: 'frame_mystic', weight: 50 },
     { cosmeticKey: 'bg_lake_forest', weight: 50 },
   ],

@@ -27,12 +27,6 @@ export type BoardRow = {
   updatedAt: string;
 };
 
-const BOARD_TEMPLATES = [
-  { id: 'empty', label: 'Пустая' },
-  { id: 'kanban-dev', label: 'Kanban (разработка)' },
-  { id: 'backlog', label: 'Бэклог' },
-] as const;
-
 type Props = {
   accessToken: string | null;
   workspaceId: number;
@@ -68,7 +62,6 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
   const [myRole, setMyRole] = useState<string | null>(null);
   const [myPermissions, setMyPermissions] = useState<WorkspacePermissions | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [createTemplate, setCreateTemplate] = useState<string>('kanban-dev');
   const [archivedBoards, setArchivedBoards] = useState<BoardRow[]>([]);
   const [archiveOpen, setArchiveOpen] = useState(false);
 
@@ -168,7 +161,7 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
       await api(`/workspace/${workspaceId}/boards`, {
         method: 'POST',
         accessToken,
-        json: { name, position, template: createTemplate },
+        json: { name, position },
       });
       setCreateOpen(false);
       setCreateName('');
@@ -442,20 +435,6 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
                   maxLength={50}
                   autoFocus
                 />
-              </label>
-              <label className="trello-field">
-                <span className="trello-label">Шаблон</span>
-                <select
-                  className="trello-input"
-                  value={createTemplate}
-                  onChange={(e) => setCreateTemplate(e.target.value)}
-                >
-                  {BOARD_TEMPLATES.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
               </label>
             </div>
             <div className="trello-modal-foot">

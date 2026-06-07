@@ -12,7 +12,8 @@ import { ChestTapOpenView } from '@widgets/chest/tap-open/ChestTapOpenModal';
 import { DustIcon } from '@widgets/dust/icon/DustIcon';
 import {
   achievementIconUrl,
-  ACHIEVEMENT_ICON_LIST_SIZE,
+  achievementIconLockedClassName,
+  ACHIEVEMENT_ICON_CARD_SIZE,
 } from '@entities/achievement/lib/achievementAssets';
 import {
   DUST_ICON_SIZE_MD,
@@ -256,41 +257,45 @@ function AchievementRow({ item }: { item: AchievementProgressItem }) {
           : 'trello-character-achievement-row'
       }
     >
-      <img
-        src={achievementIconUrl(item.unlocked)}
-        alt=""
-        width={ACHIEVEMENT_ICON_LIST_SIZE}
-        height={ACHIEVEMENT_ICON_LIST_SIZE}
-        className="trello-character-achievement-icon"
-        loading="lazy"
-        draggable={false}
-      />
-      <div className="trello-character-achievement-head">
-        <span className="trello-character-achievement-title">{item.titleRu}</span>
-        {item.unlocked && <span className="trello-character-quest-done-badge">✓</span>}
+      <div className="trello-character-achievement-visual">
+        <img
+          src={achievementIconUrl(item.key)}
+          alt=""
+          width={ACHIEVEMENT_ICON_CARD_SIZE}
+          height={ACHIEVEMENT_ICON_CARD_SIZE}
+          className={achievementIconLockedClassName(item.unlocked)}
+          loading="lazy"
+          draggable={false}
+        />
       </div>
-      {item.descriptionRu && (
-        <p className="trello-character-quest-desc">{item.descriptionRu}</p>
-      )}
-      {item.rewardDust > 0 && (
-        <p className="trello-character-achievement-reward">
-          +{item.rewardDust}{' '}
-          <DustIcon size={DUST_ICON_SIZE_SM} />
-          {' '}пыли за получение
-        </p>
-      )}
-      {!item.unlocked && (
-        <div className="trello-character-quest-progress trello-character-quest-progress--sm">
-          <div
-            className="trello-character-quest-progress-fill"
-            style={{ width: `${pct}%` }}
-            aria-hidden
-          />
-          <span className="trello-character-quest-progress-label">
-            {Math.min(item.current, item.target)} / {item.target}
-          </span>
+      <div className="trello-character-achievement-body">
+        <div className="trello-character-achievement-head">
+          <span className="trello-character-achievement-title">{item.titleRu}</span>
+          {item.unlocked && <span className="trello-character-quest-done-badge">✓</span>}
         </div>
-      )}
+        {item.descriptionRu && (
+          <p className="trello-character-quest-desc">{item.descriptionRu}</p>
+        )}
+        {item.rewardDust > 0 && (
+          <p className="trello-character-achievement-reward">
+            +{item.rewardDust}{' '}
+            <DustIcon size={DUST_ICON_SIZE_SM} />
+            {' '}пыли за получение
+          </p>
+        )}
+        {!item.unlocked && (
+          <div className="trello-character-quest-progress trello-character-quest-progress--sm">
+            <div
+              className="trello-character-quest-progress-fill"
+              style={{ width: `${pct}%` }}
+              aria-hidden
+            />
+            <span className="trello-character-quest-progress-label">
+              {Math.min(item.current, item.target)} / {item.target}
+            </span>
+          </div>
+        )}
+      </div>
     </li>
   );
 }
@@ -637,7 +642,10 @@ export function ProfileCharacterQuestsPanel(props: Props) {
             <div className="trello-character-dust-shop-grid">
               {dustShop.options.map((option) => (
                 <div key={option.tier} className="trello-character-dust-shop-card">
-                  <div className="trello-character-shop-chest-visual trello-character-chest-slot-wrap">
+                  <div
+                    className="trello-character-shop-chest-visual trello-character-chest-slot-wrap"
+                    data-chest-tier={option.tier.toLowerCase()}
+                  >
                     <ChestIcon tier={option.tier} size={161} />
                     <ChestLootOddsButton tier={option.tier} />
                   </div>
