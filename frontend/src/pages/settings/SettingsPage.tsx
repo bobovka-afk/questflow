@@ -15,7 +15,9 @@ import {
 } from '@entities/user-settings';
 import { isValidUsername, normalizeUsername, profilePathForUsername, updateUsername } from '@entities/user';
 import { api, formatApiError } from '@shared/api';
-import { navigate, SpaLink } from '@shared/lib';
+import { formatDateTimeRuWithYear } from '@shared/lib/formatDateRu';
+import { SpaLink } from '@shared/lib';
+import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 import { SettingsSwitch } from '@shared/ui/settings-switch/SettingsSwitch';
 import { SettingsPasswordPanel } from '@widgets/settings-password/SettingsPasswordPanel';
 import { SettingsDeleteAccountPanel } from '@widgets/settings-delete-account/SettingsDeleteAccountPanel';
@@ -24,7 +26,7 @@ import { SettingsWebPushPanel } from '@widgets/settings-web-push/SettingsWebPush
 import {
   SETTINGS_TAB_LABELS,
   SETTINGS_TABS,
-  settingsRouteForTab,
+  replaceSettingsTabInUrl,
   type SettingsTab,
 } from './settingsRoutes';
 
@@ -50,16 +52,6 @@ type Props = {
   initialTab?: SettingsTab;
   onAccountDeleted?: () => void;
 };
-
-function formatDateTimeRu(iso: string): string {
-  return new Date(iso).toLocaleString('ru-RU', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 export function SettingsPage(props: Props) {
   const [user, setUser] = useState<UserSafe | null>(null);
@@ -88,6 +80,21 @@ export function SettingsPage(props: Props) {
   const [displayTimezone, setDisplayTimezone] = useState('');
   const [timezoneBusy, setTimezoneBusy] = useState(false);
   const [timezoneMsg, setTimezoneMsg] = useState<string | null>(null);
+  useEffect(() => {
+    setTab(props.initialTab ?? 'security');
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    });
+  }, [props.initialTab]);
+
+  function selectTab(key: SettingsTab) {
+    if (tab === key) return;
+    setTab(key);
+    replaceSettingsTabInUrl(key);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    });
+  }
 
   useEffect(() => {
     async function load() {
@@ -111,59 +118,29 @@ export function SettingsPage(props: Props) {
   }, [props.accessToken]);
 
   useEffect(() => {
-    if (!props.accessToken || tab !== 'account') return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const settings = await fetchUserSettings(props.accessToken!);
-        if (!cancelled) {
-          const tz =
-            typeof settings.displayTimezone === 'string'
-              ? settings.displayTimezone
-              : '';
-          setDisplayTimezone(tz);
-        }
-      } catch {
-        if (!cancelled) setDisplayTimezone('');
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [props.accessToken, tab]);
-
-  useEffect(() => {
-    if (!props.accessToken || tab !== 'security') return;
+    if (!props.accessToken) return;
     let cancelled = false;
     setSecurityLoading(true);
     void (async () => {
       try {
-        const nextSessions = await fetchUserSessions(props.accessToken!);
-        if (!cancelled) {
-          setSessions(nextSessions);
-        }
+        const [settings, nextSessions, pending] = await Promise.all([
+          fetchUserSettings(props.accessToken!),
+          fetchUserSessions(props.accessToken!),
+          fetchPendingEmailChange(props.accessToken!),
+        ]);
+        if (cancelled) return;
+        const tz =
+          typeof settings.displayTimezone === 'string' ? settings.displayTimezone : '';
+        setDisplayTimezone(tz);
+        setSessions(nextSessions);
+        setPendingEmail(pending);
       } catch (e) {
         if (!cancelled) setMsg(formatApiError(e));
       } finally {
         if (!cancelled) setSecurityLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [props.accessToken, tab]);
 
-  useEffect(() => {
-    if (!props.accessToken || tab !== 'account') return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const pending = await fetchPendingEmailChange(props.accessToken!);
-        if (!cancelled) setPendingEmail(pending);
-      } catch {
-        if (!cancelled) setPendingEmail(null);
-      }
-    })();
     const params = new URLSearchParams(window.location.search);
     const status = params.get('emailChange');
     if (status === 'success') {
@@ -174,10 +151,11 @@ export function SettingsPage(props: Props) {
     } else if (status === 'invalid') {
       setEmailChangeMsg('Ссылка недействительна или устарела.');
     }
+
     return () => {
       cancelled = true;
     };
-  }, [props.accessToken, tab]);
+  }, [props.accessToken]);
 
   async function loadUser() {
     if (!props.accessToken) return;
@@ -283,8 +261,8 @@ export function SettingsPage(props: Props) {
     }
   }
 
-  function renderTabContent() {
-    switch (tab) {
+  function renderTabContent(activeTab: SettingsTab) {
+    switch (activeTab) {
       case 'account':
         return (
           <div className="trello-settings-section">
@@ -478,8 +456,10 @@ export function SettingsPage(props: Props) {
                         </button>
                       </div>
                     </div>
-                    {securityLoading ? (
-                      <p className="trello-settings-card-hint">Загрузка…</p>
+                    {securityLoading && sessions.length === 0 ? (
+                      <p className="trello-settings-card-hint trello-settings-session-placeholder">
+                        Загрузка…
+                      </p>
                     ) : sessions.length === 0 ? (
                       <p className="trello-settings-card-hint">Активных сессий пока нет.</p>
                     ) : (
@@ -492,7 +472,7 @@ export function SettingsPage(props: Props) {
                                 {session.isCurrent ? ' · текущая' : ''}
                               </strong>
                               <span className="trello-settings-session-meta">
-                                Последняя активность: {formatDateTimeRu(session.lastSeenAt)}
+                                Последняя активность: {formatDateTimeRuWithYear(session.lastSeenAt)}
                                 {session.ipAddress ? ` · ${session.ipAddress}` : ''}
                               </span>
                             </div>
@@ -527,86 +507,83 @@ export function SettingsPage(props: Props) {
             <p className="trello-settings-section-lead">
               Email-уведомления и связь с in-app оповещениями о наградах.
             </p>
-            {notificationMeta.loading ? (
-              <p className="trello-settings-card-hint">Загрузка…</p>
-            ) : (
-              <div className="trello-settings-switches">
-                <SettingsSwitch
-                  label="Письма о безопасности"
-                  description="Смена пароля, вход с нового устройства, смена email."
-                  checked={notificationSettings.emailSecurity}
-                  disabled={notificationMeta.saving}
-                  onChange={(checked) =>
-                    setNotificationSettings({ emailSecurity: checked })
-                  }
-                />
-                <SettingsSwitch
-                  label="Приглашения в workspace"
-                  description="Письма с приглашением в команду."
-                  checked={notificationSettings.emailWorkspaceInvites}
-                  disabled={notificationMeta.saving}
-                  onChange={(checked) =>
-                    setNotificationSettings({ emailWorkspaceInvites: checked })
-                  }
-                />
-                <SettingsSwitch
-                  label="In-app: квесты, сундуки, достижения"
-                  description="Колокол в шапке — геймификация."
-                  checked={notificationSettings.inAppGamification}
-                  disabled={notificationMeta.saving}
-                  onChange={(checked) =>
-                    setNotificationSettings({ inAppGamification: checked })
-                  }
-                />
-                <SettingsSwitch
-                  label="In-app: @упоминания"
-                  checked={notificationSettings.inAppMentions}
-                  disabled={notificationMeta.saving}
-                  onChange={(checked) => setNotificationSettings({ inAppMentions: checked })}
-                />
-                <SettingsSwitch
-                  label="In-app: дедлайны карточек"
-                  checked={notificationSettings.inAppDeadlines}
-                  disabled={notificationMeta.saving}
-                  onChange={(checked) => setNotificationSettings({ inAppDeadlines: checked })}
-                />
-                <SettingsSwitch
-                  label="In-app: назначение на карточку"
-                  checked={notificationSettings.inAppAssign}
-                  disabled={notificationMeta.saving}
-                  onChange={(checked) => setNotificationSettings({ inAppAssign: checked })}
-                />
-                <SettingsSwitch
-                  label="In-app: друзья и рейды"
-                  checked={notificationSettings.inAppSocial}
-                  disabled={notificationMeta.saving}
-                  onChange={(checked) => setNotificationSettings({ inAppSocial: checked })}
-                />
-                <p className="trello-settings-card-hint">
-                  Всплывающие XP на доске — вкладка «Геймификация» (не дублируют колокол).
-                </p>
-                <SettingsSwitch
-                  label="Push: назначение на карточку"
-                  checked={notificationSettings.pushAssign}
-                  disabled={notificationMeta.saving}
-                  onChange={(checked) => setNotificationSettings({ pushAssign: checked })}
-                />
-                <SettingsSwitch
-                  label="Push: @упоминания"
-                  checked={notificationSettings.pushMention}
-                  disabled={notificationMeta.saving}
-                  onChange={(checked) => setNotificationSettings({ pushMention: checked })}
-                />
-                <SettingsSwitch
-                  label="Push: заявки в друзья"
-                  checked={notificationSettings.pushFriendRequest}
-                  disabled={notificationMeta.saving}
-                  onChange={(checked) =>
-                    setNotificationSettings({ pushFriendRequest: checked })
-                  }
-                />
-              </div>
-            )}
+            <div
+              className="trello-settings-switches"
+              aria-busy={notificationMeta.loading || undefined}
+            >
+              <SettingsSwitch
+                label="Письма о безопасности"
+                description="Смена пароля, вход с нового устройства, смена email."
+                checked={notificationSettings.emailSecurity}
+                disabled={notificationMeta.saving || notificationMeta.loading}
+                onChange={(checked) => setNotificationSettings({ emailSecurity: checked })}
+              />
+              <SettingsSwitch
+                label="Приглашения в workspace"
+                description="Письма с приглашением в команду."
+                checked={notificationSettings.emailWorkspaceInvites}
+                disabled={notificationMeta.saving || notificationMeta.loading}
+                onChange={(checked) =>
+                  setNotificationSettings({ emailWorkspaceInvites: checked })
+                }
+              />
+              <SettingsSwitch
+                label="In-app: квесты, сундуки, достижения"
+                description="Колокол в шапке — геймификация."
+                checked={notificationSettings.inAppGamification}
+                disabled={notificationMeta.saving || notificationMeta.loading}
+                onChange={(checked) =>
+                  setNotificationSettings({ inAppGamification: checked })
+                }
+              />
+              <SettingsSwitch
+                label="In-app: @упоминания"
+                checked={notificationSettings.inAppMentions}
+                disabled={notificationMeta.saving || notificationMeta.loading}
+                onChange={(checked) => setNotificationSettings({ inAppMentions: checked })}
+              />
+              <SettingsSwitch
+                label="In-app: дедлайны карточек"
+                checked={notificationSettings.inAppDeadlines}
+                disabled={notificationMeta.saving || notificationMeta.loading}
+                onChange={(checked) => setNotificationSettings({ inAppDeadlines: checked })}
+              />
+              <SettingsSwitch
+                label="In-app: назначение на карточку"
+                checked={notificationSettings.inAppAssign}
+                disabled={notificationMeta.saving || notificationMeta.loading}
+                onChange={(checked) => setNotificationSettings({ inAppAssign: checked })}
+              />
+              <SettingsSwitch
+                label="In-app: друзья и рейды"
+                checked={notificationSettings.inAppSocial}
+                disabled={notificationMeta.saving || notificationMeta.loading}
+                onChange={(checked) => setNotificationSettings({ inAppSocial: checked })}
+              />
+              <p className="trello-settings-card-hint">
+                Всплывающие XP на доске — вкладка «Геймификация» (не дублируют колокол).
+              </p>
+              <SettingsSwitch
+                label="Push: назначение на карточку"
+                checked={notificationSettings.pushAssign}
+                disabled={notificationMeta.saving || notificationMeta.loading}
+                onChange={(checked) => setNotificationSettings({ pushAssign: checked })}
+              />
+              <SettingsSwitch
+                label="Push: @упоминания"
+                checked={notificationSettings.pushMention}
+                disabled={notificationMeta.saving || notificationMeta.loading}
+                onChange={(checked) => setNotificationSettings({ pushMention: checked })}
+              />
+              <SettingsSwitch
+                label="Push: заявки в друзья"
+                checked={notificationSettings.pushFriendRequest}
+                disabled={notificationMeta.saving || notificationMeta.loading}
+                onChange={(checked) =>
+                  setNotificationSettings({ pushFriendRequest: checked })
+                }
+              />
+            </div>
             {props.accessToken ? (
               <SettingsWebPushPanel accessToken={props.accessToken} />
             ) : null}
@@ -619,30 +596,29 @@ export function SettingsPage(props: Props) {
             <p className="trello-settings-section-lead">
               Поведение на доске при закрытии карточки и начислении опыта.
             </p>
-            {gamificationMeta.loading ? (
-              <p className="trello-settings-card-hint">Загрузка…</p>
-            ) : (
-              <div className="trello-settings-switches">
-                <SettingsSwitch
-                  label="Анимация чекина при закрытии карточки"
-                  description="Счётчик серии 🔥 с прокруткой в уведомлении о чекине за день."
-                  checked={gamificationSettings.checkinAnimationOnCardClose}
-                  disabled={gamificationMeta.saving}
-                  onChange={(checked) =>
-                    setGamificationSettings({ checkinAnimationOnCardClose: checked })
-                  }
-                />
-                <SettingsSwitch
-                  label="Уведомления о получении опыта"
-                  description="Всплывающие сообщения с XP и HP после закрытия карточки."
-                  checked={gamificationSettings.xpGainNotifications}
-                  disabled={gamificationMeta.saving}
-                  onChange={(checked) =>
-                    setGamificationSettings({ xpGainNotifications: checked })
-                  }
-                />
-              </div>
-            )}
+            <div
+              className="trello-settings-switches"
+              aria-busy={gamificationMeta.loading || undefined}
+            >
+              <SettingsSwitch
+                label="Анимация чекина при закрытии карточки"
+                description="Счётчик серии 🔥 с прокруткой в уведомлении о чекине за день."
+                checked={gamificationSettings.checkinAnimationOnCardClose}
+                disabled={gamificationMeta.saving || gamificationMeta.loading}
+                onChange={(checked) =>
+                  setGamificationSettings({ checkinAnimationOnCardClose: checked })
+                }
+              />
+              <SettingsSwitch
+                label="Уведомления о получении опыта"
+                description="Всплывающие сообщения с XP и HP после закрытия карточки."
+                checked={gamificationSettings.xpGainNotifications}
+                disabled={gamificationMeta.saving || gamificationMeta.loading}
+                onChange={(checked) =>
+                  setGamificationSettings({ xpGainNotifications: checked })
+                }
+              />
+            </div>
           </div>
         );
 
@@ -653,46 +629,42 @@ export function SettingsPage(props: Props) {
               Кто видит ваш публичный профиль и персонажа среди участников общих воркспейсов.
               Email другим пользователям не показывается.
             </p>
-            {privacyMeta.loading ? (
-              <p className="trello-settings-card-hint">Загрузка…</p>
-            ) : (
-              <div className="trello-settings-switches">
-                <SettingsSwitch
-                  label="Показывать персонажа другим"
-                  description="Если выключено, коллеги не откроют страницу персонажа и не увидят кнопку «Персонаж»."
-                  checked={privacySettings.allowCharacterView}
-                  disabled={privacyMeta.saving}
-                  onChange={(checked) => setPrivacySettings({ allowCharacterView: checked })}
-                />
-                <SettingsSwitch
-                  label="Показывать аватар аккаунта в профиле"
-                  description="Фото аккаунта на странице участника; при выключении — инициалы."
-                  checked={privacySettings.showAccountAvatarOnPublicProfile}
-                  disabled={privacyMeta.saving}
-                  onChange={(checked) =>
-                    setPrivacySettings({ showAccountAvatarOnPublicProfile: checked })
-                  }
-                />
-                <SettingsSwitch
-                  label="Находить по имени персонажа"
-                  description="Другие смогут искать вас в разделе «Друзья» по имени героя."
-                  checked={privacySettings.allowFindByCharacterName}
-                  disabled={privacyMeta.saving}
-                  onChange={(checked) =>
-                    setPrivacySettings({ allowFindByCharacterName: checked })
-                  }
-                />
-                <SettingsSwitch
-                  label="Статус «в сети» для друзей"
-                  description="Друзья видят онлайн и время последней активности в списке."
-                  checked={privacySettings.showOnlineStatusToFriends}
-                  disabled={privacyMeta.saving}
-                  onChange={(checked) =>
-                    setPrivacySettings({ showOnlineStatusToFriends: checked })
-                  }
-                />
-              </div>
-            )}
+            <div className="trello-settings-switches" aria-busy={privacyMeta.loading || undefined}>
+              <SettingsSwitch
+                label="Показывать персонажа другим"
+                description="Если выключено, коллеги не откроют страницу персонажа и не увидят кнопку «Персонаж»."
+                checked={privacySettings.allowCharacterView}
+                disabled={privacyMeta.saving || privacyMeta.loading}
+                onChange={(checked) => setPrivacySettings({ allowCharacterView: checked })}
+              />
+              <SettingsSwitch
+                label="Показывать аватар аккаунта в профиле"
+                description="Фото аккаунта на странице участника; при выключении — инициалы."
+                checked={privacySettings.showAccountAvatarOnPublicProfile}
+                disabled={privacyMeta.saving || privacyMeta.loading}
+                onChange={(checked) =>
+                  setPrivacySettings({ showAccountAvatarOnPublicProfile: checked })
+                }
+              />
+              <SettingsSwitch
+                label="Находить по имени персонажа"
+                description="Другие смогут искать вас в разделе «Друзья» по имени героя."
+                checked={privacySettings.allowFindByCharacterName}
+                disabled={privacyMeta.saving || privacyMeta.loading}
+                onChange={(checked) =>
+                  setPrivacySettings({ allowFindByCharacterName: checked })
+                }
+              />
+              <SettingsSwitch
+                label="Статус «в сети» для друзей"
+                description="Друзья видят онлайн и время последней активности в списке."
+                checked={privacySettings.showOnlineStatusToFriends}
+                disabled={privacyMeta.saving || privacyMeta.loading}
+                onChange={(checked) =>
+                  setPrivacySettings({ showOnlineStatusToFriends: checked })
+                }
+              />
+            </div>
           </div>
         );
 
@@ -707,7 +679,7 @@ export function SettingsPage(props: Props) {
         <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-              <span className="trello-logo" aria-hidden />
+              <AppLogo />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
             <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/workspaces">
@@ -724,29 +696,56 @@ export function SettingsPage(props: Props) {
 
         {msg ? <div className="trello-banner trello-banner-warn">{msg}</div> : null}
 
-        <section className="trello-panel trello-settings-panel">
-          <nav className="trello-settings-tabs" aria-label="Разделы настроек">
-            {SETTINGS_TABS.map((key) => (
-              <button
-                key={key}
-                type="button"
-                className={[
-                  'trello-settings-tab',
-                  tab === key ? 'trello-settings-tab--active' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={() => {
-                  setTab(key);
-                  navigate(settingsRouteForTab(key));
-                }}
-              >
-                {SETTINGS_TAB_LABELS[key]}
-              </button>
-            ))}
-          </nav>
-
-          {renderTabContent()}
+        <section className="trello-panel trello-settings-panel trello-settings-panel--split">
+          <div className="trello-settings-split">
+            <nav className="trello-settings-split-nav" aria-label="Разделы настроек" role="tablist">
+              {SETTINGS_TABS.map((key) => {
+                const isActive = tab === key;
+                return (
+                  <button
+                    key={key}
+                    id={`settings-tab-${key}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls={`settings-tabpanel-${key}`}
+                    className={[
+                      'trello-settings-tab',
+                      isActive ? 'trello-settings-tab--active' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    onClick={() => selectTab(key)}
+                  >
+                    {SETTINGS_TAB_LABELS[key]}
+                  </button>
+                );
+              })}
+            </nav>
+            <div className="trello-settings-split-body">
+              {SETTINGS_TABS.map((key) => {
+                const isActive = tab === key;
+                return (
+                  <div
+                    key={key}
+                    id={`settings-tabpanel-${key}`}
+                    className={[
+                      'trello-settings-tab-panel',
+                      isActive ? '' : 'trello-settings-tab-panel--inactive',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    role="tabpanel"
+                    aria-labelledby={`settings-tab-${key}`}
+                    aria-hidden={!isActive}
+                    tabIndex={isActive ? 0 : -1}
+                  >
+                    {renderTabContent(key)}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </section>
       </div>
     </div>

@@ -38,6 +38,7 @@ import {
 } from '@entities/reward'
 import { useGamificationSettings } from '@entities/user-settings'
 import { SpaLink } from '@shared/lib/navigation'
+import { AppLogo } from '@shared/ui/app-logo/AppLogo'
 import type { BoardRow } from '@pages/workspace-boards/WorkspaceBoardsPage'
 import {
 	canArchiveBoards,
@@ -1716,7 +1717,7 @@ export function BoardPage({
 			<header className='trello-board-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky'>
 				<div className='trello-topbar-stripe-left'>
 					<SpaLink className='trello-top-left-brand trello-top-left-brand--stripe' to='/workspaces'>
-						<span className='trello-logo' aria-hidden />
+						<AppLogo />
 						<span className='trello-top-left-brand-text'>
 							Questflow
 						</span>

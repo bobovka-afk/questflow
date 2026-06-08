@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatApiError } from '@shared/api';
 import {
+  fetchVapidPublicKey,
   isWebPushSupported,
   subscribeWebPush,
   unsubscribeWebPush,
@@ -13,7 +14,26 @@ type Props = {
 export function SettingsWebPushPanel({ accessToken }: Props) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [vapidReady, setVapidReady] = useState<boolean | null>(null);
   const supported = isWebPushSupported();
+
+  useEffect(() => {
+    if (!supported || !accessToken) {
+      setVapidReady(null);
+      return;
+    }
+    let cancelled = false;
+    fetchVapidPublicKey(accessToken)
+      .then((key) => {
+        if (!cancelled) setVapidReady(Boolean(key));
+      })
+      .catch(() => {
+        if (!cancelled) setVapidReady(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, supported]);
 
   async function handleEnable() {
     setBusy(true);
@@ -62,24 +82,35 @@ export function SettingsWebPushPanel({ accessToken }: Props) {
       {!supported ? (
         <p className="trello-settings-card-hint">Ваш браузер не поддерживает Web Push.</p>
       ) : (
-        <div className="trello-settings-card-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className="trello-btn trello-btn-primary trello-btn-sm"
-            disabled={busy}
-            onClick={() => void handleEnable()}
+        <>
+          {vapidReady === false ? (
+            <p className="trello-settings-card-hint">
+              Push не настроен на сервере (нет VAPID-ключей). Добавьте их в backend/.env и
+              перезапустите API.
+            </p>
+          ) : null}
+          <div
+            className="trello-settings-card-actions"
+            style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}
           >
-            {busy ? '…' : 'Включить на этом устройстве'}
-          </button>
-          <button
-            type="button"
-            className="trello-btn trello-btn-ghost trello-btn-sm"
-            disabled={busy}
-            onClick={() => void handleDisable()}
-          >
-            Отключить
-          </button>
-        </div>
+            <button
+              type="button"
+              className="trello-btn trello-btn-primary trello-btn-sm"
+              disabled={busy || vapidReady !== true}
+              onClick={() => void handleEnable()}
+            >
+              {busy ? '…' : 'Включить на этом устройстве'}
+            </button>
+            <button
+              type="button"
+              className="trello-btn trello-btn-ghost trello-btn-sm"
+              disabled={busy}
+              onClick={() => void handleDisable()}
+            >
+              Отключить
+            </button>
+          </div>
+        </>
       )}
       {msg ? <p className="trello-settings-card-hint" style={{ marginTop: 8 }}>{msg}</p> : null}
     </article>

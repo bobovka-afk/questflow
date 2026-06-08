@@ -1,4 +1,5 @@
 import { SpaLink } from '@shared/lib/navigation';
+import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 
 export type AppRailSection =
   | 'workspaces'
@@ -36,7 +37,7 @@ export function AppIconRail({
   return (
     <aside className="px-rail" aria-label="Навигация">
       <SpaLink className="px-rail-logo" to="/workspaces" title="Questflow" aria-label="Questflow">
-        <span aria-hidden />
+        <AppLogo />
       </SpaLink>
 
       <SpaLink

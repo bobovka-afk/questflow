@@ -7,6 +7,8 @@ export {
   isRateLimitMessage,
   isXpGrantErrorCode,
   isXpTaskSoftNoticeCode,
+  setAccessTokenRefreshedHandler,
   setSessionExpiredHandler,
+  tryRefreshAccessToken,
   type ApiError,
 } from './api';

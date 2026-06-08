@@ -55,20 +55,22 @@ html.px-ui.theme-dark {
 }
 
 .px-rail-logo {
-  width: 28px;
-  height: 28px;
-  background: var(--px-logo-bg);
-  border: 3px solid var(--px-border);
-  box-shadow: inset -2px -2px 0 var(--px-logo-shadow), inset 2px 2px 0 var(--px-accent);
   margin-bottom: 8px;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-decoration: none;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
 
-.px-rail-logo span {
-  display: block;
-  width: 100%;
-  height: 100%;
+.px-rail-logo .trello-logo {
+  height: 48px;
+  width: auto;
+  max-width: 56px;
 }
 
 .px-rail-btn {
@@ -341,6 +343,37 @@ html:not(.theme-dark) .px-tile--3 {
 .px-notification-time {
   font-size: 14px;
   color: var(--px-muted);
+}
+
+.px-notifications-list--compact {
+  max-width: none;
+  gap: 4px;
+}
+
+.px-notifications-list--compact .px-notification-item {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  padding: 8px 10px;
+  border-left-width: 6px;
+}
+
+.px-notifications-list--compact .px-notification-item--unread {
+  border-color: var(--px-border);
+  border-left-color: #c03030;
+  box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
+}
+
+.px-notifications-list--compact .px-notification-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.px-notifications-list--compact .px-notification-time {
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-left: 8px;
 }
 
 /* Nested legacy shell inside pixel layout */
@@ -1104,12 +1137,23 @@ html.px-ui:not(.theme-dark) .trello-character-profile--rpg .trello-character-sta
 .px-ui .trello-character-stat-meter-value {
   font-family: var(--px-font);
   font-size: 22px;
+  font-weight: 400;
   color: var(--px-text);
   text-shadow: 1px 1px 0 var(--px-title-shadow);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
 }
 
 .px-ui .trello-character-stat-meter-value--xp {
-  font-size: clamp(18px, 2vw, 20px);
+  font-size: 20px;
+  letter-spacing: 0;
+}
+
+html.px-ui.theme-dark .trello-character-profile--rpg .trello-character-stat-meter-value,
+html.px-ui .trello-character-profile--rpg .trello-character-stat-meter-value,
+html.px-ui.theme-dark .trello-character-stat-meter-value {
+  color: var(--px-text);
+  text-shadow: 1px 1px 0 var(--px-title-shadow);
 }
 
 .px-ui .trello-character-stat-meter--dust {
@@ -1124,8 +1168,11 @@ html.px-ui:not(.theme-dark) .trello-character-profile--rpg .trello-character-sta
 .px-ui .trello-character-stat-meter-value--dust {
   font-family: var(--px-font);
   font-size: 22px;
+  font-weight: 400;
   color: var(--px-text);
   text-shadow: 1px 1px 0 var(--px-title-shadow);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
 }
 
 html.px-ui .trello-checkin-streak--profile {
@@ -1685,6 +1732,8 @@ html.px-ui.theme-dark .trello-character-rules-panel .trello-character-guide {
 }
 
 .px-ui .trello-character-rpg-overview-subtitle,
+.px-ui .trello-character-dust-shop-balance,
+.px-ui .trello-character-dust-shop-balance strong,
 .px-ui .trello-character-dust-balance,
 .px-ui .trello-character-dust-balance strong {
   font-family: var(--px-font);
@@ -1707,6 +1756,90 @@ html.px-ui.theme-dark .trello-character-rules-panel .trello-character-guide {
 
 .px-ui .trello-character-rules-panel .trello-character-guide code {
   color: var(--px-accent);
+}
+
+.px-ui .trello-character-guide-section {
+  border: 3px solid var(--px-border);
+  border-radius: 0;
+  background: var(--px-bg);
+  box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
+}
+
+.px-ui .trello-character-guide-section summary {
+  font-family: var(--px-font);
+  font-size: 20px;
+  color: var(--px-text);
+}
+
+.px-ui .trello-character-guide-section summary::before {
+  color: var(--px-accent);
+}
+
+.px-ui .trello-character-guide-section-body {
+  font-family: var(--px-font);
+  font-size: 18px;
+  color: var(--px-muted);
+  border-top: 2px dashed var(--px-ghost-border, #b8a888);
+}
+
+.px-ui .trello-character-guide-section-body strong {
+  color: var(--px-accent);
+}
+
+.px-ui .trello-character-quest-column {
+  border: 3px solid var(--px-border);
+  border-radius: 0;
+  background: var(--px-bg);
+  box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
+}
+
+.px-ui .trello-character-quest-reward {
+  border: 3px dashed var(--px-border);
+  border-radius: 0;
+  background: var(--px-bg2);
+}
+
+.px-ui .trello-social-messages-panel {
+  border: 3px solid var(--px-border);
+  border-radius: 0;
+  background: var(--px-bg);
+  box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
+}
+
+.px-ui .trello-social-messages-layout--cards .trello-social-conv-btn {
+  border: 3px solid var(--px-border);
+  border-radius: 0;
+  background: var(--px-bg2);
+  font-family: var(--px-font);
+}
+
+.px-ui .trello-social-messages-layout--cards .trello-social-conv-btn--active {
+  background: var(--px-active-rail, #6b8c5a);
+  color: var(--px-active-rail-text, #f8fff0);
+  border-color: var(--px-accent);
+}
+
+.px-ui .trello-settings-panel--split {
+  max-width: min(960px, 96vw);
+}
+
+.px-ui .trello-settings-split-nav {
+  border-right: 3px solid var(--px-border);
+  background: var(--px-bg2);
+}
+
+.px-ui .trello-settings-split-nav .trello-settings-tab {
+  font-family: var(--px-font);
+  border: 3px solid var(--px-border);
+  border-radius: 0;
+  background: var(--px-bg);
+  box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
+}
+
+.px-ui .trello-settings-split-nav .trello-settings-tab--active {
+  background: var(--px-active-rail, #6b8c5a);
+  color: var(--px-active-rail-text, #f8fff0);
+  border-color: var(--px-accent);
 }
 
 .px-ui .trello-character-dust-shop-card {
@@ -1806,6 +1939,56 @@ html.px-ui .trello-modal.trello-character-loot-popup {
   box-shadow: inset -3px -3px 0 var(--px-inset-dark), inset 3px 3px 0 var(--px-inset-light);
 }
 
+html.px-ui .trello-modal.trello-character-loot-popup.trello-character-chest-open-modal {
+  background: var(--px-bg);
+  border: 4px solid var(--px-border);
+  color: var(--px-text);
+}
+
+html.px-ui .trello-character-chest-open-modal .trello-modal-foot {
+  border-top: 3px solid var(--px-border);
+  background: var(--px-bg2);
+}
+
+.px-ui .trello-character-chest-reveal-reward-wrap {
+  border: 3px solid var(--px-border);
+  border-radius: 0;
+  background: var(--px-bg);
+  box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
+}
+
+.px-ui .trello-character-chest-reveal-reward-wrap--dust {
+  background: var(--px-bg2);
+}
+
+.px-ui .trello-character-chest-open-modal .trello-character-chest-dust-notice {
+  border: 3px solid var(--px-border);
+  border-radius: 0;
+  background: var(--px-bg);
+  box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
+}
+
+.px-ui .trello-character-chest-dust-notice-line {
+  font-family: var(--px-font);
+  font-weight: 400;
+  color: var(--px-text);
+}
+
+.px-ui .trello-character-chest-open-modal.trello-modal .trello-modal-foot .trello-btn-ghost {
+  border: 3px solid var(--px-border);
+  border-radius: 0;
+  background: var(--px-bg);
+  color: var(--px-text);
+  font-family: var(--px-font);
+  box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
+}
+
+.px-ui .trello-character-chest-open-modal.trello-modal .trello-modal-foot .trello-btn-ghost:hover:not(:disabled) {
+  background: var(--px-bg2);
+  border-color: var(--px-accent);
+  color: var(--px-accent);
+}
+
 .px-ui .trello-character-loot-popup-title--hero,
 .px-ui .trello-modal.trello-character-loot-popup .trello-modal-title {
   font-family: var(--px-font);
@@ -1837,8 +2020,52 @@ html.px-ui .trello-modal.trello-character-loot-popup {
 }
 
 .px-ui .trello-character-cosmetic-storage-slot--equipped {
-  border-color: var(--px-accent);
-  box-shadow: inset 0 0 0 2px var(--px-accent);
+  border: 4px solid var(--px-green);
+  background: var(--px-bg);
+  box-shadow:
+    inset -2px -2px 0 var(--px-inset-dark),
+    inset 2px 2px 0 var(--px-inset-light),
+    0 0 0 2px var(--px-accent);
+}
+
+.px-ui .trello-character-cosmetic-storage-slot--equipped::after {
+  content: '✓';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  z-index: 2;
+  width: 12px;
+  height: 12px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--px-border);
+  border-radius: 0;
+  background: var(--px-green);
+  color: var(--px-green-text);
+  font-family: var(--px-font);
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 1;
+  box-shadow: inset -1px -1px 0 var(--px-inset-dark), inset 1px 1px 0 var(--px-inset-light);
+  pointer-events: none;
+}
+
+.px-ui .trello-character-cosmetic-storage-slot--equipped .trello-character-inventory-slot-title {
+  color: var(--px-text);
+  font-weight: 400;
+}
+
+html.px-ui.theme-dark .trello-character-cosmetic-storage-slot--equipped {
+  border-color: var(--px-green);
+  background: var(--px-bg);
+  box-shadow:
+    inset -2px -2px 0 var(--px-inset-dark),
+    inset 2px 2px 0 var(--px-inset-light),
+    0 0 0 2px var(--px-accent);
+}
+
+html.px-ui.theme-dark .trello-character-cosmetic-storage-slot--equipped .trello-character-inventory-slot-title {
+  color: var(--px-text);
 }
 
 .px-ui .trello-character-storage-inner-tab {
@@ -1877,17 +2104,36 @@ html.px-ui .trello-modal.trello-character-loot-popup {
   background: var(--px-bg2);
 }
 
-.px-ui .trello-character-storage-preview-hint {
-  font-family: var(--px-font);
-  color: var(--px-muted);
+.px-ui .trello-character-loot-popup--storage .trello-character-inventory-grid--storage-cosmetics {
+  gap: clamp(6px, 0.75vw, 10px);
+}
+
+.px-ui
+  .trello-character-loot-popup--storage
+  .trello-character-inventory-grid--storage-cosmetics
+  .trello-character-storage-preview-portrait {
+  border: 3px solid var(--px-border);
+  border-radius: 0;
+  background: var(--px-bg);
+  box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
 }
 
 .px-ui .trello-character-chest-storage-slot .trello-chest-loot-odds-btn {
+  top: 4px;
+  right: 4px;
   border-radius: 50%;
   border: 2px solid var(--px-border);
   background: var(--px-bg2);
   color: var(--px-accent);
   box-shadow: inset -1px -1px 0 var(--px-inset-dark), inset 1px 1px 0 var(--px-inset-light);
+}
+
+.px-ui
+  .trello-character-loot-popup--storage
+  .trello-character-chest-storage-slot
+  .trello-character-inventory-slot-title {
+  font-family: var(--px-font);
+  font-weight: 400;
 }
 
 .px-ui .trello-character-chest-storage-slot .trello-chest-loot-odds-btn:hover {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api, formatApiError, type ApiError } from '@shared/api';
 import {
@@ -21,6 +21,7 @@ import {
 } from '@entities/character/lib/characterStreakSnapshot';
 import { CharacterCreateForm } from '@features/character-create/ui/CharacterCreateForm';
 import { SpaLink } from '@shared/lib/navigation';
+import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 import { ProfileCharacterQuestsPanel, type ProfileCharacterTabKey } from '@widgets/profile-character-quests/ProfileCharacterQuestsPanel';
 import { FriendsPanel } from '@widgets/social-friends/FriendsPanel';
 import { MessagesPanel } from '@widgets/social-messages/MessagesPanel';
@@ -209,6 +210,34 @@ export function ProfileCharacterPage(props: Props) {
     [activePanelTab, inboxSummary],
   );
 
+  const onCharacterUpdatedRef = useRef(props.onCharacterUpdated);
+  onCharacterUpdatedRef.current = props.onCharacterUpdated;
+
+  const refreshCharacter = useCallback(async () => {
+    const c = await api<CharacterDto>('/character/me', {
+      method: 'GET',
+      accessToken: props.accessToken,
+    });
+    setCharacter(c);
+    onCharacterUpdatedRef.current?.(c);
+  }, [props.accessToken]);
+
+  const characterPortrait = useMemo(
+    () =>
+      character
+        ? {
+            avatarPreset: character.avatarPreset,
+            frameKey: character.equippedPortraitFrameKey,
+            profileBackgroundKey: character.equippedProfileBackgroundKey,
+          }
+        : undefined,
+    [
+      character?.avatarPreset,
+      character?.equippedPortraitFrameKey,
+      character?.equippedProfileBackgroundKey,
+    ],
+  );
+
   function selectPanelTab(nextTab: PanelTabKey) {
     if (activePanelTab === nextTab) {
       setTabOpenSignal((prev) => prev + 1);
@@ -254,14 +283,7 @@ export function ProfileCharacterPage(props: Props) {
           accessToken={props.accessToken}
           currentUserId={character.userId}
           manaCurrent={character.manaCurrent ?? 0}
-          onRefreshCharacter={async () => {
-            const c = await api<CharacterDto>('/character/me', {
-              method: 'GET',
-              accessToken: props.accessToken,
-            });
-            setCharacter(c);
-            props.onCharacterUpdated?.(c);
-          }}
+          onRefreshCharacter={refreshCharacter}
         />
       );
     }
@@ -269,21 +291,10 @@ export function ProfileCharacterPage(props: Props) {
       <ProfileCharacterQuestsPanel
         accessToken={props.accessToken}
         characterGender={character.gender}
-        characterPortrait={{
-          avatarPreset: character.avatarPreset,
-          frameKey: character.equippedPortraitFrameKey,
-          profileBackgroundKey: character.equippedProfileBackgroundKey,
-        }}
+        characterPortrait={characterPortrait}
         activeTab={activePanelTab as ProfileCharacterTabKey}
         tabOpenSignal={tabOpenSignal}
-        onCharacterRefresh={async () => {
-          const c = await api<CharacterDto>('/character/me', {
-            method: 'GET',
-            accessToken: props.accessToken,
-          });
-          setCharacter(c);
-          props.onCharacterUpdated?.(c);
-        }}
+        onCharacterRefresh={refreshCharacter}
       />
     );
   }
@@ -359,7 +370,7 @@ export function ProfileCharacterPage(props: Props) {
           <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
             <div className="trello-topbar-stripe-left">
               <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-                <span className="trello-logo" aria-hidden />
+                <AppLogo />
                 <span className="trello-top-left-brand-text">Questflow</span>
               </SpaLink>
               <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/workspaces">
@@ -390,7 +401,7 @@ export function ProfileCharacterPage(props: Props) {
           <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
             <div className="trello-topbar-stripe-left">
               <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-                <span className="trello-logo" aria-hidden />
+                <AppLogo />
                 <span className="trello-top-left-brand-text">Questflow</span>
               </SpaLink>
               <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/profile/me">
@@ -429,7 +440,7 @@ export function ProfileCharacterPage(props: Props) {
         <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-              <span className="trello-logo" aria-hidden />
+              <AppLogo />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
             <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/workspaces">

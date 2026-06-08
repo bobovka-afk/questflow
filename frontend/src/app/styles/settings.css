@@ -3,11 +3,65 @@
   margin: 0 auto;
 }
 
+.trello-settings-panel--split {
+  max-width: min(960px, 96vw);
+}
+
+.trello-settings-split {
+  display: grid;
+  grid-template-columns: minmax(168px, 200px) 1fr;
+  gap: 0;
+  min-height: 360px;
+}
+
+.trello-settings-split-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-right: 1px solid var(--trello-border, #dfe1e6);
+}
+
+.trello-settings-split-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  min-width: 0;
+  padding: 4px 16px 8px;
+}
+
+/* Все вкладки в одной ячейке — высота = max(все панели), без скачков при переключении */
+.trello-settings-tab-panel {
+  grid-column: 1;
+  grid-row: 1;
+  width: 100%;
+  min-width: 0;
+  animation: none;
+}
+
+.trello-settings-tab-panel--inactive {
+  visibility: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+.trello-settings-session-placeholder {
+  min-height: 2.5rem;
+}
+
 .trello-settings-tabs {
   display: flex;
   gap: 8px;
   margin-bottom: 20px;
   flex-wrap: wrap;
+}
+
+.trello-settings-split-nav .trello-settings-tab {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  margin-bottom: 0;
 }
 
 .trello-settings-tab {
@@ -246,4 +300,26 @@
   color: var(--qf-text-muted, #5e6c84);
   border-color: var(--trello-border, #dfe1e6);
   background: var(--trello-surface-muted, #f4f5f7);
+}
+
+@media (max-width: 720px) {
+  .trello-settings-split {
+    grid-template-columns: 1fr;
+  }
+
+  .trello-settings-split-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: none;
+    border-bottom: 1px solid var(--trello-border, #dfe1e6);
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+  }
+
+  .trello-settings-split-nav .trello-settings-tab {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 120px;
+    text-align: center;
+  }
 }

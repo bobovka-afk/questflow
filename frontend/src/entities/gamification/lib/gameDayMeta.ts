@@ -1,4 +1,5 @@
 import { api } from '@shared/api';
+import { formatDateTimeRu, formatDateTimeRuInTimeZone } from '@shared/lib/formatDateRu';
 
 export type GamificationMeta = {
   gameDayTz: string;
@@ -16,15 +17,9 @@ export async function fetchGamificationMeta(): Promise<GamificationMeta> {
 
 export function formatGameDayResetRu(iso: string, timeZone: string): string {
   try {
-    return new Intl.DateTimeFormat('ru-RU', {
-      timeZone,
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(iso));
+    return formatDateTimeRuInTimeZone(iso, timeZone);
   } catch {
-    return new Date(iso).toLocaleString('ru-RU');
+    return formatDateTimeRu(iso);
   }
 }
 

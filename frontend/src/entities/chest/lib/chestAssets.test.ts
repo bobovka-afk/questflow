@@ -26,9 +26,13 @@ describe('chestAssets', () => {
     expect(chestClosedUrl('RARE')).toBe(frames?.[0] ?? null);
   });
 
-  it('epic has no assets yet', () => {
-    expect(chestHasTapOpen('EPIC')).toBe(false);
-    expect(chestTapFrameUrls('EPIC')).toBeNull();
-    expect(chestClosedUrl('EPIC')).toBeNull();
+  it('epic tap-open frames', () => {
+    expect(chestHasTapOpen('EPIC')).toBe(true);
+    expect(chestTapsRequired('EPIC')).toBe(3);
+    const frames = chestTapFrameUrls('EPIC');
+    expect(frames).toHaveLength(4);
+    expect(frames?.[0]).toContain('chests/epic/1.png');
+    expect(frames?.[3]).toContain('chests/epic/4.png');
+    expect(chestClosedUrl('EPIC')).toBe(frames?.[0] ?? null);
   });
 });

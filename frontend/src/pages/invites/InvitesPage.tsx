@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, formatApiError, isRateLimitMessage } from '@shared/api';
+import { formatDateRuLong } from '@shared/lib/formatDateRu';
 import { SpaLink } from '@shared/lib/navigation';
+import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 import { formatWorkspaceRole } from '@entities/workspace';
 
 type InviteRow = {
@@ -22,34 +24,6 @@ type InviteRole = 'ADMIN' | 'MEMBER';
 
 function formatError(e: unknown) {
   return formatApiError(e);
-}
-
-function formatDate(iso: string) {
-  try {
-    const d = new Date(iso);
-    const months = [
-      'января',
-      'февраля',
-      'марта',
-      'апреля',
-      'мая',
-      'июня',
-      'июля',
-      'августа',
-      'сентября',
-      'октября',
-      'ноября',
-      'декабря',
-    ];
-    const day = d.getDate();
-    const mon = months[d.getMonth()] ?? '';
-    const y = d.getFullYear();
-    const h = String(d.getHours()).padStart(2, '0');
-    const min = String(d.getMinutes()).padStart(2, '0');
-    return `${day} ${mon} ${y} ${h}:${min}`;
-  } catch {
-    return iso;
-  }
 }
 
 function isExpired(iso: string) {
@@ -172,7 +146,7 @@ export function InvitesPage({ accessToken }: Props) {
       <div className="jira-main">
         <header className="jira-topbar">
           <SpaLink className="trello-top-left-brand" to="/workspaces">
-            <span className="trello-logo" aria-hidden />
+            <AppLogo />
             <span className="trello-top-left-brand-text">Questflow</span>
           </SpaLink>
           <div>
@@ -275,10 +249,10 @@ export function InvitesPage({ accessToken }: Props) {
                           <div className="jira-cell-meta">{row.invitedBy.email}</div>
                         </td>
                         <td className="jira-cell-meta">
-                          {formatDate(row.expiresAt)}
+                          {formatDateRuLong(row.expiresAt)}
                           {isExpired(row.expiresAt) ? ' (истекло)' : ''}
                         </td>
-                        <td className="jira-cell-meta">{formatDate(row.createdAt)}</td>
+                        <td className="jira-cell-meta">{formatDateRuLong(row.createdAt)}</td>
                         <td className="jira-row-actions">
                           <button
                             type="button"

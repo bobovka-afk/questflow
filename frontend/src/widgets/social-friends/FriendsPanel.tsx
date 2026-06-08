@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatApiError } from '@shared/api';
+import { formatDateTimeRu } from '@shared/lib/formatDateRu';
 import { avatarInitials, avatarSrcFromPath, userProfilePath } from '@entities/user';
 import { SpaLink } from '@shared/lib';
 import {
@@ -340,7 +341,7 @@ export function FriendsPanel({ accessToken, onMessagePeer, onInboxChange }: Prop
               const onlineLabel = f.user.isOnline
                 ? 'в сети'
                 : f.user.lastSeenAt
-                  ? `был(а) ${new Date(f.user.lastSeenAt).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+                  ? `был(а) ${formatDateTimeRu(f.user.lastSeenAt)}`
                   : null;
               return (
                 <li key={f.user.userId} className="trello-social-friend-card">

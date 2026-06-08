@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UserNotificationType } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
@@ -14,13 +14,29 @@ type PushPayload = {
 };
 
 @Injectable()
-export class WebPushService {
+export class WebPushService implements OnModuleInit {
   private readonly logger = new Logger(WebPushService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {}
+
+  onModuleInit(): void {
+    if (this.isConfigured()) {
+      this.logger.log('Web Push enabled (VAPID keys loaded)');
+      return;
+    }
+    this.logger.warn(
+      'Web Push disabled: set VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT in .env (npm run vapid:generate)',
+    );
+  }
+
+  isConfigured(): boolean {
+    return Boolean(
+      this.getVapidPublicKey() && this.configService.get<string>('VAPID_PRIVATE_KEY'),
+    );
+  }
 
   getVapidPublicKey(): string | null {
     return this.configService.get<string>('VAPID_PUBLIC_KEY') ?? null;
@@ -57,9 +73,9 @@ export class WebPushService {
     type: UserNotificationType,
     payload: PushPayload,
   ): Promise<void> {
-    const publicKey = this.getVapidPublicKey();
-    const privateKey = this.configService.get<string>('VAPID_PRIVATE_KEY');
-    if (!publicKey || !privateKey) return;
+    if (!this.isConfigured()) return;
+    const publicKey = this.getVapidPublicKey()!;
+    const privateKey = this.configService.get<string>('VAPID_PRIVATE_KEY')!;
 
     const row = await this.prisma.userSettings.findUnique({
       where: { userId },

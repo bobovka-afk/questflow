@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, formatApiError, isRateLimitMessage } from '@shared/api';
+import { formatDateTimeRuWithYear } from '@shared/lib/formatDateRu';
 import { SpaLink } from '@shared/lib/navigation';
+import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 import { formatWorkspaceRole } from '@entities/workspace';
 
 type Props = {
@@ -33,20 +35,6 @@ function formatError(e: unknown) {
   return formatApiError(e);
 }
 
-function formatWhen(iso: string) {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString('ru-RU', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
-}
 
 function activitySummary(row: ActivityRow): string {
   const { type, payload, actor } = row;
@@ -166,7 +154,7 @@ export function WorkspaceActivityPage({ accessToken, workspaceId }: Props) {
         <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-              <span className="trello-logo" aria-hidden />
+              <AppLogo />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
             <SpaLink
@@ -231,7 +219,7 @@ export function WorkspaceActivityPage({ accessToken, workspaceId }: Props) {
               {rows.map((row) => (
                 <li key={row.id} className="trello-activity-item">
                   <div className="trello-activity-text">{activitySummary(row)}</div>
-                  <div className="trello-activity-meta">{formatWhen(row.createdAt)}</div>
+                  <div className="trello-activity-meta">{formatDateTimeRuWithYear(row.createdAt)}</div>
                 </li>
               ))}
             </ul>

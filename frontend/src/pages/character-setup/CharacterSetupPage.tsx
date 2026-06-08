@@ -1,6 +1,7 @@
 import { CharacterCreateForm } from '@features/character-create/ui/CharacterCreateForm';
 import { type CharacterDto } from '@entities/character';
 import { navigate } from '@shared/lib/navigation-core';
+import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 
 type Props = {
   accessToken: string;
@@ -19,7 +20,7 @@ export function CharacterSetupPage(props: Props) {
         <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <span className="trello-top-left-brand trello-top-left-brand--stripe trello-top-left-brand--static">
-              <span className="trello-logo" aria-hidden />
+              <AppLogo />
               <span className="trello-top-left-brand-text">Questflow</span>
             </span>
           </div>

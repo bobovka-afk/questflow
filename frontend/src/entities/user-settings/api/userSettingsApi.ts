@@ -99,10 +99,14 @@ export type PendingEmailChangeDto = {
 export async function fetchPendingEmailChange(
   accessToken: string,
 ): Promise<PendingEmailChangeDto> {
-  return api<PendingEmailChangeDto>('/user/me/email-change/pending', {
-    method: 'GET',
-    accessToken,
-  });
+  const pending = await api<PendingEmailChangeDto | undefined>(
+    '/user/me/email-change/pending',
+    {
+      method: 'GET',
+      accessToken,
+    },
+  );
+  return pending ?? null;
 }
 
 export async function requestEmailChange(

@@ -1,6 +1,16 @@
-import { useEffect, useLayoutEffect, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
-import { api, API_URL, formatApiError, isRateLimitMessage, setSessionExpiredHandler, type ApiError } from '@shared/api';
+import {
+  api,
+  API_URL,
+  formatApiError,
+  isRateLimitMessage,
+  setAccessTokenRefreshedHandler,
+  setSessionExpiredHandler,
+  tryRefreshAccessToken,
+  type ApiError,
+} from '@shared/api';
+import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 import { routeNeedsCharacterGate, type CharacterDto } from '@entities/character';
 import {
   dismissGamificationIntroPending,
@@ -121,7 +131,7 @@ function EmailVerificationRequestPage() {
         <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/">
-              <span className="trello-logo" aria-hidden />
+              <AppLogo />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
             <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/">
@@ -192,7 +202,7 @@ function EmailVerifiedStatusPage() {
         <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/">
-              <span className="trello-logo" aria-hidden />
+              <AppLogo />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
             <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/">
@@ -250,7 +260,7 @@ function PasswordResetRequestPage() {
         <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/">
-              <span className="trello-logo" aria-hidden />
+              <AppLogo />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
             <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/">
@@ -340,7 +350,7 @@ function PasswordResetConfirmPage() {
         <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/">
-              <span className="trello-logo" aria-hidden />
+              <AppLogo />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
             <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/">
@@ -457,7 +467,7 @@ function Home(props: { onAuthed: (token: string, options?: AuthedOptions) => voi
     <div className="trello-home-shell">
       <header className="trello-home-header">
         <SpaLink className="trello-home-brand" to={props.hasSession ? '/workspaces' : '/'}>
-          <span className="trello-logo" aria-hidden />
+          <AppLogo />
           Questflow
         </SpaLink>
       </header>
@@ -623,6 +633,10 @@ function AppContent() {
     dismissGamificationIntroPending();
   }
 
+  const handleCharacterUpdated = useCallback(() => {
+    setCharacterLoadState('ok');
+  }, []);
+
   useEffect(() => {
     const url = new URL(window.location.href);
     const tokenFromQuery = url.searchParams.get('accessToken');
@@ -741,11 +755,20 @@ function AppContent() {
   }, [route, accessToken]);
 
   useEffect(() => {
+    setAccessTokenRefreshedHandler((token) => {
+      setToken(token);
+    });
     setSessionExpiredHandler(() => {
       setToken(null);
       navigate('/');
     });
-    return () => setSessionExpiredHandler(null);
+    void tryRefreshAccessToken().then((token) => {
+      if (token) setToken(token);
+    });
+    return () => {
+      setAccessTokenRefreshedHandler(null);
+      setSessionExpiredHandler(null);
+    };
   }, []);
 
   useEffect(() => {
@@ -880,7 +903,7 @@ function AppContent() {
       ) : route === '/profile/character' || route.startsWith('/profile/character/') ? (
         <ProfileCharacterPage
           accessToken={accessToken}
-          onCharacterUpdated={() => setCharacterLoadState('ok')}
+          onCharacterUpdated={handleCharacterUpdated}
         />
       ) : profileUserCharacterMatch ? (
         <UserCharacterPage

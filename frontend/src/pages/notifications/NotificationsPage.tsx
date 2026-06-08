@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@shared/api';
+import { formatDateTimeRu } from '@shared/lib/formatDateRu';
 import { navigate } from '@shared/lib/navigation-core';
 import {
   notificationSummary,
@@ -69,7 +70,7 @@ export function NotificationsPage({ accessToken }: Props) {
         ) : rows.length === 0 ? (
           <p className="px-empty">Пока нет уведомлений.</p>
         ) : (
-          <ul className="px-notifications-list">
+          <ul className="px-notifications-list px-notifications-list--compact">
             {rows.map((row) => (
               <li key={row.id}>
                 <button
@@ -79,12 +80,7 @@ export function NotificationsPage({ accessToken }: Props) {
                 >
                   <span className="px-notification-text">{notificationSummary(row)}</span>
                   <time className="px-notification-time" dateTime={row.createdAt}>
-                    {new Date(row.createdAt).toLocaleString('ru-RU', {
-                      day: 'numeric',
-                      month: 'short',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    {formatDateTimeRu(row.createdAt)}
                   </time>
                 </button>
               </li>

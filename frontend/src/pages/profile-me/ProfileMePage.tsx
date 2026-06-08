@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, API_URL, formatApiError, isRateLimitMessage } from '@shared/api';
 import { profilePathForUsername } from '@entities/user';
+import { formatRegisteredRu } from '@shared/lib/formatDateRu';
 import { navigate, SpaLink } from '@shared/lib';
+import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 
 export type ProfileMeUser = {
   id: number;
@@ -17,28 +19,6 @@ type Props = {
   accessToken: string | null;
   onUserUpdated?: (user: ProfileMeUser) => void;
 };
-
-function formatRegisteredRU(isoDate: string) {
-  const d = new Date(isoDate);
-  const day = d.getDate();
-  const monthGenitive = [
-    'января',
-    'февраля',
-    'марта',
-    'апреля',
-    'мая',
-    'июня',
-    'июля',
-    'августа',
-    'сентября',
-    'октября',
-    'ноября',
-    'декабря',
-  ];
-  const month = monthGenitive[d.getMonth()] ?? '';
-  const year = d.getFullYear();
-  return `${day} ${month} ${year}`;
-}
 
 export function ProfileMePage(props: Props) {
   const [user, setUser] = useState<ProfileMeUser | null>(null);
@@ -224,7 +204,7 @@ export function ProfileMePage(props: Props) {
         <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-              <span className="trello-logo" aria-hidden />
+              <AppLogo />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
             <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/workspaces">
@@ -404,7 +384,7 @@ export function ProfileMePage(props: Props) {
 
                 <div className="trello-label">Зарегистрирован</div>
                 <div style={{ marginBottom: 0 }}>
-                  {user?.createdAt ? formatRegisteredRU(user.createdAt) : '—'}
+                  {user?.createdAt ? formatRegisteredRu(user.createdAt) : '—'}
                 </div>
               </div>
             </div>

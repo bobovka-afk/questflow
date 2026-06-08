@@ -5,9 +5,11 @@ import {
   isRateLimitMessage,
 } from '@shared/api';
 import { avatarSrcFromPath, userProfilePath } from '@entities/user';
+import { formatDateRuLong } from '@shared/lib/formatDateRu';
 import {
   SpaLink,
 } from '@shared/lib/navigation';
+import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 import { handleSpaTileAuxClick, handleSpaTileClick, navigate } from '@shared/lib/navigation-core';
 import {
   canInviteMembers,
@@ -67,34 +69,6 @@ function formatInviteSendError(e: unknown): string {
     return 'Этот пользователь уже состоит в этом рабочем пространстве.';
   }
   return raw;
-}
-
-function formatDate(iso: string) {
-  try {
-    const d = new Date(iso);
-    const months = [
-      'января',
-      'февраля',
-      'марта',
-      'апреля',
-      'мая',
-      'июня',
-      'июля',
-      'августа',
-      'сентября',
-      'октября',
-      'ноября',
-      'декабря',
-    ];
-    const day = d.getDate();
-    const mon = months[d.getMonth()] ?? '';
-    const y = d.getFullYear();
-    const h = String(d.getHours()).padStart(2, '0');
-    const min = String(d.getMinutes()).padStart(2, '0');
-    return `${day} ${mon} ${y} ${h}:${min}`;
-  } catch {
-    return iso;
-  }
 }
 
 export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
@@ -387,7 +361,7 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
         <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-              <span className="trello-logo" aria-hidden />
+              <AppLogo />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
             <SpaLink
@@ -523,7 +497,7 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
                         <td>
                           <span className="trello-pill">{formatWorkspaceRole(member.role)}</span>
                         </td>
-                        <td className="trello-cell-meta">{formatDate(member.createdAt)}</td>
+                        <td className="trello-cell-meta">{formatDateRuLong(member.createdAt)}</td>
                         <td className="trello-row-actions">
                           {isMe ? (
                             <button
@@ -711,8 +685,8 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
                             <td>
                               <span className="trello-pill">{formatWorkspaceRole(inv.role)}</span>
                             </td>
-                            <td className="trello-cell-meta">{formatDate(inv.createdAt)}</td>
-                            <td className="trello-cell-meta">{formatDate(inv.expiresAt)}</td>
+                            <td className="trello-cell-meta">{formatDateRuLong(inv.createdAt)}</td>
+                            <td className="trello-cell-meta">{formatDateRuLong(inv.expiresAt)}</td>
                             <td className="trello-invite-inviter-email">{inv.invitedBy.email}</td>
                             <td className="trello-row-actions">
                               <button

@@ -8,13 +8,14 @@ import {
   Param,
   ParseIntPipe,
   Req,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
   BadRequestException,
   HttpCode,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import type { UserPublic, UserProfileView } from './interface';
 import type { AuthedRequest } from '../common/type';
 import type { File as MulterFile } from 'multer';
@@ -220,8 +221,9 @@ export class UserController {
 
   @Get('me/email-change/pending')
   @ApiOperation({ summary: 'Pending email change status' })
-  getPendingEmailChange(@Req() req: AuthedRequest) {
-    return this.userEmailChangeService.getPendingStatus(req.user.id);
+  async getPendingEmailChange(@Req() req: AuthedRequest, @Res() res: Response) {
+    const pending = await this.userEmailChangeService.getPendingStatus(req.user.id);
+    res.status(200).json(pending);
   }
 
   @Delete('me')

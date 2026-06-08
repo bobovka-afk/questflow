@@ -6,6 +6,7 @@ import { CharacterPortraitWithFrame } from '@widgets/character-portrait/Characte
 import { CHARACTER_HEALTH_MAX } from '@entities/reward';
 import { getCharacterXpTowardNext } from '@entities/character/lib/level-curve';
 import { SpaLink } from '@shared/lib/navigation';
+import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 import { navigate } from '@shared/lib/navigation-core';
 import { userProfilePath } from '@entities/user';
 import { SocialUserBlockButton } from '@widgets/social-user-block/SocialUserBlockButton';
@@ -145,7 +146,7 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
           <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
             <div className="trello-topbar-stripe-left">
               <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-                <span className="trello-logo" aria-hidden />
+                <AppLogo />
                 <span className="trello-top-left-brand-text">Questflow</span>
               </SpaLink>
               <button type="button" className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" onClick={goBack}>
@@ -175,7 +176,7 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
           <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
             <div className="trello-topbar-stripe-left">
               <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-                <span className="trello-logo" aria-hidden />
+                <AppLogo />
                 <span className="trello-top-left-brand-text">Questflow</span>
               </SpaLink>
               <button type="button" className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" onClick={goBack}>
@@ -212,7 +213,7 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
         <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
           <div className="trello-topbar-stripe-left">
             <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-              <span className="trello-logo" aria-hidden />
+              <AppLogo />
               <span className="trello-top-left-brand-text">Questflow</span>
             </SpaLink>
             <button type="button" className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" onClick={goBack}>

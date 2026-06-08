@@ -37,6 +37,16 @@ export function settingsRouteForTab(tab: SettingsTab): string {
   return TAB_ROUTES[tab];
 }
 
+/** Updates the settings sub-route without triggering a full SPA navigation. */
+export function replaceSettingsTabInUrl(tab: SettingsTab): void {
+  const path = settingsRouteForTab(tab);
+  const next = `${path}${window.location.search}${window.location.hash}`;
+  if (`${window.location.pathname}${window.location.search}${window.location.hash}` === next) {
+    return;
+  }
+  window.history.replaceState({}, '', next);
+}
+
 export const SETTINGS_TAB_LABELS: Record<SettingsTab, string> = {
   account: 'Аккаунт',
   security: 'Безопасность',

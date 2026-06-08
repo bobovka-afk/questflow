@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ru" class="px-ui">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Questflow — Уведомления: 5 вариантов</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+    <style>
+      :root { --px-font:'VT323',monospace; --px-bg:#f0e6d0; --px-bg2:#e4d4b8; --px-border:#2a2018; --px-accent:#8b4513; --px-text:#2a2018; --px-muted:#7a6858; --px-green:#4a8a50; --px-green-text:#f8fff0; --px-inset-dark:rgba(42,32,24,.18); --px-inset-light:rgba(255,255,255,.5); --mock-excluded-text:#7a6858; --hud-bg:#1a1033; --hud-bg2:#2a1850; --hud-accent:#ffe566; --hud-muted:#a898c8; }
+      *{box-sizing:border-box} body{margin:0;font-family:var(--px-font);font-size:20px;line-height:1.35;color:var(--px-text);background:var(--px-bg)}
+      .mock-picker{position:sticky;top:0;z-index:200;display:flex;flex-wrap:wrap;gap:8px;padding:10px 16px;background:#2a2018;color:#f0e6d0;border-bottom:4px solid #000;align-items:center}
+      .mock-picker a{color:#f0e6d0;text-decoration:none;padding:4px 10px;border:2px solid #7a6858;background:#4a3828}
+      .mock-picker a:hover,.mock-picker a.is-active{border-color:var(--px-green);background:#6b8c5a;color:var(--px-green-text)}
+      .mock-note{margin:0;padding:8px 16px;background:var(--px-bg2);border-bottom:3px solid var(--px-border);color:var(--px-muted);font-size:18px}
+      .mock-shell{display:flex;min-height:calc(100vh - 88px)} .mock-rail{width:56px;flex-shrink:0;background:var(--px-bg2);border-right:4px solid var(--px-border);position:relative}
+      .mock-rail::after{content:'rail';position:absolute;inset:0;display:grid;place-items:center;writing-mode:vertical-rl;font-size:14px;color:var(--mock-excluded-text);pointer-events:none}
+      .mock-main{flex:1;min-width:0;display:flex;flex-direction:column} .mock-topbar{padding:12px 20px;background:var(--px-bg2);border-bottom:4px solid var(--px-border);position:relative;opacity:.55}
+      .mock-topbar::after{content:'topbar — не трогаем';position:absolute;inset:0;display:grid;place-items:center;background:rgba(240,230,208,.35);color:var(--mock-excluded-text);pointer-events:none}
+      .mock-content{flex:1;padding:20px 24px 40px} .variant{display:none} .variant.is-visible{display:block}
+      .variant-title{margin:0 0 6px;font-size:28px;font-weight:400} .variant-desc{margin:0 0 16px;color:var(--px-muted);font-size:18px;max-width:720px}
+      .px-box{border:3px solid var(--px-border);background:var(--px-bg2);box-shadow:inset -2px -2px 0 var(--px-inset-dark),inset 2px 2px 0 var(--px-inset-light)}
+      .px-panel{border:3px solid var(--px-border);background:var(--px-bg);padding:12px 14px;box-shadow:inset -2px -2px 0 var(--px-inset-dark),inset 2px 2px 0 var(--px-inset-light)}
+      .px-btn{border:3px solid var(--px-border);background:var(--px-bg);font:inherit;padding:6px 12px}
+      .notif{display:block;width:100%;text-align:left;border:3px solid var(--px-border);background:var(--px-bg);padding:12px 14px;font:inherit;margin-bottom:8px;cursor:default}
+      .notif--unread{border-color:var(--px-accent);background:#fff8ef;box-shadow:inset 4px 0 0 var(--px-accent)}
+      .notif time{display:block;font-size:17px;color:var(--px-muted);margin-top:4px}
+      .notif-icon{display:inline-block;width:28px;text-align:center;margin-right:8px}
+      .v1-list{padding:12px} .v2-scroll{background:linear-gradient(180deg,#f8edd8,#e8d4b0);border:4px double var(--px-accent);padding:16px}
+      .v2-scroll h3{text-align:center;margin:0 0 12px;color:var(--px-accent);letter-spacing:.1em}
+      .v3-compact .notif{border-left-width:6px;padding:8px 10px;margin-bottom:4px;border-radius:0}
+      .v3-compact .notif--unread{border-left-color:#c03030}
+      .v4-timeline{position:relative;padding-left:28px} .v4-timeline::before{content:'';position:absolute;left:10px;top:0;bottom:0;width:3px;background:var(--px-border)}
+      .v4-timeline .notif{position:relative} .v4-timeline .notif::before{content:'';position:absolute;left:-22px;top:14px;width:12px;height:12px;border:3px solid var(--px-border);background:var(--px-green);border-radius:50%}
+      .v5-hud{background:var(--hud-bg);color:#f0e6d3;border:4px solid #000;padding:14px;min-height:400px}
+      .v5-hud .notif{background:var(--hud-bg2);border-color:#000;color:#f0e6d3} .v5-hud .notif--unread{border-color:var(--hud-accent);box-shadow:inset 4px 0 0 var(--hud-accent)}
+      .v5-hud .notif time{color:var(--hud-muted)} .v5-hud h3{color:var(--hud-accent);text-shadow:2px 2px 0 #000;margin:0 0 12px}
+      .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+    </style>
+  </head>
+  <body>
+    <nav class="mock-picker"><strong>Уведомления ·</strong>
+      <a href="#v1" data-variant="v1">1 — Карточки</a><a href="#v2" data-variant="v2">2 — Свиток</a>
+      <a href="#v3" data-variant="v3">3 — Компакт</a><a href="#v4" data-variant="v4">4 — Timeline</a>
+      <a href="#v5" data-variant="v5">5 — HUD</a>
+      <a href="quests-tab-variants.html">Задания →</a>
+    </nav>
+    <p class="mock-note">Страница /notifications. Rail и topbar — заглушки.</p>
+    <div class="mock-shell">
+      <aside class="mock-rail"></aside>
+      <div class="mock-main">
+        <header class="mock-topbar"><h1 style="margin:0;font-size:28px">Уведомления</h1></header>
+        <div class="mock-content">
+          <div id="v1" class="variant is-visible">
+            <h2 class="variant-title">Вариант 1 — Карточки-строки</h2>
+            <p class="variant-desc">Как сейчас: крупные кликабельные блоки, непрочитанные с акцентной полосой.</p>
+            <div class="toolbar"><span style="color:var(--px-muted)">3 непрочитанных</span><button type="button" class="px-btn">Прочитать все</button></div>
+            <div class="px-box v1-list">
+              <button type="button" class="notif notif--unread"><span class="notif-icon">📜</span>Квест «Закрыть 3 карточки» выполнен — сундук ждёт в хранилище<time>8 июн 14:32</time></button>
+              <button type="button" class="notif notif--unread"><span class="notif-icon">@</span>Ариэль упомянула вас в карточке «Рейд на выходных»<time>8 июн 11:05</time></button>
+              <button type="button" class="notif"><span class="notif-icon">🐉</span>Приглашение в рейд от Бруна<time>7 июн 20:18</time></button>
+              <button type="button" class="notif"><span class="notif-icon">✓</span>Карточка «Дизайн иконок» назначена на вас<time>7 июн 09:41</time></button>
+            </div>
+          </div>
+          <div id="v2" class="variant">
+            <h2 class="variant-title">Вариант 2 — Свиток журнала</h2>
+            <p class="variant-desc">Все уведомления внутри одного пергаментного блока.</p>
+            <div class="v2-scroll">
+              <h3>☆ ЖУРНАЛ СОБЫТИЙ ☆</h3>
+              <button type="button" class="notif notif--unread">Квест выполнен — откройте сундук<time>сегодня, 14:32</time></button>
+              <button type="button" class="notif notif--unread">@упоминание в «Рейд на выходных»<time>сегодня, 11:05</time></button>
+              <button type="button" class="notif">Приглашение в рейд<time>вчера</time></button>
+            </div>
+          </div>
+          <div id="v3" class="variant">
+            <h2 class="variant-title">Вариант 3 — Плотный список</h2>
+            <p class="variant-desc">Минимальные отступы, цветная полоса слева у непрочитанных.</p>
+            <div class="toolbar"><button type="button" class="px-btn">Прочитать все</button></div>
+            <div class="v3-compact px-box" style="padding:8px">
+              <button type="button" class="notif notif--unread">📜 Квест выполнен — сундук в хранилище <time>8 июн 14:32</time></button>
+              <button type="button" class="notif notif--unread">@ Ариэль упомянула вас <time>8 июн 11:05</time></button>
+              <button type="button" class="notif">🐉 Рейд от Бруна <time>7 июн 20:18</time></button>
+              <button type="button" class="notif">✓ Назначение на карточку <time>7 июн 09:41</time></button>
+              <button type="button" class="notif">🏆 Достижение «Серия 7 дней» <time>5 июн 18:00</time></button>
+            </div>
+          </div>
+          <div id="v4" class="variant">
+            <h2 class="variant-title">Вариант 4 — Timeline</h2>
+            <p class="variant-desc">Вертикальная линия времени с точками-событиями.</p>
+            <div class="px-panel v4-timeline">
+              <button type="button" class="notif notif--unread"><strong>Сегодня</strong><br />Квест «3 карточки» — сундук готов<time>14:32</time></button>
+              <button type="button" class="notif notif--unread">@упоминание в карточке<time>11:05</time></button>
+              <button type="button" class="notif"><strong>Вчера</strong><br />Приглашение в рейд<time>20:18</time></button>
+              <button type="button" class="notif">Назначение на карточку<time>09:41</time></button>
+            </div>
+          </div>
+          <div id="v5" class="variant">
+            <h2 class="variant-title">Вариант 5 — Тёмный HUD</h2>
+            <p class="variant-desc">Колокол / журнал в dungeon-стиле.</p>
+            <div class="v5-hud">
+              <div class="toolbar"><h3>◆ УВЕДОМЛЕНИЯ</h3><button type="button" class="px-btn" style="background:var(--hud-bg2);color:var(--hud-muted);border-color:#000">Прочитать все</button></div>
+              <button type="button" class="notif notif--unread">Квест выполнен — сундук в хранилище<time>8 июн 14:32</time></button>
+              <button type="button" class="notif notif--unread">@ Ариэль · карточка «Рейд»<time>8 июн 11:05</time></button>
+              <button type="button" class="notif">Приглашение в рейд<time>7 июн.</time></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const links=document.querySelectorAll('[data-variant]'),variants=document.querySelectorAll('.variant');
+      function show(id){variants.forEach(v=>v.classList.toggle('is-visible',v.id===id));links.forEach(a=>a.classList.toggle('is-active',a.dataset.variant===id))}
+      links.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();show(a.dataset.variant);history.replaceState(null,'','#'+a.dataset.variant)}));
+      const h=location.hash.replace('#','');if(h&&document.getElementById(h))show(h);
+    </script>
+  </body>
+</html>

@@ -179,10 +179,43 @@ async function readErrorPayload(res: Response): Promise<{ raw: unknown; message:
 }
 
 let sessionExpiredHandler: (() => void) | null = null;
+let accessTokenRefreshedHandler: ((token: string) => void) | null = null;
+let refreshInFlight: Promise<string | null> | null = null;
 
 /** When set, invoked on HTTP 401 if the request sent `accessToken` (session invalid/expired). */
 export function setSessionExpiredHandler(handler: (() => void) | null): void {
   sessionExpiredHandler = handler;
+}
+
+/** When set, called after a successful silent refresh (update React state + localStorage). */
+export function setAccessTokenRefreshedHandler(handler: ((token: string) => void) | null): void {
+  accessTokenRefreshedHandler = handler;
+}
+
+/** Issue a new access token using the httpOnly refresh cookie (no logout on failure). */
+export async function tryRefreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    try {
+      const res = await fetch(`${API_URL}/auth/login/access-token`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) return null;
+      const data = await parseResponseJson<{ accessToken?: string }>(res);
+      const token = typeof data.accessToken === 'string' ? data.accessToken : null;
+      if (token) accessTokenRefreshedHandler?.(token);
+      return token;
+    } catch {
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
 }
 
 export function isRateLimitError(e: unknown): boolean {
@@ -237,6 +270,28 @@ export function isRateLimitMessage(message: string | null | undefined): boolean 
   return typeof message === 'string' && message.startsWith(RATE_LIMIT_MESSAGE_PREFIX);
 }
 
+async function apiFetch(
+  path: string,
+  opts: RequestInit & {
+    json?: unknown;
+    accessToken?: string | null;
+  },
+  accessToken?: string | null,
+): Promise<Response> {
+  const headers = new Headers(opts.headers);
+  if (!headers.has('Accept')) headers.set('Accept', 'application/json');
+  if (opts.json !== undefined) headers.set('Content-Type', 'application/json');
+  const token = accessToken ?? opts.accessToken;
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  return fetch(`${API_URL}${path}`, {
+    ...opts,
+    headers,
+    body: opts.json !== undefined ? JSON.stringify(opts.json) : opts.body,
+    credentials: 'include',
+  });
+}
+
 export async function api<T>(
   path: string,
   opts: RequestInit & {
@@ -244,19 +299,9 @@ export async function api<T>(
     accessToken?: string | null;
   } = {},
 ): Promise<T> {
-  const headers = new Headers(opts.headers);
-  if (!headers.has('Accept')) headers.set('Accept', 'application/json');
-  if (opts.json !== undefined) headers.set('Content-Type', 'application/json');
-  if (opts.accessToken) headers.set('Authorization', `Bearer ${opts.accessToken}`);
-
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, {
-      ...opts,
-      headers,
-      body: opts.json !== undefined ? JSON.stringify(opts.json) : opts.body,
-      credentials: 'include',
-    });
+    res = await apiFetch(path, opts, opts.accessToken);
   } catch (e) {
     const err: ApiError = {
       status: 0,
@@ -267,6 +312,25 @@ export async function api<T>(
           : 'Network error',
     };
     throw err;
+  }
+
+  if (res.status === 401 && opts.accessToken) {
+    const refreshed = await tryRefreshAccessToken();
+    if (refreshed) {
+      try {
+        res = await apiFetch(path, opts, refreshed);
+      } catch (e) {
+        const err: ApiError = {
+          status: 0,
+          message: isNetworkFetchError(e)
+            ? 'Failed to fetch'
+            : e instanceof Error
+              ? e.message
+              : 'Network error',
+        };
+        throw err;
+      }
+    }
   }
 
   if (!res.ok) {
@@ -291,7 +355,23 @@ export async function api<T>(
     throw err;
   }
 
+  return parseResponseJson<T>(res);
+}
+
+async function parseResponseJson<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+
+  const text = await res.text();
+  if (!text.trim()) return undefined as T;
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    const err: ApiError = {
+      status: res.status,
+      message: 'Некорректный ответ сервера',
+    };
+    throw err;
+  }
 }
 

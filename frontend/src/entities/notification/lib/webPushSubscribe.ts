@@ -109,3 +109,11 @@ export async function unsubscribeWebPush(accessToken: string): Promise<void> {
 export function isWebPushSupported(): boolean {
   return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
 }
+
+export async function fetchVapidPublicKey(accessToken: string): Promise<string | null> {
+  const res = await api<{ publicKey: string | null }>('/notifications/push/vapid-public-key', {
+    method: 'GET',
+    accessToken,
+  });
+  return res.publicKey;
+}

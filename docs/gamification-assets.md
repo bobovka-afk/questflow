@@ -247,8 +247,8 @@ frame:   trello-character-profile-portrait-frame
 | Обычный сундук (тапы 1–4) | `chests/common/1.png` … `chests/common/4.png` | Common | **1024×1024** | Отдельный PNG на каждый тап |
 | Редкий сундук (иконка + закрытый кадр) | `chests/rare/1.png` | Rare | **1024×1024** | Закрытый rare, первый кадр tap (аналог `common/0.png`) |
 | Редкий сундук (тапы 2–5) | `chests/rare/2.png` … `chests/rare/5.png` | Rare | **1024×1024** | Отдельный PNG на каждый тап; **4 тапа**, как у Common |
-| Эпический сундук (иконка + кадр 0) | `chests/epic/0.png` | Epic | **1024×1024** | Закрытый epic |
-| Эпический сундук (тапы 1–4) | `chests/epic/1.png` … `chests/epic/4.png` | Epic | **1024×1024** | Tap-to-open |
+| Эпический сундук (иконка + закрытый кадр) | `chests/epic/1.png` | Epic | **1024×1024** | Закрытый epic, первый кадр tap (аналог `rare/1.png`) |
+| Эпический сундук (тапы 2–4) | `chests/epic/2.png` … `chests/epic/4.png` | Epic | **1024×1024** | **3 тапа** до открытия |
 
 **Party boss (Phase 5.party):** иконки в UI — `ui/bosses/{rust_king|colossus|void}.png` (**512×512** в промте, в UI 48–64 px); промты сущностей — `bosses/{key}.png`; boss-сундуки — `chests/boss/{key}/0–4.png`. Промты: [promt.md](promt.md).
 

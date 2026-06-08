@@ -33,3 +33,7 @@ export function healthStatIconUrl(): string {
 export function manaStatIconUrl(): string {
   return uiAsset('mana/mana.png');
 }
+
+export function appLogoUrl(): string {
+  return uiAsset('logo/logo.png');
+}

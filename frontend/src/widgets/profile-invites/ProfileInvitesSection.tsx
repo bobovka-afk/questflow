@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, formatApiError, isRateLimitMessage } from '@shared/api';
 import { formatWorkspaceRole } from '@entities/workspace';
+import { formatDateRuLong } from '@shared/lib/formatDateRu';
 
 type InviteRow = {
   id: number;
@@ -23,34 +24,6 @@ function formatError(e: unknown) {
 function formatWorkspaceNameForUI(name: string) {
   const m = name.match(/^\s*\d+\s*\((.*)\)\s*$/);
   return m ? m[1] : name;
-}
-
-function formatDate(iso: string) {
-  try {
-    const d = new Date(iso);
-    const months = [
-      'января',
-      'февраля',
-      'марта',
-      'апреля',
-      'мая',
-      'июня',
-      'июля',
-      'августа',
-      'сентября',
-      'октября',
-      'ноября',
-      'декабря',
-    ];
-    const day = d.getDate();
-    const mon = months[d.getMonth()] ?? '';
-    const y = d.getFullYear();
-    const h = String(d.getHours()).padStart(2, '0');
-    const min = String(d.getMinutes()).padStart(2, '0');
-    return `${day} ${mon} ${y} ${h}:${min}`;
-  } catch {
-    return iso;
-  }
 }
 
 function isExpired(iso: string) {
@@ -189,10 +162,10 @@ export function ProfileInvitesSection({ accessToken, onRowsCountChange }: Props)
                       <div className="trello-cell-meta">{row.invitedBy.email}</div>
                     </td>
                     <td className="trello-cell-meta">
-                      {formatDate(row.expiresAt)}
+                      {formatDateRuLong(row.expiresAt)}
                       {isExpired(row.expiresAt) ? ' (истекло)' : ''}
                     </td>
-                    <td className="trello-cell-meta">{formatDate(row.createdAt)}</td>
+                    <td className="trello-cell-meta">{formatDateRuLong(row.createdAt)}</td>
                     <td className="trello-row-actions">
                       <button
                         type="button"

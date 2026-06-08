@@ -9,7 +9,6 @@ type Props = {
 
 export function ChestIcon(props: Props) {
   const src = chestClosedUrl(props.tier);
-  const size = props.size ?? 32;
   if (!src) {
     return (
       <span className={props.className} aria-hidden>
@@ -17,12 +16,13 @@ export function ChestIcon(props: Props) {
       </span>
     );
   }
+  const sizeAttrs =
+    props.size != null ? { width: props.size, height: props.size } : undefined;
   return (
     <img
       src={src}
       alt=""
-      width={size}
-      height={size}
+      {...sizeAttrs}
       className={`trello-character-chest-icon-img ${props.className ?? ''}`}
       loading="lazy"
     />

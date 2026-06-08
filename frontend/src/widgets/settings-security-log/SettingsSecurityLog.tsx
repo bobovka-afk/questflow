@@ -1,18 +1,10 @@
 import { useEffect, useState } from 'react';
 import { fetchSecurityEvents, securityEventLabelRu, type UserSecurityEventDto } from '@entities/user-settings';
+import { formatDateTimeRu } from '@shared/lib/formatDateRu';
 
 type Props = {
   accessToken: string | null;
 };
-
-function formatWhen(iso: string): string {
-  return new Date(iso).toLocaleString('ru-RU', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 export function SettingsSecurityLog({ accessToken }: Props) {
   const [rows, setRows] = useState<UserSecurityEventDto[]>([]);
@@ -58,7 +50,7 @@ export function SettingsSecurityLog({ accessToken }: Props) {
               <div className="trello-settings-security-log-main">
                 <strong>{securityEventLabelRu(row.type)}</strong>
                 <span className="trello-settings-security-log-meta">
-                  {formatWhen(row.createdAt)}
+                  {formatDateTimeRu(row.createdAt)}
                   {row.ipAddress ? ` · ${row.ipAddress}` : ''}
                   {row.deviceLabel ? ` · ${row.deviceLabel}` : ''}
                 </span>

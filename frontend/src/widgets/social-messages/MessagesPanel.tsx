@@ -83,8 +83,8 @@ export function MessagesPanel({
         };
 
   return (
-    <div className="trello-social-messages-layout">
-      <aside className="trello-social-conversations">
+    <div className="trello-social-messages-layout trello-social-messages-layout--cards">
+      <aside className="trello-social-conversations trello-social-messages-panel">
         <h3 className="trello-social-section-title">Диалоги</h3>
         {error && <div className="trello-banner trello-banner-error">{error}</div>}
         {loading ? (
@@ -122,7 +122,7 @@ export function MessagesPanel({
           </ul>
         )}
       </aside>
-      <div className="trello-social-conversation-pane">
+      <div className="trello-social-conversation-pane trello-social-messages-panel">
         {selectedPeer && selectedPeerId != null ? (
           <ConversationView
             accessToken={accessToken}
