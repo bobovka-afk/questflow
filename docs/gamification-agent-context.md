@@ -193,7 +193,7 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 | POST | `/social/messages/with/:userId` | `{ body }` |
 | PATCH | `/social/messages/read` | `{ userId }` — прочитано |
 
-**Правила:** `Character.friendCode` при create; писать можно друзьям (`ACCEPTED`) или при общем workspace (`UserService.getProfileForViewer` логика). Коды: `MESSAGE_NOT_ALLOWED`, `FRIEND_CODE_NOT_FOUND`, … — `shared/api/api.ts`.
+**Правила:** `Character.friendCode` при create; писать можно друзьям (`ACCEPTED`) или при общем workspace (`UserService.assertProfileAccess`). Коды: `MESSAGE_NOT_ALLOWED`, `FRIEND_CODE_NOT_FOUND`, … — `shared/api/api.ts`.
 
 **Не в v1:** WebSocket, групповые чаты, блокировка, поиск по имени.
 
@@ -366,7 +366,7 @@ cd backend && npx prisma migrate dev
 
 | Область | Документ | Маршруты |
 |---------|----------|----------|
-| Аккаунт, email, сессии, privacy, удаление | [profile-settings-roadmap.md](profile-settings-roadmap.md) | `/profile/me`, `/settings`, `/profile/:userId` |
+| Аккаунт, email, сессии, privacy, удаление | [profile-settings-roadmap.md](profile-settings-roadmap.md) | `/profile/character`, `/settings`, `/profile/:userId/character` |
 | RPG (XP, квесты, сундуки, рейд) | этот файл + [gamification-roadmap.md](gamification-roadmap.md) | `/profile/character`, `/profile/:userId/character` |
 
 Перед задачей по **настройкам или публичному профилю** читай `profile-settings-roadmap.md`, не дублируй план здесь.

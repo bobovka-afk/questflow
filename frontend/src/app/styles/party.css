@@ -193,8 +193,6 @@
 .trello-party-boss-icon {
   display: block;
   object-fit: contain;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
   flex-shrink: 0;
 }
 

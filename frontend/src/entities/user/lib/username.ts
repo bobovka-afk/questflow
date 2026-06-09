@@ -9,5 +9,5 @@ export function isValidUsername(username: string): boolean {
 }
 
 export function profilePathForUsername(username: string): string {
-  return `/profile/@${encodeURIComponent(normalizeUsername(username))}`;
+  return `/profile/@${encodeURIComponent(normalizeUsername(username))}/character`;
 }

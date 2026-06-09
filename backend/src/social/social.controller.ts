@@ -66,14 +66,6 @@ export class SocialController {
     return this.socialService.listFriends(req.user.id);
   }
 
-  @Get('friends/search')
-  @UseGuards(RateLimitGuard)
-  @RateLimit({ key: 'social:friend-search', limit: 30, windowSec: 60 })
-  @ApiQuery({ name: 'q', required: true })
-  searchFriends(@Req() req: AuthedRequest, @Query('q') q: string) {
-    return this.socialService.searchFriendsByCharacterName(req.user.id, q ?? '');
-  }
-
   @Post('block/:userId')
   blockUser(
     @Req() req: AuthedRequest,

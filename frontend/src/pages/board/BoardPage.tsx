@@ -39,6 +39,8 @@ import {
 import { useGamificationSettings } from '@entities/user-settings'
 import { SpaLink } from '@shared/lib/navigation'
 import { AppLogo } from '@shared/ui/app-logo/AppLogo'
+import { IconAttach } from '@shared/ui/icons/IconAttach'
+import { IconComment } from '@shared/ui/icons/IconComment'
 import type { BoardRow } from '@pages/workspace-boards/WorkspaceBoardsPage'
 import {
 	canArchiveBoards,
@@ -302,7 +304,7 @@ export function BoardPage({
 
 	const [moveBusy, setMoveBusy] = useState(false)
 	const [workspaceMembers, setWorkspaceMembers] = useState<
-		{ userId: number; user: { id: number; name: string } }[]
+		{ userId: number; user: { id: number; name: string; avatarPath?: string | null } }[]
 	>([])
 
 	const [createCardListId, setCreateCardListId] = useState<number | null>(
@@ -687,7 +689,11 @@ export function BoardPage({
 				setWorkspaceMembers(
 					rows.map(r => ({
 						userId: r.userId,
-						user: { id: r.user.id, name: r.user.name }
+						user: {
+							id: r.user.id,
+							name: r.user.name,
+							avatarPath: r.user.avatarPath ?? null,
+						},
 					}))
 				)
 			} catch {
@@ -1202,9 +1208,9 @@ export function BoardPage({
 		}
 	}
 
-	async function submitComment() {
+	async function submitComment(bodyOverride?: string) {
 		if (!accessToken || !editCard) return
-		const body = commentDraft.trim()
+		const body = (bodyOverride ?? commentDraft).trim()
 		if (!body.length || commentSubmitBusy) return
 		setCommentSubmitBusy(true)
 		try {
@@ -1552,113 +1558,97 @@ export function BoardPage({
 																							}
 																						/>
 																						<div className='trello-card-body-row'>
-																							<div className='trello-card-complete-slot'>
-																								<button
-																									type='button'
-																									className={
-																										card.isCompleted
-																											? 'trello-card-complete-btn trello-card-complete-btn--done'
-																											: 'trello-card-complete-btn'
+																							<div
+																								className={
+																									card.isCompleted
+																										? 'trello-card-title trello-card-title--in-list trello-card-title--done'
+																										: 'trello-card-title trello-card-title--in-list'
+																								}
+																								role='button'
+																								tabIndex={0}
+																								aria-label={`Карточка: ${card.title}`}
+																								onClick={() =>
+																									openCardDetail(card)
+																								}
+																								onKeyDown={e => {
+																									if (
+																										e.key === 'Enter' ||
+																										e.key === ' '
+																									) {
+																										e.preventDefault()
+																										openCardDetail(card)
 																									}
-																									aria-label={
-																										card.isCompleted
-																											? 'Отметить как невыполненную'
-																											: 'Отметить как выполненную'
-																									}
-																									aria-pressed={Boolean(
-																										card.isCompleted
-																									)}
-																									disabled={
-																										completionBusyId ===
-																										card.id
-																									}
-																									onClick={e =>
-																										void toggleCardCompletion(
-																											card,
-																											e
-																										)
-																									}
-																									onMouseDown={e =>
-																										e.stopPropagation()
-																									}
-																								>
-																									{card.isCompleted ? (
-																										<span
-																											className='trello-card-complete-check'
-																											aria-hidden
-																										>
-																											✓
-																										</span>
-																									) : null}
-																								</button>
-																							</div>
-																							<div className='trello-card-text-block'>
-																								<div
-																									className={
-																										card.isCompleted
-																											? 'trello-card-title trello-card-title--in-list trello-card-title--done'
-																											: 'trello-card-title trello-card-title--in-list'
-																									}
-																									role='button'
-																									tabIndex={
-																										0
-																									}
-																									aria-label={`Карточка: ${card.title}`}
-																									onClick={() =>
-																										openCardDetail(
-																											card
-																										)
-																									}
-																									onKeyDown={e => {
-																										if (
-																											e.key ===
-																												'Enter' ||
-																											e.key ===
-																												' '
-																										) {
-																											e.preventDefault()
-																											openCardDetail(
-																												card
+																								}}
+																							>
+																								<div className='trello-card-complete-slot'>
+																									<button
+																										type='button'
+																										className={
+																											card.isCompleted
+																												? 'trello-card-complete-btn trello-card-complete-btn--done'
+																												: 'trello-card-complete-btn'
+																										}
+																										aria-label={
+																											card.isCompleted
+																												? 'Отметить как невыполненную'
+																												: 'Отметить как выполненную'
+																										}
+																										aria-pressed={Boolean(
+																											card.isCompleted
+																										)}
+																										disabled={
+																											completionBusyId ===
+																											card.id
+																										}
+																										onClick={e =>
+																											void toggleCardCompletion(
+																												card,
+																												e
 																											)
 																										}
-																									}}
-																								>
-																									{
-																										card.title
-																									}
+																										onMouseDown={e =>
+																											e.stopPropagation()
+																										}
+																									>
+																										{card.isCompleted ? (
+																											<span
+																												className='trello-card-complete-check'
+																												aria-hidden
+																											>
+																												✓
+																											</span>
+																										) : null}
+																									</button>
 																								</div>
+																								<span className='trello-card-title-text'>
+																									{card.title}
+																								</span>
 																								{(card.attachmentCount ?? 0) > 0 ||
 																								(card.commentCount ?? 0) > 0 ? (
-																									<div className='trello-card-badges'>
+																									<span className='trello-card-title-meta'>
 																										{(card.attachmentCount ?? 0) > 0 ? (
 																											<span
-																												className='trello-card-badge'
+																												className='trello-card-meta-indicator trello-card-attach-indicator'
 																												title='Вложения'
 																											>
-																												<span
-																													className='trello-card-badge-icon'
-																													aria-hidden
-																												>
-																													📎
+																												<IconAttach size={14} />
+																												<span className='trello-card-meta-count'>
+																													{card.attachmentCount}
 																												</span>
-																												{card.attachmentCount}
 																											</span>
 																										) : null}
 																										{(card.commentCount ?? 0) > 0 ? (
 																											<span
-																												className='trello-card-badge'
+																												className='trello-card-meta-indicator trello-card-comment-indicator'
 																												title='Комментарии'
 																											>
-																												<span
-																													className='trello-card-badge-icon'
-																													aria-hidden
-																												>
-																													💬
+																												<IconComment size={14} />
+																												<span className='trello-card-meta-count'>
+																													{card.commentCount}
 																												</span>
-																												{card.commentCount}
 																											</span>
 																										) : null}
-																									</div>
+																									</span>
 																								) : null}
 																							</div>
 																						</div>
@@ -1881,7 +1871,7 @@ export function BoardPage({
 					onClick={() => !addBusy && setAddListOpen(false)}
 				>
 					<div
-						className='trello-modal'
+						className='trello-modal trello-modal--board-form'
 						role='dialog'
 						aria-modal
 						onClick={e => e.stopPropagation()}
@@ -1947,7 +1937,7 @@ export function BoardPage({
 					onClick={() => !createCardBusy && setCreateCardListId(null)}
 				>
 					<div
-						className='trello-modal'
+						className='trello-modal trello-modal--board-form'
 						role='dialog'
 						aria-modal
 						onClick={e => e.stopPropagation()}
@@ -1978,6 +1968,17 @@ export function BoardPage({
 									onChange={e =>
 										setCreateCardTitle(e.target.value)
 									}
+									onKeyDown={e => {
+										if (e.key !== 'Enter') return
+										e.preventDefault()
+										if (
+											createCardBusy ||
+											createCardTitle.trim().length < 3
+										) {
+											return
+										}
+										void submitCreateCard()
+									}}
 									maxLength={50}
 									autoFocus
 								/>
@@ -1990,6 +1991,19 @@ export function BoardPage({
 									onChange={e =>
 										setCreateCardDesc(e.target.value)
 									}
+									onKeyDown={e => {
+										if (e.key !== 'Enter' || !(e.ctrlKey || e.metaKey)) {
+											return
+										}
+										e.preventDefault()
+										if (
+											createCardBusy ||
+											createCardTitle.trim().length < 3
+										) {
+											return
+										}
+										void submitCreateCard()
+									}}
 									rows={3}
 									maxLength={2000}
 								/>
@@ -2087,7 +2101,7 @@ export function BoardPage({
 					commentDraft={commentDraft}
 					onCommentDraftChange={setCommentDraft}
 					commentSubmitBusy={commentSubmitBusy}
-					onSubmitComment={() => void submitComment()}
+					onSubmitComment={body => void submitComment(body)}
 					formatCommentRelativeAgo={formatCommentRelativeAgo}
 					nowTick={nowTick}
 					editingCommentId={editingCommentId}
@@ -2104,6 +2118,8 @@ export function BoardPage({
 					}}
 					onSaveCommentEdit={id => void saveCommentEdit(id)}
 					onDeleteComment={c => {
+						setEditingCommentId(null)
+						setEditCommentDraft('')
 						const row = comments.find(x => x.id === c.id)
 						if (row) setDeleteCommentTarget(row)
 					}}

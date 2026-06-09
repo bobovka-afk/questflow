@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api } from '@shared/api';
-import { useSocialInboxSummary } from '@entities/social';
 import { AppIconRail, resolveAppRailSection } from './AppIconRail';
 
 type Props = {
@@ -22,7 +21,6 @@ export function AppShell({
 }: Props) {
   const search = typeof window !== 'undefined' ? window.location.search : '';
   const active = resolveAppRailSection(route, search);
-  const { summary: inboxSummary } = useSocialInboxSummary(accessToken, true);
   const [notificationCount, setNotificationCount] = useState(0);
 
   const refreshNotificationCount = useCallback(async () => {
@@ -48,7 +46,6 @@ export function AppShell({
       <AppIconRail
         active={active}
         notificationCount={notificationCount}
-        unreadMessages={inboxSummary.unreadMessages}
         themeIsDark={themeIsDark}
         onThemeToggle={onThemeToggle}
         onLogout={() => void onLogout()}

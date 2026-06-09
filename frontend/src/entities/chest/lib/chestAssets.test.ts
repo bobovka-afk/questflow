@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   chestClosedUrl,
   chestHasTapOpen,
+  chestLastTapFrameIndex,
   chestTapFrameUrls,
   chestTapsRequired,
 } from './chestAssets';
@@ -10,6 +11,7 @@ describe('chestAssets', () => {
   it('common tap-open frames', () => {
     expect(chestHasTapOpen('COMMON')).toBe(true);
     expect(chestTapsRequired('COMMON')).toBe(4);
+    expect(chestLastTapFrameIndex('COMMON')).toBe(4);
     const frames = chestTapFrameUrls('COMMON');
     expect(frames).toHaveLength(5);
     expect(frames?.[0]).toContain('chests/common/0.png');

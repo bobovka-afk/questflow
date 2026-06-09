@@ -28,10 +28,8 @@ import {
   NotificationsPage,
   parseSettingsTabFromRoute,
   ProfileCharacterPage,
-  ProfileMePage,
   SettingsPage,
   UserCharacterPage,
-  UserProfilePage,
   WorkspaceActivityPage,
   WorkspaceBoardsPage,
   WorkspaceMembersPage,
@@ -445,7 +443,7 @@ function Home(props: { onAuthed: (token: string, options?: AuthedOptions) => voi
       props.onAuthed(res.accessToken, { gamificationIntro: fromRegister });
       const inviteResult = await tryAcceptPendingInvite(res.accessToken);
       if (inviteResult === 'ok') {
-        navigate('/profile/me');
+        navigate('/profile/character');
         return;
       }
       if (inviteResult === 'fail') {
@@ -649,7 +647,7 @@ function AppContent() {
     void (async () => {
       const inviteResult = await tryAcceptPendingInvite(tokenFromQuery);
       if (inviteResult === 'ok') {
-        navigate('/profile/me');
+        navigate('/profile/character');
         return;
       }
       if (inviteResult === 'fail') {
@@ -772,12 +770,6 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    if (route === '/profile') {
-      navigate('/profile/me');
-    }
-  }, [route]);
-
-  useEffect(() => {
     const canonical = canonicalProfilePath(route);
     if (!canonical || canonical === route) return;
     window.history.replaceState({}, '', canonical + window.location.search);
@@ -795,10 +787,9 @@ function AppContent() {
           { method: 'GET' },
         );
         if (cancelled) return;
-        const suffix = m[2] ? '/character' : '';
-        navigate(`/profile/${resolved.id}${suffix}`);
+        navigate(`/profile/${resolved.id}/character`);
       } catch {
-        if (!cancelled) navigate('/profile/me');
+        if (!cancelled) navigate('/profile/character');
       }
     })();
     return () => {
@@ -823,8 +814,6 @@ function AppContent() {
   const profileUserCharacterMatch =
     route.match(/^\/profile\/(\d+)\/character\/?$/) ??
     route.match(/^\/profile\/user\/(\d+)\/character\/?$/);
-  const profileUserMatch =
-    route.match(/^\/profile\/(\d+)$/) ?? route.match(/^\/profile\/user\/(\d+)$/);
   const characterGateLoading =
     Boolean(accessToken) &&
     characterLoadState === 'loading' &&
@@ -900,25 +889,17 @@ function AppContent() {
     page =
       !accessToken ? (
         <Home onAuthed={handleAuthed} hasSession={false} />
-      ) : route === '/profile/character' || route.startsWith('/profile/character/') ? (
-        <ProfileCharacterPage
-          accessToken={accessToken}
-          onCharacterUpdated={handleCharacterUpdated}
-        />
       ) : profileUserCharacterMatch ? (
         <UserCharacterPage
           accessToken={accessToken}
           userId={Number(profileUserCharacterMatch[1])}
           currentUserId={toolbarUser?.id ?? null}
         />
-      ) : profileUserMatch ? (
-        <UserProfilePage
-          accessToken={accessToken}
-          userId={Number(profileUserMatch[1])}
-          currentUserId={toolbarUser?.id ?? null}
-        />
       ) : (
-        <ProfileMePage accessToken={accessToken} onUserUpdated={(u) => setToolbarUser(u)} />
+        <ProfileCharacterPage
+          accessToken={accessToken}
+          onCharacterUpdated={handleCharacterUpdated}
+        />
       );
   } else if (route.startsWith('/test/email-verification/request')) {
     page = <EmailVerificationRequestPage />;

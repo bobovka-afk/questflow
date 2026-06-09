@@ -90,6 +90,14 @@ export function formatDateTimeRu(iso: string): string {
   return `${day} ${MONTH_SHORT_RU[month]} ${pad2(hour)}:${pad2(minute)}`;
 }
 
+/** 08.06.2026, 19:52 — settings / sessions */
+export function formatDateTimeRuSettings(iso: string): string {
+  const date = parseDate(iso);
+  if (!date) return iso;
+  const { day, month, year, hour, minute } = localParts(date);
+  return `${pad2(day)}.${pad2(month + 1)}.${year}, ${pad2(hour)}:${pad2(minute)}`;
+}
+
 /** 8 июн 2026 01:09 */
 export function formatDateTimeRuWithYear(iso: string): string {
   const date = parseDate(iso);

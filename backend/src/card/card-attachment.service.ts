@@ -69,7 +69,7 @@ export class CardAttachmentService {
       where: { cardId },
       orderBy: { createdAt: 'desc' },
       include: {
-        uploader: { select: { id: true, name: true } },
+        uploader: { select: { id: true, name: true, avatarPath: true } },
       },
     });
     return rows.map((row) =>
@@ -180,7 +180,7 @@ export class CardAttachmentService {
         storagePath: storagePath.replace(/\\/g, '/'),
         previewPath: previewPath?.replace(/\\/g, '/') ?? null,
       },
-      include: { uploader: { select: { id: true, name: true } } },
+      include: { uploader: { select: { id: true, name: true, avatarPath: true } } },
     });
 
     return this.toView(row, card?.coverAttachmentId ?? null);
@@ -215,7 +215,7 @@ export class CardAttachmentService {
         fileName: linkDisplayName(url, fileName),
         externalUrl: url,
       },
-      include: { uploader: { select: { id: true, name: true } } },
+      include: { uploader: { select: { id: true, name: true, avatarPath: true } } },
     });
 
     return this.toView(row, card?.coverAttachmentId ?? null);
@@ -307,7 +307,7 @@ export class CardAttachmentService {
       previewPath: string | null;
       externalUrl: string | null;
       createdAt: Date;
-      uploader: { id: number; name: string };
+      uploader: { id: number; name: string; avatarPath: string | null };
     },
     coverAttachmentId: number | null,
   ): CardAttachmentView {

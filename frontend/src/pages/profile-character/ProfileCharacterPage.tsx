@@ -295,6 +295,7 @@ export function ProfileCharacterPage(props: Props) {
         activeTab={activePanelTab as ProfileCharacterTabKey}
         tabOpenSignal={tabOpenSignal}
         onCharacterRefresh={refreshCharacter}
+        onInventoryExit={() => setActivePanelTab('character')}
       />
     );
   }
@@ -379,8 +380,8 @@ export function ProfileCharacterPage(props: Props) {
             </div>
             <h1 className="trello-topbar-stripe-center">Создайте своего персонажа</h1>
             <div className="trello-topbar-actions">
-              <SpaLink className="trello-btn trello-btn-ghost" to="/profile/me">
-                Профиль
+              <SpaLink className="trello-btn trello-btn-ghost" to="/settings">
+                Настройки
               </SpaLink>
             </div>
           </header>
@@ -404,8 +405,8 @@ export function ProfileCharacterPage(props: Props) {
                 <AppLogo />
                 <span className="trello-top-left-brand-text">Questflow</span>
               </SpaLink>
-              <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/profile/me">
-                Профиль
+              <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/workspaces">
+                Назад
               </SpaLink>
             </div>
             <h1 className="trello-topbar-stripe-center">Персонаж</h1>
@@ -454,8 +455,8 @@ export function ProfileCharacterPage(props: Props) {
             {character.name}
           </h1>
           <div className="trello-topbar-actions">
-            <SpaLink className="trello-btn trello-btn-ghost" to="/profile/me">
-              Аккаунт
+            <SpaLink className="trello-btn trello-btn-ghost" to="/settings">
+              Настройки
             </SpaLink>
           </div>
         </header>
@@ -628,7 +629,7 @@ export function ProfileCharacterPage(props: Props) {
               </div>
 
               <div className="trello-character-avatar-block trello-character-avatar-block--no-label">
-                <div className="trello-character-avatar-grid trello-character-avatar-grid--compact">
+                <div className="trello-character-avatar-grid">
                   {CHARACTER_ROLES.map((r) => {
                     const p = presetForRole(gender, r);
                     const selected = r === role;

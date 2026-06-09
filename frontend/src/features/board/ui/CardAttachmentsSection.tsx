@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { formatApiError } from '@shared/api';
+import { ConfirmModal } from '@shared/ui/confirm-modal/ConfirmModal';
 import {
   addCardAttachmentLink,
   deleteCardAttachment,
@@ -9,8 +10,7 @@ import {
   uploadCardAttachment,
   type CardAttachmentRow,
 } from '../api/cardAttachmentsApi';
-
-const MAX_BYTES = 10 * 1024 * 1024;
+import { validateAttachmentFile } from '../lib/attachmentFile';
 
 type Props = {
   accessToken: string;
@@ -43,6 +43,7 @@ export function CardAttachmentsSection({
   const [msg, setMsg] = useState<string | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<CardAttachmentRow | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const isModal = variant === 'modal';
 
@@ -70,12 +71,9 @@ export function CardAttachmentsSection({
 
   async function handleFilePick(file: File | undefined) {
     if (!file) return;
-    if (file.size > MAX_BYTES) {
-      setMsg('Файл больше 10 МБ.');
-      return;
-    }
-    if (file.type.startsWith('video/')) {
-      setMsg('Видео прикрепляйте ссылкой, не файлом.');
+    const validationError = validateAttachmentFile(file);
+    if (validationError) {
+      setMsg(validationError);
       return;
     }
     setBusy(true);
@@ -116,12 +114,13 @@ export function CardAttachmentsSection({
     }
   }
 
-  async function handleDelete(id: number) {
-    if (!window.confirm('Удалить вложение?')) return;
+  async function confirmDeleteAttachment() {
+    if (!deleteTarget) return;
     setBusy(true);
     setMsg(null);
     try {
-      await deleteCardAttachment(accessToken, workspaceId, cardId, id);
+      await deleteCardAttachment(accessToken, workspaceId, cardId, deleteTarget.id);
+      setDeleteTarget(null);
       await reload();
       onCoverChange?.();
     } catch (e) {
@@ -198,6 +197,18 @@ export function CardAttachmentsSection({
               const when = formatRelativeAgo
                 ? formatRelativeAgo(a.createdAt, nowMs)
                 : '';
+              const sizeLabel =
+                a.kind === 'FILE' && a.sizeBytes != null
+                  ? formatAttachmentSize(a.sizeBytes)
+                  : a.isVideoLink
+                    ? 'Ссылка на видео'
+                    : a.kind === 'LINK'
+                      ? 'Ссылка'
+                      : '';
+              const metaParts = [
+                when ? `Добавлено ${when}` : '',
+                sizeLabel,
+              ].filter(Boolean);
               return (
                 <li
                   key={a.id}
@@ -231,17 +242,9 @@ export function CardAttachmentsSection({
                     >
                       {a.fileName}
                     </a>
-                    <span className="trello-card-attachments-meta">
-                      {when ? `Добавлено ${when}` : null}
-                      {when && a.kind === 'FILE' && a.sizeBytes != null ? ' · ' : null}
-                      {a.kind === 'FILE' && a.sizeBytes != null
-                        ? formatAttachmentSize(a.sizeBytes)
-                        : a.isVideoLink
-                          ? 'Ссылка на видео'
-                          : a.kind === 'LINK'
-                            ? 'Ссылка'
-                            : null}
-                    </span>
+                    {metaParts.length > 0 ? (
+                      <p className="trello-card-attachments-meta">{metaParts.join(' · ')}</p>
+                    ) : null}
                   </div>
                   <div className="trello-card-attachments-file-actions">
                     <a
@@ -259,7 +262,7 @@ export function CardAttachmentsSection({
                       className="trello-card-attachments-file-menu-btn"
                       title="Удалить"
                       disabled={busy}
-                      onClick={() => void handleDelete(a.id)}
+                      onClick={() => setDeleteTarget(a)}
                     >
                       ×
                     </button>
@@ -313,9 +316,30 @@ export function CardAttachmentsSection({
               </button>
             </div>
           ) : null}
-          <p className="trello-card-attachments-hint">До 10 МБ на файл. Видео — только по ссылке.</p>
+          <p className="trello-card-attachments-hint">
+            До 10 МБ на файл. Видео — только по ссылке.
+          </p>
         </>
       ) : null}
+
+      <ConfirmModal
+        open={deleteTarget != null}
+        title="Удалить вложение?"
+        message={
+          deleteTarget ? (
+            <>
+              Файл <strong>{deleteTarget.fileName}</strong> будет удалён без возможности
+              восстановления.
+            </>
+          ) : (
+            'Вложение будет удалено без возможности восстановления.'
+          )
+        }
+        confirmLabel="Удалить"
+        busy={busy}
+        onConfirm={() => void confirmDeleteAttachment()}
+        onCancel={() => !busy && setDeleteTarget(null)}
+      />
     </section>
   );
 }

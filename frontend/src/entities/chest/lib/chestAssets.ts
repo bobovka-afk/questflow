@@ -47,6 +47,12 @@ export function chestTapsRequired(tier: ChestTier): number {
   return CHEST_TAPS_REQUIRED[tier] ?? 4;
 }
 
+/** Индекс последнего кадра tap-анимации (после него — ещё один клик для награды). */
+export function chestLastTapFrameIndex(tier: ChestTier): number {
+  const frames = CHEST_TAP_FRAMES[tier];
+  return Math.max(0, (frames?.length ?? 1) - 1);
+}
+
 export function chestHasTapOpen(tier: ChestTier): boolean {
   return (CHEST_TAP_FRAMES[tier]?.length ?? 0) > 1;
 }

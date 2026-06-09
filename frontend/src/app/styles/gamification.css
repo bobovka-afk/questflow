@@ -131,8 +131,6 @@
     scaleX(var(--portrait-frame-scale-x, var(--portrait-frame-inset-scale, 0.92)))
     scaleY(var(--portrait-frame-scale-y, var(--portrait-frame-inset-scale, 0.92)));
   transform-origin: center center;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
   pointer-events: none;
   z-index: 2;
 }
@@ -402,7 +400,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .trello-character-quest-column {
@@ -411,15 +409,17 @@
   border: 1px solid #dfe1e6;
   border-radius: 10px;
   background: #fff;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-.trello-character-quests-columns .trello-character-quest-group + .trello-character-quest-group {
+.trello-character-quests-columns > .trello-character-quest-column {
   margin-top: 0;
-  padding-top: 0;
-  border-top: none;
 }
 
-.trello-character-quest-group + .trello-character-quest-group {
+.trello-character-quest-group + .trello-character-quest-group:not(.trello-character-quest-column) {
   margin-top: 18px;
   padding-top: 18px;
   border-top: 1px solid #ebecf0;
@@ -449,10 +449,13 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .trello-character-quest-row {
   margin: 0;
+  min-width: 0;
 }
 
 .trello-character-quest-row-head {
@@ -561,6 +564,27 @@
   font-size: 13px;
 }
 
+.trello-character-quest-reward--claimed {
+  border-style: solid;
+  border-color: color-mix(in srgb, #22a06b 45%, rgba(92, 74, 50, 0.28));
+  background: linear-gradient(180deg, rgba(34, 160, 107, 0.12), rgba(34, 160, 107, 0.04));
+}
+
+.trello-character-quest-reward-claimed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f845a;
+}
+
+.trello-character-quest-reward-claimed .trello-character-quest-done-badge {
+  font-size: 16px;
+  line-height: 1;
+}
+
 .trello-character-quest-chest-row--flat {
   margin-top: 0;
 }
@@ -595,8 +619,6 @@
   display: block;
   flex-shrink: 0;
   object-fit: contain;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
 }
 
 .trello-chest-open-sprite-wrap {
@@ -608,8 +630,6 @@
 .trello-chest-open-sprite {
   background-repeat: no-repeat;
   background-position: 0 0;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
 }
 
 .trello-chest-open-sprite--frames-6 {
@@ -642,6 +662,22 @@
 
 .trello-chest-tap-modal-backdrop {
   background: rgba(9, 15, 28, 0.88);
+}
+
+.trello-modal.trello-character-loot-popup.trello-chest-tap-open-modal,
+.trello-modal.trello-character-loot-popup.trello-character-chest-open-modal {
+  background: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.trello-modal.trello-character-loot-popup.trello-chest-tap-open-modal .trello-modal-head,
+.trello-modal.trello-character-loot-popup.trello-character-chest-open-modal .trello-modal-head,
+.trello-modal.trello-character-loot-popup.trello-chest-tap-open-modal .trello-modal-body,
+.trello-modal.trello-character-loot-popup.trello-character-chest-open-modal .trello-modal-body {
+  background: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .trello-chest-tap-open-modal {
@@ -686,8 +722,6 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
   pointer-events: none;
   user-select: none;
 }
@@ -721,7 +755,7 @@
 }
 
 .theme-dark .trello-chest-tap-open-counter {
-  color: #ffe566;
+  color: var(--px-accent);
 }
 
 .theme-dark .trello-chest-tap-open-modal .trello-modal-head {
@@ -803,13 +837,25 @@
   max-width: min(92vw, 380px);
   max-height: min(90vh, 500px);
   overflow: hidden;
-  background: linear-gradient(180deg, #fffef8, #f2e8d0);
   border: 2px solid rgba(124, 91, 39, 0.55);
   color: #4b2f12;
 }
 
+.theme-dark .trello-modal.trello-character-loot-popup.trello-chest-tap-open-modal,
 .theme-dark .trello-modal.trello-character-loot-popup.trello-character-chest-open-modal {
-  background: linear-gradient(180deg, #2a1f14, #1a120c);
+  background: #1a120c;
+  border-color: rgba(209, 160, 84, 0.38);
+  color: #f4d9a4;
+}
+
+.theme-dark .trello-modal.trello-character-loot-popup.trello-chest-tap-open-modal .trello-modal-head,
+.theme-dark .trello-modal.trello-character-loot-popup.trello-character-chest-open-modal .trello-modal-head,
+.theme-dark .trello-modal.trello-character-loot-popup.trello-chest-tap-open-modal .trello-modal-body,
+.theme-dark .trello-modal.trello-character-loot-popup.trello-character-chest-open-modal .trello-modal-body {
+  background: #1a120c;
+}
+
+.theme-dark .trello-modal.trello-character-loot-popup.trello-character-chest-open-modal {
   border-color: rgba(209, 160, 84, 0.38);
   color: #f4d9a4;
 }
@@ -861,13 +907,13 @@
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid rgba(124, 91, 39, 0.42);
-  background: linear-gradient(180deg, #fffef8, #f2e8d0);
+  background: #ffffff;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
 }
 
 .theme-dark .trello-character-chest-reveal-reward-wrap {
   border-color: rgba(209, 160, 84, 0.33);
-  background: linear-gradient(180deg, #35281a, #2a1f14);
+  background: #2a1f14;
   box-shadow: inset 0 0 0 1px rgba(255, 220, 160, 0.08);
 }
 
@@ -892,8 +938,6 @@
   max-height: 100%;
   object-fit: contain;
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.32));
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
 }
 
 .trello-character-chest-reveal-reward-wrap[data-cosmetic-type='PROFILE_BACKGROUND']
@@ -915,7 +959,7 @@
   padding: 10px 12px;
   border: 1px solid rgba(124, 91, 39, 0.42);
   border-radius: 10px;
-  background: linear-gradient(180deg, #fffef8, #f2e8d0);
+  background: #ffffff;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
   text-align: center;
 }
@@ -934,7 +978,7 @@
 
 .theme-dark .trello-character-chest-open-modal .trello-character-chest-dust-notice {
   border-color: rgba(209, 160, 84, 0.33);
-  background: linear-gradient(180deg, #35281a, #2a1f14);
+  background: #2a1f14;
   box-shadow: inset 0 0 0 1px rgba(255, 220, 160, 0.08);
 }
 
@@ -980,8 +1024,6 @@
   flex-shrink: 0;
   vertical-align: middle;
   object-fit: contain;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
 }
 
 .trello-character-dust-block {
@@ -991,15 +1033,79 @@
 }
 
 .trello-character-dust-shop-balance {
-  margin: 0 0 12px;
+  margin: 0 0 16px;
   text-align: center;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: clamp(20px, 1.8vw, 26px);
+  font-weight: 700;
   color: #172b4d;
 }
 
+.trello-character-dust-shop-balance-content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 0.75vw, 12px);
+}
+
+.trello-character-dust-shop-balance-value {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.trello-character-dust-shop-balance-content .trello-dust-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.22));
+}
+
 .trello-character-dust-shop-balance strong {
+  font-weight: inherit;
+}
+
+.trello-character-dust-balance-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 200px;
+  padding: 28px 20px;
+  border: 1px solid #dfe1e6;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fafbfc, #f4f5f7);
+  text-align: center;
+}
+
+.trello-character-dust-balance-hero-label {
+  margin: 0;
+  font-size: clamp(22px, 3.2vw, 32px);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6b778c;
+}
+
+.trello-character-dust-balance-hero-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 0;
+  font-size: clamp(44px, 7vw, 68px);
   font-weight: 800;
+  line-height: 1;
+  color: #172b4d;
+}
+
+.trello-character-dust-balance-hero-value strong {
+  font-weight: 800;
+}
+
+.trello-character-dust-balance-hero-icon {
+  flex-shrink: 0;
 }
 
 .trello-character-dust-balance {
@@ -1105,8 +1211,6 @@
   height: auto;
   max-height: 96px;
   object-fit: contain;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
 }
 
@@ -1181,6 +1285,9 @@
 .trello-character-edit-modal {
   max-width: min(560px, 96vw);
   width: 100%;
+  max-height: calc(100dvh - 24px);
+  display: flex;
+  flex-direction: column;
   border: none;
   box-shadow: none;
 }
@@ -1223,8 +1330,9 @@
 }
 
 .trello-character-edit-modal-body {
-  max-height: min(72vh, 640px);
-  overflow-y: auto;
+  flex: 0 1 auto;
+  max-height: none;
+  overflow: visible;
 }
 
 .trello-character-edit-modal {
@@ -1280,7 +1388,7 @@
 }
 
 .trello-character-avatar-grid--compact .trello-character-avatar-img {
-  max-height: 96px;
+  max-height: 160px;
 }
 
 .theme-dark .trello-character-stat-pill--level .trello-character-stat-meter {
@@ -1527,9 +1635,9 @@
 /* Геймификация: intro после регистрации */
 .trello-gamification-intro-modal {
   position: relative;
-  max-width: 600px;
-  width: min(600px, calc(100vw - 32px));
-  max-height: min(92vh, 860px);
+  max-width: min(640px, calc(100vw - 24px));
+  width: min(640px, calc(100vw - 24px));
+  max-height: calc(100dvh - 20px);
   display: flex;
   flex-direction: column;
 }
@@ -1542,27 +1650,32 @@
 }
 
 .trello-gamification-intro-body {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
-  overflow: auto;
-  padding: 44px 20px 20px;
+  overflow: visible;
+  padding: 44px 20px 16px;
 }
 
 .trello-gamification-intro-hero {
-  margin: 0 -20px 16px;
+  margin: 0 -20px 12px;
 }
 
 .trello-gamification-intro-hero-img {
   display: block;
   width: 100%;
   max-width: none;
-  max-height: min(56vh, 520px);
+  max-height: clamp(160px, 30vh, 280px);
   height: auto;
   border-radius: 0;
   object-fit: contain;
   border-top: 1px solid rgba(148, 163, 184, 0.28);
   border-bottom: 1px solid rgba(148, 163, 184, 0.28);
   background: rgba(255, 255, 255, 0.65);
+}
+
+.trello-gamification-intro-body:has(.trello-gamification-intro-block--gamification)
+  .trello-gamification-intro-hero-img {
+  max-height: clamp(140px, 24vh, 220px);
 }
 
 .trello-gamification-intro-block {
@@ -1574,10 +1687,18 @@
 }
 
 .trello-gamification-intro-block--gamification {
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: 12px;
   background: color-mix(in srgb, var(--trello-primary, #0c66e4) 8%, var(--trello-surface, #fff));
   border: 1px solid color-mix(in srgb, var(--trello-primary, #0c66e4) 18%, var(--trello-border, #e2e8f0));
+}
+
+.trello-gamification-intro-block--gamification .trello-gamification-intro-list {
+  margin-top: 10px;
+}
+
+.trello-gamification-intro-block--gamification .trello-gamification-intro-list li + li {
+  margin-top: 6px;
 }
 
 .trello-gamification-intro-subtitle {
@@ -1644,19 +1765,24 @@
 
 @media (max-height: 760px) {
   .trello-gamification-intro-modal {
-    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 12px);
   }
 
   .trello-gamification-intro-body {
-    padding: 40px 16px 16px;
+    padding: 40px 16px 12px;
   }
 
   .trello-gamification-intro-hero {
-    margin: 0 -16px 12px;
+    margin: 0 -16px 10px;
   }
 
   .trello-gamification-intro-hero-img {
-    max-height: min(40vh, 340px);
+    max-height: clamp(120px, 22vh, 180px);
+  }
+
+  .trello-gamification-intro-body:has(.trello-gamification-intro-block--gamification)
+    .trello-gamification-intro-hero-img {
+    max-height: clamp(100px, 18vh, 150px);
   }
 
   .trello-gamification-intro-block + .trello-gamification-intro-block {
@@ -1666,7 +1792,7 @@
   .trello-gamification-intro-text,
   .trello-gamification-intro-list {
     font-size: 14px;
-    line-height: 1.45;
+    line-height: 1.4;
   }
 
   .trello-gamification-intro-list {
@@ -1674,16 +1800,23 @@
   }
 
   .trello-gamification-intro-list li + li {
-    margin-top: 6px;
+    margin-top: 4px;
   }
 
   .trello-gamification-intro-block--gamification {
-    padding: 12px 12px;
+    padding: 10px 12px;
   }
 
   .trello-gamification-intro-foot {
     padding-top: 10px;
     padding-bottom: 10px;
+  }
+}
+
+@media (max-height: 640px) {
+  .trello-gamification-intro-body {
+    overflow: auto;
+    flex: 1 1 auto;
   }
 }
 
@@ -1834,8 +1967,6 @@
   width: 48px;
   height: 48px;
   object-fit: contain;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
 }
 
 .trello-streak-milestones-item-icon--locked {
@@ -1893,8 +2024,6 @@ button.trello-checkin-streak {
   flex-shrink: 0;
   display: block;
   object-fit: contain;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
 }
 
 .trello-checkin-streak--clickable {
@@ -2062,8 +2191,6 @@ button.trello-checkin-streak {
   width: 32px;
   height: 32px;
   object-fit: contain;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
 }
 
 .trello-reward-toast-extra {
@@ -2091,8 +2218,6 @@ button.trello-checkin-streak {
   width: 32px;
   height: 32px;
   object-fit: contain;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
   border-radius: 4px;
 }
 
@@ -2466,14 +2591,15 @@ button.trello-checkin-streak {
 
 .trello-character-rpg-shell--snes {
   width: 100%;
+  --character-rpg-rail-width: clamp(220px, 24vw, 320px);
 }
 
 .trello-character-rpg-layout-snes {
   display: grid;
-  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  grid-template-columns: var(--character-rpg-rail-width) minmax(0, 1fr);
   gap: 16px;
   width: 100%;
-  align-items: start;
+  align-items: stretch;
 }
 
 .trello-character-rpg-hero-col {
@@ -2562,10 +2688,12 @@ button.trello-checkin-streak {
 
 .trello-character-rpg-workspace {
   display: grid;
-  grid-template-columns: minmax(160px, 200px) minmax(0, 1fr);
+  grid-template-columns: var(--character-rpg-rail-width) minmax(0, 1fr);
   gap: 12px;
   min-width: 0;
-  align-items: start;
+  align-self: stretch;
+  align-items: stretch;
+  min-height: 100%;
 }
 
 .trello-character-rpg-tabs--vertical {
@@ -2574,14 +2702,20 @@ button.trello-checkin-streak {
   gap: 6px;
   margin-bottom: 0;
   width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 100%;
+  align-self: stretch;
   grid-template-columns: unset;
 }
 
 .trello-character-rpg-tabs--vertical .trello-character-rpg-tab {
+  flex: 1 1 0;
   width: 100%;
+  min-height: 44px;
   justify-content: flex-start;
   text-align: left;
-  min-height: 44px;
+  align-items: center;
   padding: 10px 12px;
   transform: none;
   box-shadow:
@@ -2601,7 +2735,19 @@ button.trello-checkin-streak {
 
 .trello-character-rpg-workspace .trello-character-rpg-inline-panel {
   min-width: 0;
-  min-height: 200px;
+  min-height: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.trello-character-rpg-inline-panel > .trello-social-panel,
+.trello-character-rpg-inline-panel > .trello-social-messages-layout,
+.trello-character-rpg-inline-panel > .trello-character-quests-section,
+.trello-character-rpg-inline-panel > .trello-character-stats-panel {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 @media (max-width: 980px) {
@@ -2616,11 +2762,14 @@ button.trello-checkin-streak {
   .trello-character-rpg-tabs--vertical {
     flex-direction: row;
     flex-wrap: wrap;
+    height: auto;
+    min-height: 0;
   }
 
   .trello-character-rpg-tabs--vertical .trello-character-rpg-tab {
     width: auto;
     flex: 1 1 min(140px, calc(50% - 6px));
+    min-height: 44px;
     justify-content: center;
     text-align: center;
   }
@@ -2794,8 +2943,6 @@ button.trello-checkin-streak {
   margin: 0;
   flex-shrink: 0;
   object-fit: contain;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
 }
 
 .trello-character-stat-icon-slot {
@@ -3174,20 +3321,36 @@ button.trello-checkin-streak {
   padding: clamp(6px, 0.7vw, 10px);
 }
 
-/* Сундуки в хранилище — та же высота визуала, что в магазине (148px) */
+/* Сундуки в хранилище — та же высота визуала, что в магазине (296px) */
 .trello-character-inventory-grid--storage-chests {
-  --chest-icon-max-width: 182px;
-  --chest-icon-max-height: 118px;
-  --chest-shop-visual-height: 148px;
+  --chest-icon-max-width: 364px;
+  --chest-icon-max-height: 236px;
+  --chest-shop-visual-height: 296px;
 }
 
-.trello-character-inventory-grid--storage-chests .trello-character-inventory-grid-item {
+.trello-character-loot-popup--storage .trello-character-inventory-grid--storage-chests {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-rows: var(--storage-cell);
+  grid-auto-flow: row dense;
+  gap: var(--storage-grid-gap-ui, clamp(6px, 0.75vw, 10px));
+  height: var(--storage-grid-h);
+  min-height: var(--storage-grid-h);
+  max-height: var(--storage-grid-h);
+  align-content: start;
+}
+
+.trello-character-loot-popup--storage
+  .trello-character-inventory-grid--storage-chests
+  .trello-character-inventory-grid-item {
   aspect-ratio: unset;
-  align-self: start;
+  align-self: stretch;
+  height: var(--storage-cell);
+  min-height: var(--storage-cell);
+  max-height: var(--storage-cell);
 }
 
 .trello-character-inventory-grid--storage-chests .trello-character-chest-storage-slot {
-  grid-template-rows: var(--chest-shop-visual-height, 148px) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
 }
 
 .trello-character-inventory-grid--storage-chests .trello-character-chest-storage-slot .trello-character-chest-slot-visual {
@@ -3235,11 +3398,17 @@ button.trello-checkin-streak {
   -webkit-line-clamp: 2;
 }
 
+.trello-character-chest-storage-slot .trello-character-chest-slot-wrap {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
 .trello-character-chest-storage-slot .trello-chest-loot-odds-btn {
   position: absolute;
-  top: clamp(4px, 0.45vw, 8px);
+  top: auto;
   right: clamp(4px, 0.45vw, 8px);
-  bottom: auto;
+  bottom: clamp(4px, 0.45vw, 8px);
   left: auto;
   z-index: 2;
   flex-shrink: 0;
@@ -3425,6 +3594,7 @@ button.trello-checkin-streak {
   border-style: solid;
   border-color: rgba(124, 91, 39, 0.34);
   background: linear-gradient(180deg, #fffef8, #f2e8d0);
+  min-height: 0;
 }
 
 .theme-dark .trello-character-inventory-slot--empty {
@@ -3800,9 +3970,9 @@ button.trello-checkin-streak {
 }
 
 .trello-chest-loot-odds-btn-icon {
-  font-size: 0.8rem;
+  font-size: clamp(18px, 1.55vw, 24px);
   font-weight: 900;
-  line-height: 1;
+  line-height: 0.88;
   font-family: system-ui, -apple-system, sans-serif;
 }
 
@@ -3957,9 +4127,10 @@ button.trello-checkin-streak {
 
 .trello-character-shop-chest-visual {
   position: relative;
-  height: var(--chest-shop-visual-height, 148px);
-  min-height: var(--chest-shop-visual-height, 148px);
   width: 100%;
+  aspect-ratio: 1;
+  height: auto;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3969,9 +4140,8 @@ button.trello-checkin-streak {
   border: 1px solid rgba(124, 91, 39, 0.32);
   border-radius: 12px;
   overflow: hidden;
-  --chest-icon-max-width: 182px;
-  --chest-icon-max-height: 118px;
-  --chest-shop-visual-height: 148px;
+  --chest-icon-max-width: 78%;
+  --chest-icon-max-height: 68%;
 }
 
 .trello-character-shop-chest-visual .trello-character-chest-slot-visual {
@@ -4054,8 +4224,22 @@ button.trello-checkin-streak {
 .theme-dark .trello-character-profile--rpg .trello-character-rpg-overview-subtitle,
 .theme-dark .trello-character-profile--rpg .trello-character-dust-balance,
 .theme-dark .trello-character-profile--rpg .trello-character-dust-balance strong,
-.theme-dark .trello-character-profile--rpg .trello-character-dust-shop-title {
+.theme-dark .trello-character-profile--rpg .trello-character-dust-shop-title,
+.theme-dark .trello-character-dust-balance-hero-label {
   color: #f2d6a8;
+}
+
+.theme-dark .trello-character-dust-balance-hero {
+  border-color: rgba(209, 160, 84, 0.35);
+  background: linear-gradient(180deg, #3b2b1d, #2f2217);
+}
+
+.theme-dark .trello-character-dust-balance-hero-value {
+  color: #e8c992;
+}
+
+.theme-dark .trello-character-dust-balance-hero-value strong {
+  color: #fff0d2;
 }
 
 .theme-dark .trello-character-profile--rpg .trello-character-dust-balance .trello-muted,
@@ -4319,6 +4503,8 @@ button.trello-checkin-streak {
 .trello-social-messages-layout--cards {
   grid-template-columns: minmax(200px, 260px) 1fr;
   min-height: 400px;
+  height: 100%;
+  align-items: stretch;
 }
 
 .trello-social-messages-panel {
@@ -4327,19 +4513,41 @@ button.trello-checkin-streak {
   padding: 12px 14px;
   background: rgba(255, 255, 255, 0.55);
   min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
 .trello-social-messages-layout--cards .trello-social-conversation-pane {
-  min-height: 360px;
+  min-height: 0;
+}
+
+.trello-social-messages-layout--cards .trello-social-conv-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.trello-social-messages-layout--cards .trello-social-messages-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+.trello-social-messages-layout--cards .trello-social-select-hint {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
 }
 
 .trello-social-messages-layout--cards .trello-social-conversation {
-  flex: 1;
+  flex: 1 1 auto;
   border: none;
   border-radius: 0;
   min-height: 0;
+  height: 100%;
 }
 
 .trello-social-messages-layout--cards .trello-social-conv-btn--active {

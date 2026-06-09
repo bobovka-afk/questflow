@@ -454,13 +454,13 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
                                 }
                                 handleSpaTileClick(
                                   e,
-                                  isMe ? '/profile/me' : userProfilePath(member.userId),
+                                  isMe ? '/profile/character' : userProfilePath(member.userId),
                                 );
                               }}
                               onAuxClick={(e) =>
                                 handleSpaTileAuxClick(
                                   e,
-                                  isMe ? '/profile/me' : userProfilePath(member.userId),
+                                  isMe ? '/profile/character' : userProfilePath(member.userId),
                                 )
                               }
                             >

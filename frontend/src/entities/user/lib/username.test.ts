@@ -9,6 +9,6 @@ describe('username', () => {
   });
 
   it('builds profile path', () => {
-    expect(profilePathForUsername('Hero')).toBe('/profile/@hero');
+    expect(profilePathForUsername('Hero')).toBe('/profile/@hero/character');
   });
 });

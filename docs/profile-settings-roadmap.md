@@ -1,8 +1,10 @@
 # Questflow — дорожная карта профиля и настроек
 
-Документ для продукта и разработки: личный кабинет (`/profile/me`), настройки аккаунта (`/settings`), приватность и публичный профиль участника. **Не путать** с геймификацией — прогресс персонажа описан в [gamification-roadmap.md](gamification-roadmap.md).
+> **Обновление (2026-06):** хаб `/profile/me` и публичная страница `/profile/:userId` **удалены**. Центр приложения — `/profile/character`; чужой пользователь — `/profile/:userId/character`. Аккаунт (email, пароль, privacy) — `/settings`. API `GET /user/profile/:userId` снят; доступ к чужому персонажу — `UserService.assertProfileAccess` + `GET /character/user/:id`.
 
-**Связанные файлы:** [README.md](../README.md), [gamification-agent-context.md](gamification-agent-context.md), [backend/prisma/schema.prisma](../backend/prisma/schema.prisma) (`User`, `UserSettings`), [backend/src/user/](../backend/src/user/), [backend/src/user-settings/](../backend/src/user-settings/), [frontend/src/pages/settings/SettingsPage.tsx](../frontend/src/pages/settings/SettingsPage.tsx), [frontend/src/app/AppRoot.tsx](../frontend/src/app/AppRoot.tsx) (`ProfileMePage`).
+Документ для продукта и разработки: настройки аккаунта (`/settings`), приватность и просмотр персонажа участника. **Не путать** с геймификацией — прогресс персонажа описан в [gamification-roadmap.md](gamification-roadmap.md).
+
+**Связанные файлы:** [README.md](../README.md), [gamification-agent-context.md](gamification-agent-context.md), [backend/prisma/schema.prisma](../backend/prisma/schema.prisma) (`User`, `UserSettings`), [backend/src/user/](../backend/src/user/), [backend/src/user-settings/](../backend/src/user-settings/), [frontend/src/pages/settings/SettingsPage.tsx](../frontend/src/pages/settings/SettingsPage.tsx), [frontend/src/pages/profile-character/ProfileCharacterPage.tsx](../frontend/src/pages/profile-character/ProfileCharacterPage.tsx), [frontend/src/app/AppRoot.tsx](../frontend/src/app/AppRoot.tsx).
 
 > **Для AI-агента:** задачи по **аккаунту, email, сессиям, privacy, удалению** — этот файл. Задачи по XP, квестам, сундукам — [gamification-agent-context.md](gamification-agent-context.md).
 

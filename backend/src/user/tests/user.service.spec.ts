@@ -66,49 +66,28 @@ describe('UserService', () => {
     });
   });
 
-  describe('getProfileForViewer', () => {
+  describe('assertProfileAccess', () => {
     it('throws when target missing', async () => {
       prisma.user!.findUnique!.mockResolvedValue(null);
-      await expect(service.getProfileForViewer(2, 1)).rejects.toThrow(
+      await expect(service.assertProfileAccess(2, 1)).rejects.toThrow(
         NotFoundException,
       );
     });
 
     it('throws when not colleague and not friends', async () => {
-      prisma.user!.findUnique!.mockResolvedValue({ id: 2, name: 'T' });
+      prisma.user!.findUnique!.mockResolvedValue({ id: 2 });
       prisma.workspaceMember!.findFirst!.mockResolvedValue(null);
       prisma.friendRequest!.findFirst!.mockResolvedValue(null);
-      await expect(service.getProfileForViewer(2, 1)).rejects.toThrow(
+      await expect(service.assertProfileAccess(2, 1)).rejects.toThrow(
         ForbiddenException,
       );
     });
 
-    it('allows profile when users are friends without shared workspace', async () => {
-      const createdAt = new Date('2026-01-01T00:00:00.000Z');
-      prisma.user!.findUnique!
-        .mockResolvedValueOnce({ id: 2 })
-        .mockResolvedValueOnce({
-          id: 2,
-          name: 'Friend',
-          avatarPath: '/a.png',
-          createdAt,
-          character: { friendCode: 1111 },
-        });
+    it('allows access when users are friends without shared workspace', async () => {
+      prisma.user!.findUnique!.mockResolvedValue({ id: 2 });
       prisma.workspaceMember!.findFirst!.mockResolvedValue(null);
       prisma.friendRequest!.findFirst!.mockResolvedValue({ id: 9 });
-      userSettingsService.getPrivacySettings.mockResolvedValue({
-        allowCharacterView: true,
-        showAccountAvatarOnPublicProfile: true,
-      });
-
-      await expect(service.getProfileForViewer(2, 1)).resolves.toEqual({
-        id: 2,
-        name: 'Friend',
-        avatarPath: '/a.png',
-        createdAt,
-        allowCharacterView: true,
-        friendCode: 1111,
-      });
+      await expect(service.assertProfileAccess(2, 1)).resolves.toBeUndefined();
     });
   });
 
@@ -148,35 +127,6 @@ describe('UserService', () => {
         }),
       }),
     );
-  });
-
-  it('getProfileForViewer returns profile without email when shared workspace', async () => {
-    const createdAt = new Date('2026-01-01T00:00:00.000Z');
-    prisma.user!.findUnique!
-      .mockResolvedValueOnce({ id: 2 })
-      .mockResolvedValueOnce({
-        id: 2,
-        name: 'T',
-        avatarPath: '/a.png',
-        createdAt,
-        character: { friendCode: 1492 },
-      });
-    prisma.workspaceMember!.findFirst!.mockResolvedValue({ id: 1 });
-    prisma.friendRequest!.findFirst!.mockResolvedValue(null);
-    userSettingsService.getPrivacySettings.mockResolvedValue({
-      allowCharacterView: false,
-      showAccountAvatarOnPublicProfile: false,
-    });
-
-    await expect(service.getProfileForViewer(2, 1)).resolves.toEqual({
-      id: 2,
-      name: 'T',
-      avatarPath: null,
-      createdAt,
-      allowCharacterView: false,
-      friendCode: 1492,
-    });
-    expect(userSettingsService.getPrivacySettings).toHaveBeenCalledWith(2);
   });
 
   it('createOAuthUser normalizes email', async () => {

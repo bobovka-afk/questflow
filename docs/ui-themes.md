@@ -19,9 +19,9 @@
 | Layout shell | **Icon rail слева** (56px) — **реализовано** в `widgets/app-shell/` |
 | Стиль | SNES pixel, VT323, inset-бордеры |
 | Геймификация на boards home | **Нет** LV/XP/streak (только на `/profile/character`) |
-| Тёмная тема по умолчанию | **#1 Royal Purple** (`theme_dark_royal`) |
+| Тёмная тема по умолчанию | **#5 Slate Dungeon** (`theme_dark_slate`) — `PIXEL_THEME_DARK_SLATE` |
 | Светлая тема по умолчанию | **#1 Parchment Quest** (`theme_light_parchment`) |
-| Темы 2–5 (обе стороны) | **Только из сундука** — см. раздел ниже |
+| Альтернативные палитры (обе стороны) | **Только из сундука** — см. раздел ниже |
 
 ---
 
@@ -31,7 +31,7 @@
 
 | Ключ | Режим | Название |
 |------|-------|----------|
-| `theme_dark_royal` | dark | Royal Purple |
+| `theme_dark_slate` | dark | Slate Dungeon |
 | `theme_light_parchment` | light | Parchment Quest |
 
 Новый пользователь получает обе «базовые» темы сразу. В настройках выбирается **режим** (dark/light) и **палитра** внутри режима (если разблокирована).
@@ -42,10 +42,10 @@
 
 | Ключ | Режим | Название | № в превью |
 |------|-------|----------|------------|
+| `theme_dark_royal` | dark | Royal Purple | 1 |
 | `theme_dark_forest` | dark | Forest Night | 2 |
 | `theme_dark_crimson` | dark | Crimson Keep | 3 |
 | `theme_dark_ocean` | dark | Deep Ocean | 4 |
-| `theme_dark_slate` | dark | Slate Dungeon | 5 |
 | `theme_light_sky` | light | Sky Castle | 2 |
 | `theme_light_meadow` | light | Meadow Day | 3 |
 | `theme_light_rose` | light | Rose Quill | 4 |

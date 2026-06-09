@@ -25,7 +25,6 @@ export {
   fetchUserRelation,
   markMessagesRead,
   removeFriend,
-  searchFriendsByCharacterName,
   sendDirectMessage,
   sendFriendRequest,
   unblockUser,

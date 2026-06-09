@@ -28,6 +28,7 @@ export type PixelThemeTokens = {
   insetLight: string;
 };
 
+/** Legacy — chest unlock candidate; not the app default */
 export const PIXEL_THEME_DARK_ROYAL: PixelThemeTokens = {
   bg: '#1a1033',
   bg2: '#2a1850',
@@ -52,6 +53,33 @@ export const PIXEL_THEME_DARK_ROYAL: PixelThemeTokens = {
   titleShadow: '#000',
   insetDark: 'rgba(0,0,0,0.4)',
   insetLight: 'rgba(255,255,255,0.12)',
+};
+
+/** Default dark theme — Slate Dungeon (#5 in design previews) */
+export const PIXEL_THEME_DARK_SLATE: PixelThemeTokens = {
+  bg: '#141820',
+  bg2: '#222830',
+  border: '#000',
+  accent: '#90c0ff',
+  text: '#e0e4ec',
+  muted: '#8898a8',
+  tile1: '#3a4858',
+  tile2: '#4a5870',
+  tile3: '#586878',
+  green: '#70a890',
+  railEdge: '#4a5870',
+  btnEdge: '#4a5870',
+  logoBg: '#8898a8',
+  logoShadow: '#586878',
+  activeRail: '#3a5878',
+  activeRailText: '#c0d8f0',
+  primaryBg: '#3a5878',
+  primaryText: '#c0d8f0',
+  ghostBorder: '#4a5870',
+  tileAddBorder: '#586878',
+  titleShadow: '#000',
+  insetDark: 'rgba(0,0,0,0.4)',
+  insetLight: 'rgba(255,255,255,0.14)',
 };
 
 export const PIXEL_THEME_LIGHT_PARCHMENT: PixelThemeTokens = {
@@ -81,7 +109,7 @@ export const PIXEL_THEME_LIGHT_PARCHMENT: PixelThemeTokens = {
 };
 
 export function pixelTokensForMode(mode: AppThemeMode): PixelThemeTokens {
-  return mode === 'dark' ? PIXEL_THEME_DARK_ROYAL : PIXEL_THEME_LIGHT_PARCHMENT;
+  return mode === 'dark' ? PIXEL_THEME_DARK_SLATE : PIXEL_THEME_LIGHT_PARCHMENT;
 }
 
 const CSS_VAR_MAP: Array<[keyof PixelThemeTokens, string]> = [
@@ -110,20 +138,64 @@ const CSS_VAR_MAP: Array<[keyof PixelThemeTokens, string]> = [
   ['insetLight', '--px-inset-light'],
 ];
 
+const QF_CSS_VARS: ReadonlyArray<[keyof PixelThemeTokens, string]> = [
+  ['bg', '--qf-shell-gradient'],
+  ['text', '--qf-shell-fg'],
+  ['muted', '--qf-shell-fg-muted'],
+  ['text', '--qf-text'],
+  ['muted', '--qf-text-muted'],
+  ['bg', '--qf-body-bg'],
+  ['bg2', '--qf-panel-bg'],
+  ['border', '--qf-panel-border'],
+];
+
+const LEGACY_CSS_VAR_KEYS = [
+  '--trello-primary',
+  '--trello-primary-hover',
+  '--trello-primary-contrast',
+  '--trello-list-chrome',
+] as const;
+
+function legacyThemeValues(tokens: PixelThemeTokens, mode: AppThemeMode): Record<(typeof LEGACY_CSS_VAR_KEYS)[number], string> {
+  return {
+    '--trello-primary': tokens.accent,
+    '--trello-primary-hover': mode === 'dark' ? '#b0d4ff' : tokens.accent,
+    '--trello-primary-contrast': mode === 'dark' ? tokens.bg : tokens.primaryText,
+    '--trello-list-chrome': tokens.bg2,
+  };
+}
+
+export function applyPixelThemeTokensToElement(el: HTMLElement, tokens: PixelThemeTokens, mode?: AppThemeMode) {
+  for (const [key, cssVar] of CSS_VAR_MAP) {
+    el.style.setProperty(cssVar, tokens[key]);
+  }
+  for (const [key, cssVar] of QF_CSS_VARS) {
+    el.style.setProperty(cssVar, tokens[key]);
+  }
+  const resolvedMode: AppThemeMode =
+    mode ?? (document.documentElement.classList.contains('theme-dark') ? 'dark' : 'light');
+  const legacy = legacyThemeValues(tokens, resolvedMode);
+  for (const cssVar of LEGACY_CSS_VAR_KEYS) {
+    el.style.setProperty(cssVar, legacy[cssVar]);
+  }
+}
+
+export function clearPixelThemeTokensFromElement(el: HTMLElement) {
+  for (const [, cssVar] of CSS_VAR_MAP) {
+    el.style.removeProperty(cssVar);
+  }
+  for (const [, cssVar] of QF_CSS_VARS) {
+    el.style.removeProperty(cssVar);
+  }
+  for (const cssVar of LEGACY_CSS_VAR_KEYS) {
+    el.style.removeProperty(cssVar);
+  }
+}
+
 export function applyPixelThemeToDocument(mode: AppThemeMode) {
   const tokens = pixelTokensForMode(mode);
   const root = document.documentElement;
   root.classList.toggle('theme-dark', mode === 'dark');
   root.classList.add('px-ui');
-  for (const [key, cssVar] of CSS_VAR_MAP) {
-    root.style.setProperty(cssVar, tokens[key]);
-  }
-  root.style.setProperty('--qf-shell-gradient', tokens.bg);
-  root.style.setProperty('--qf-shell-fg', tokens.text);
-  root.style.setProperty('--qf-shell-fg-muted', tokens.muted);
-  root.style.setProperty('--qf-text', tokens.text);
-  root.style.setProperty('--qf-text-muted', tokens.muted);
-  root.style.setProperty('--qf-body-bg', tokens.bg);
-  root.style.setProperty('--qf-panel-bg', tokens.bg2);
-  root.style.setProperty('--qf-panel-border', tokens.border);
+  applyPixelThemeTokensToElement(root, tokens, mode);
 }

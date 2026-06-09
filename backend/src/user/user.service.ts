@@ -11,7 +11,7 @@ import { Prisma, User } from '../generated/prisma/client';
 import { FriendRequestStatus } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from '../auth/dto/register.dto';
-import type { UserProfileView, UserPublic } from './interface';
+import type { UserPublic } from './interface';
 import type { UserPublicRow } from './type';
 import {
   DEFAULT_GAMIFICATION_SETTINGS,
@@ -163,43 +163,6 @@ export class UserService {
       select: { id: true },
     });
     return Boolean(row);
-  }
-
-  async getProfileForViewer(
-    targetUserId: number,
-    viewerUserId: number,
-  ): Promise<UserProfileView> {
-    await this.assertProfileAccess(targetUserId, viewerUserId);
-
-    const targetUser = await this.prisma.user.findUnique({
-      where: { id: targetUserId },
-      select: {
-        id: true,
-        name: true,
-        avatarPath: true,
-        createdAt: true,
-        character: { select: { friendCode: true } },
-      },
-    });
-    if (!targetUser) {
-      throw new NotFoundException({
-        code: 'USER_NOT_FOUND',
-        message: 'User not found',
-      });
-    }
-
-    const privacy = await this.userSettingsService.getPrivacySettings(targetUserId);
-
-    return {
-      id: targetUser.id,
-      name: targetUser.name,
-      avatarPath: privacy.showAccountAvatarOnPublicProfile
-        ? targetUser.avatarPath
-        : null,
-      createdAt: targetUser.createdAt,
-      allowCharacterView: privacy.allowCharacterView,
-      friendCode: targetUser.character?.friendCode ?? null,
-    };
   }
 
   async create(dto: RegisterDto): Promise<UserPublic> {

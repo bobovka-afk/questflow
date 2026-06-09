@@ -8,7 +8,6 @@ import { getCharacterXpTowardNext } from '@entities/character/lib/level-curve';
 import { SpaLink } from '@shared/lib/navigation';
 import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 import { navigate } from '@shared/lib/navigation-core';
-import { userProfilePath } from '@entities/user';
 import { SocialUserBlockButton } from '@widgets/social-user-block/SocialUserBlockButton';
 import {
   acceptFriendRequest,
@@ -102,7 +101,11 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
   }, [character]);
 
   function goBack() {
-    navigate(userProfilePath(userId));
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    navigate('/workspaces');
   }
 
   function openMessages() {

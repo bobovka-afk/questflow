@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchSecurityEvents, securityEventLabelRu, type UserSecurityEventDto } from '@entities/user-settings';
-import { formatDateTimeRu } from '@shared/lib/formatDateRu';
+import { formatSecurityEventMeta } from '@shared/lib/formatSecurityEventMeta';
 
 type Props = {
   accessToken: string | null;
@@ -73,9 +73,7 @@ export function SettingsSecurityLogModal({ accessToken, open, onClose }: Props) 
                   <div className="trello-settings-security-log-main">
                     <strong>{securityEventLabelRu(row.type)}</strong>
                     <span className="trello-settings-security-log-meta">
-                      {formatDateTimeRu(row.createdAt)}
-                      {row.ipAddress ? ` · ${row.ipAddress}` : ''}
-                      {row.deviceLabel ? ` · ${row.deviceLabel}` : ''}
+                      {formatSecurityEventMeta(row)}
                     </span>
                   </div>
                 </li>

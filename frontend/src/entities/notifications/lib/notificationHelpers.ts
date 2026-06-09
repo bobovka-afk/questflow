@@ -6,33 +6,155 @@ export type NotificationRow = {
   createdAt: string;
 };
 
-export function notificationSummary(row: NotificationRow): string {
+export type NotificationCategory = 'tasks' | 'rpg' | 'social';
+
+export type NotificationFilterId = 'all' | 'unread' | NotificationCategory;
+
+export const NOTIFICATION_FILTER_OPTIONS: ReadonlyArray<{
+  id: NotificationFilterId;
+  label: string;
+}> = [
+  { id: 'all', label: 'Все' },
+  { id: 'unread', label: 'Непрочитанные' },
+  { id: 'tasks', label: 'Задачи' },
+  { id: 'rpg', label: 'RPG' },
+  { id: 'social', label: 'Социальное' },
+] as const;
+
+export function notificationCategory(type: string): NotificationCategory | null {
+  switch (type) {
+    case 'MENTION':
+    case 'DEADLINE':
+    case 'CARD_ASSIGNED':
+      return 'tasks';
+    case 'QUEST_COMPLETED':
+    case 'CHEST_READY':
+    case 'ACHIEVEMENT':
+    case 'XP_GAIN':
+      return 'rpg';
+    case 'FRIEND_REQUEST':
+    case 'PARTY_RAID_INVITE':
+      return 'social';
+    default:
+      return null;
+  }
+}
+
+export function matchesNotificationFilter(
+  row: NotificationRow,
+  filter: NotificationFilterId,
+): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'unread') return !row.readAt;
+  return notificationCategory(row.type) === filter;
+}
+
+export function notificationTypeBadge(type: string): string {
+  switch (type) {
+    case 'MENTION':
+      return '@';
+    case 'DEADLINE':
+      return '⏰';
+    case 'CARD_ASSIGNED':
+      return '✓';
+    case 'QUEST_COMPLETED':
+      return '📜';
+    case 'CHEST_READY':
+      return '📦';
+    case 'ACHIEVEMENT':
+      return '🏆';
+    case 'PARTY_RAID_INVITE':
+      return '🐉';
+    case 'FRIEND_REQUEST':
+      return '👤';
+    case 'XP_GAIN':
+      return '⭐';
+    default:
+      return '•';
+  }
+}
+
+export function countUnreadNotifications(
+  rows: NotificationRow[],
+  filter: NotificationFilterId,
+): number {
+  return rows.filter((row) => !row.readAt && matchesNotificationFilter(row, filter)).length;
+}
+
+export type NotificationDisplay = {
+  action: string;
+  reason: string;
+};
+
+function xpSourceLabel(source: unknown): string {
+  switch (source) {
+    case 'TASK_COMPLETED':
+      return 'За выполненную задачу';
+    case 'DAILY_CHECKIN':
+      return 'За ежедневный чекин';
+    case 'CHECKIN_STREAK':
+      return 'За серию чекинов';
+    default:
+      return 'За активность в Questflow';
+  }
+}
+
+export function notificationDisplay(row: NotificationRow): NotificationDisplay {
   const p = row.payload;
-  if (row.type === 'MENTION') {
-    return `${String(p.authorName ?? 'Кто-то')} упомянул(а) вас в «${String(p.cardTitle ?? 'карточка')}»`;
+  switch (row.type) {
+    case 'MENTION':
+      return {
+        action: 'Упоминание',
+        reason: `${String(p.authorName ?? 'Кто-то')} · «${String(p.cardTitle ?? 'карточка')}»`,
+      };
+    case 'DEADLINE':
+      return {
+        action: 'Скоро дедлайн',
+        reason: `«${String(p.cardTitle ?? 'карточка')}»`,
+      };
+    case 'QUEST_COMPLETED':
+      return {
+        action: 'Квест выполнен',
+        reason: String(p.questTitle ?? 'квест'),
+      };
+    case 'CHEST_READY':
+      return {
+        action: 'Сундук получен',
+        reason: `За «${String(p.questTitle ?? 'квест')}»`,
+      };
+    case 'ACHIEVEMENT':
+      return {
+        action: 'Достижение получено',
+        reason: String(p.titleRu ?? p.key ?? p.achievementKey ?? 'награда'),
+      };
+    case 'XP_GAIN':
+      return {
+        action: 'Получен опыт',
+        reason: `${String(p.xpAmount ?? '?')} XP · ${xpSourceLabel(p.source)}`,
+      };
+    case 'PARTY_RAID_INVITE':
+      return {
+        action: 'Приглашение в рейд',
+        reason: String(p.bossNameRu ?? p.bossName ?? 'босс'),
+      };
+    case 'FRIEND_REQUEST':
+      return {
+        action: 'Заявка в друзья',
+        reason: String(p.requesterName ?? p.fromName ?? 'пользователь'),
+      };
+    case 'CARD_ASSIGNED':
+      return {
+        action: 'Назначение на карточку',
+        reason: `«${String(p.title ?? p.cardTitle ?? 'карточка')}»`,
+      };
+    default:
+      return { action: 'Уведомление', reason: '' };
   }
-  if (row.type === 'DEADLINE') {
-    return `Скоро дедлайн: «${String(p.cardTitle ?? 'карточка')}»`;
-  }
-  if (row.type === 'QUEST_COMPLETED') {
-    return `Квест выполнен: ${String(p.questTitle ?? 'квест')}`;
-  }
-  if (row.type === 'CHEST_READY') {
-    return `Сундук готов: ${String(p.questTitle ?? 'награда')}`;
-  }
-  if (row.type === 'ACHIEVEMENT') {
-    return `Достижение: ${String(p.titleRu ?? p.achievementKey ?? '')}`;
-  }
-  if (row.type === 'PARTY_RAID_INVITE') {
-    return `Приглашение в рейд: ${String(p.bossNameRu ?? p.bossName ?? 'босс')}`;
-  }
-  if (row.type === 'FRIEND_REQUEST') {
-    return `Заявка в друзья от ${String(p.requesterName ?? p.fromName ?? 'пользователя')}`;
-  }
-  if (row.type === 'CARD_ASSIGNED') {
-    return `Вас назначили на «${String(p.title ?? p.cardTitle ?? 'карточку')}»`;
-  }
-  return 'Уведомление';
+}
+
+export function notificationSummary(row: NotificationRow): string {
+  const { action, reason } = notificationDisplay(row);
+  return reason ? `${action}: ${reason}` : action;
 }
 
 export async function navigateForNotification(

@@ -20,13 +20,12 @@ import {
   ACHIEVEMENT_ICON_CARD_SIZE,
 } from '@entities/achievement/lib/achievementAssets';
 import {
-  DUST_ICON_SIZE_MD,
   DUST_ICON_SIZE_SHOP,
   DUST_ICON_SIZE_SM,
 } from '@entities/dust/lib/dustAssets';
 import {
   chestHasTapOpen,
-  chestTapsRequired,
+  chestLastTapFrameIndex,
 } from '@entities/chest/lib/chestAssets';
 import {
   CHEST_TIER_LABEL_RU,
@@ -209,6 +208,7 @@ type Props = {
   activeTab: ProfileCharacterTabKey;
   tabOpenSignal?: number;
   onCharacterRefresh?: () => Promise<void>;
+  onInventoryExit?: () => void;
 };
 
 export type ProfileCharacterTabKey =
@@ -255,7 +255,11 @@ function QuestRow(props: {
       </div>
       {chest && (
         <div
-          className="trello-character-quest-reward"
+          className={
+            chest.openedAt
+              ? 'trello-character-quest-reward trello-character-quest-reward--claimed'
+              : 'trello-character-quest-reward'
+          }
           data-chest-tier={chest.tier.toLowerCase()}
         >
           <div className="trello-character-quest-reward-visual" aria-hidden>
@@ -264,19 +268,29 @@ function QuestRow(props: {
             </div>
           </div>
           <div className="trello-character-quest-reward-meta">
-            <span className="trello-character-quest-chest-label">
-              {CHEST_TIER_LABEL_RU[chest.tier]} сундук
-              {chest.openedAt ? ' · открыт' : ' · ждёт открытия'}
-            </span>
-            {canOpen && (
-              <button
-                type="button"
-                className="trello-btn trello-btn-primary trello-btn-sm"
-                disabled={props.openingChestId === chest.id}
-                onClick={() => props.onOpenChest(chest.id, chest.tier)}
-              >
-                {props.openingChestId === chest.id ? 'Открываем…' : 'Открыть'}
-              </button>
+            {chest.openedAt ? (
+              <span className="trello-character-quest-reward-claimed" role="status">
+                <span className="trello-character-quest-done-badge" aria-hidden>
+                  ✓
+                </span>
+                Награда получена
+              </span>
+            ) : (
+              <>
+                <span className="trello-character-quest-chest-label">
+                  {CHEST_TIER_LABEL_RU[chest.tier]} сундук · ждёт открытия
+                </span>
+                {canOpen && (
+                  <button
+                    type="button"
+                    className="trello-btn trello-btn-primary trello-btn-sm"
+                    disabled={props.openingChestId === chest.id}
+                    onClick={() => props.onOpenChest(chest.id, chest.tier)}
+                  >
+                    {props.openingChestId === chest.id ? 'Открываем…' : 'Открыть'}
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -475,6 +489,11 @@ export function ProfileCharacterQuestsPanel(props: Props) {
   );
   const isPopupOnlyTab = props.activeTab === 'inventory';
 
+  function closeStorage() {
+    setPopupTab(null);
+    props.onInventoryExit?.();
+  }
+
   const inventoryWithoutBadges = useMemo(
     () => inventory.filter((i) => !isTitleBadgeCosmetic(i.cosmeticItem.type)),
     [inventory],
@@ -563,20 +582,12 @@ export function ProfileCharacterQuestsPanel(props: Props) {
 
   useEffect(() => {
     if (chestModal?.phase !== 'tapping') return;
-    const required = chestTapsRequired(chestModal.tier);
-    if (chestModal.frameIndex < required) return;
-
-    if (pendingChestOpen.error) {
-      setChestModal(null);
-      setLoadError(pendingChestOpen.error);
-      setOpeningChestId(null);
-      setBusy(false);
-      return;
-    }
-    if (pendingChestOpen.result) {
-      void finishTapChestReveal(chestModal.tier, pendingChestOpen.result);
-    }
-  }, [chestModal, pendingChestOpen, finishTapChestReveal]);
+    if (!pendingChestOpen.error) return;
+    setChestModal(null);
+    setLoadError(pendingChestOpen.error);
+    setOpeningChestId(null);
+    setBusy(false);
+  }, [chestModal, pendingChestOpen.error]);
 
   async function handleOpenChest(chestId: number, tier: ChestTier) {
     setOpeningChestId(chestId);
@@ -619,9 +630,14 @@ export function ProfileCharacterQuestsPanel(props: Props) {
 
   function handleChestTap() {
     if (chestModal?.phase !== 'tapping') return;
-    const required = chestTapsRequired(chestModal.tier);
-    if (chestModal.frameIndex >= required) return;
-    setChestModal({ ...chestModal, frameIndex: chestModal.frameIndex + 1 });
+    const lastFrame = chestLastTapFrameIndex(chestModal.tier);
+    if (chestModal.frameIndex < lastFrame) {
+      setChestModal({ ...chestModal, frameIndex: chestModal.frameIndex + 1 });
+      return;
+    }
+    if (pendingChestOpen.result) {
+      void finishTapChestReveal(chestModal.tier, pendingChestOpen.result);
+    }
   }
 
   async function handlePurchaseChest(tier: ChestTier) {
@@ -742,40 +758,48 @@ export function ProfileCharacterQuestsPanel(props: Props) {
         {loadError && <div className="trello-banner trello-banner-error">{loadError}</div>}
         {!quests && !loadError && !isPopupOnlyTab && <p className="trello-muted">Загрузка данных персонажа…</p>}
 
-        {props.activeTab === 'shop' && dustShop && (
+        {props.activeTab === 'shop' && (
           <>
-            <p className="trello-character-rpg-overview-subtitle">Магазин сундуков</p>
-            <p className="trello-character-dust-shop-balance">
-              Баланс: <strong>{dustShop.balance}</strong>
-            </p>
-            <div className="trello-character-dust-shop-grid">
-              {dustShop.options.map((option) => (
-                <div key={option.tier} className="trello-character-dust-shop-card">
-                  <div
-                    className="trello-character-shop-chest-visual trello-character-chest-slot-wrap"
-                    data-chest-tier={option.tier.toLowerCase()}
-                  >
-                    <div className="trello-character-chest-slot-visual" aria-hidden>
-                      <ChestIcon tier={option.tier} />
+            {!dustShop && !loadError && <p className="trello-muted">Загрузка магазина…</p>}
+            {dustShop && (
+              <>
+                <p className="trello-character-dust-shop-balance" aria-live="polite">
+                  <span className="trello-character-dust-shop-balance-content">
+                    <span>Баланс:</span>
+                    <strong className="trello-character-dust-shop-balance-value">{dustShop.balance}</strong>
+                    <DustIcon size={DUST_ICON_SIZE_SHOP} />
+                  </span>
+                </p>
+                <div className="trello-character-dust-shop-grid">
+                  {dustShop.options.map((option) => (
+                    <div key={option.tier} className="trello-character-dust-shop-card">
+                      <div
+                        className="trello-character-shop-chest-visual trello-character-chest-slot-wrap"
+                        data-chest-tier={option.tier.toLowerCase()}
+                      >
+                        <div className="trello-character-chest-slot-visual" aria-hidden>
+                          <ChestIcon tier={option.tier} />
+                        </div>
+                        <ChestLootOddsButton tier={option.tier} />
+                      </div>
+                      <span className="trello-character-dust-shop-title">{chestItemNameRu(option.tier)}</span>
+                      <button
+                        type="button"
+                        className="trello-btn trello-btn-primary trello-btn-sm trello-character-shop-buy-btn"
+                        disabled={busy || !option.canAfford}
+                        onClick={() => void handlePurchaseChest(option.tier)}
+                      >
+                        <span className="trello-character-shop-buy-content">
+                          <span>Купить</span>
+                          <span className="trello-character-shop-buy-price">{option.cost}</span>
+                          <DustIcon size={DUST_ICON_SIZE_SHOP} />
+                        </span>
+                      </button>
                     </div>
-                    <ChestLootOddsButton tier={option.tier} />
-                  </div>
-                  <span className="trello-character-dust-shop-title">{chestItemNameRu(option.tier)}</span>
-                  <button
-                    type="button"
-                    className="trello-btn trello-btn-primary trello-btn-sm trello-character-shop-buy-btn"
-                    disabled={busy || !option.canAfford}
-                    onClick={() => void handlePurchaseChest(option.tier)}
-                  >
-                    <span className="trello-character-shop-buy-content">
-                      <span>Купить</span>
-                      <span className="trello-character-shop-buy-price">{option.cost}</span>
-                      <DustIcon size={DUST_ICON_SIZE_SHOP} />
-                    </span>
-                  </button>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </>
         )}
 
@@ -824,7 +848,7 @@ export function ProfileCharacterQuestsPanel(props: Props) {
 
       {popupTab === 'inventory' &&
         createPortal(
-          <div className="trello-modal-backdrop" role="presentation" onClick={() => setPopupTab(null)}>
+          <div className="trello-modal-backdrop" role="presentation" onClick={closeStorage}>
             <div
               className={[
                 'trello-modal',
@@ -850,7 +874,7 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                 <button
                   type="button"
                   className="trello-modal-close"
-                  onClick={() => setPopupTab(null)}
+                  onClick={closeStorage}
                   aria-label="Закрыть"
                 >
                   ×
@@ -918,9 +942,11 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                                 disabled={busy || openingChestId === chest.id}
                                 onClick={() => void handleOpenChest(chest.id, chest.tier)}
                               >
-                                <ChestLootOddsButton tier={chest.tier} />
-                                <div className="trello-character-chest-slot-visual" aria-hidden>
-                                  <ChestIcon tier={chest.tier} />
+                                <div className="trello-character-chest-slot-wrap">
+                                  <div className="trello-character-chest-slot-visual" aria-hidden>
+                                    <ChestIcon tier={chest.tier} />
+                                  </div>
+                                  <ChestLootOddsButton tier={chest.tier} />
                                 </div>
                                 <strong className="trello-character-inventory-slot-title">
                                   {CHEST_TIER_LABEL_RU[chest.tier]} сундук
@@ -1154,7 +1180,7 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                     tier={chestModal.tier}
                     frameIndex={chestModal.frameIndex}
                     waitingForApi={
-                      chestModal.frameIndex >= chestTapsRequired(chestModal.tier) &&
+                      chestModal.frameIndex >= chestLastTapFrameIndex(chestModal.tier) &&
                       !pendingChestOpen.result &&
                       !pendingChestOpen.error
                     }
@@ -1166,28 +1192,14 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                       const result = chestModal.result;
                       const isDuplicateDust =
                         result.alreadyOwned && result.dustGranted > 0;
-                      const previewUrl = isDuplicateDust
-                        ? null
-                        : chestRewardPreviewUrl(result);
+                      const previewUrl = chestRewardPreviewUrl(result);
                       return (
                         <>
                           <div
-                            className={[
-                              'trello-character-chest-reveal-reward-wrap',
-                              isDuplicateDust
-                                ? 'trello-character-chest-reveal-reward-wrap--dust'
-                                : '',
-                            ]
-                              .filter(Boolean)
-                              .join(' ')}
+                            className="trello-character-chest-reveal-reward-wrap"
                             data-cosmetic-type={result.cosmeticType}
                           >
-                            {isDuplicateDust ? (
-                              <DustIcon
-                                size={DUST_ICON_SIZE_MD}
-                                className="trello-character-chest-reveal-dust-icon"
-                              />
-                            ) : previewUrl ? (
+                            {previewUrl ? (
                               <img
                                 src={previewUrl}
                                 alt=""

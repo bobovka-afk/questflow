@@ -3,6 +3,7 @@ import {
   formatDateRuLong,
   formatDateTimeRu,
   formatDateTimeRuInTimeZone,
+  formatDateTimeRuSettings,
   formatDateTimeRuWithYear,
   formatRegisteredRu,
 } from './formatDateRu';
@@ -17,6 +18,12 @@ describe('formatDateRu', () => {
   it('formats datetime with year', () => {
     expect(formatDateTimeRuWithYear('2026-06-07T22:09:00.000Z')).toMatch(
       /^\d{1,2} июн 2026 \d{2}:\d{2}$/,
+    );
+  });
+
+  it('formats settings datetime as DD.MM.YYYY, HH:mm', () => {
+    expect(formatDateTimeRuSettings('2026-06-09T16:52:00.000Z')).toMatch(
+      /^\d{2}\.06\.2026, \d{2}:\d{2}$/,
     );
   });
 

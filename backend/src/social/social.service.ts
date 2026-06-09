@@ -199,34 +199,6 @@ export class SocialService {
     return friends;
   }
 
-  async searchFriendsByCharacterName(
-    viewerId: number,
-    query: string,
-  ): Promise<SocialUserSummary[]> {
-    const q = query.trim();
-    if (q.length < 2) {
-      return [];
-    }
-    const rows = await this.prisma.character.findMany({
-      where: {
-        name: { contains: q, mode: 'insensitive' },
-        userId: { not: viewerId },
-      },
-      take: 20,
-      include: { user: { select: userWithCharacterSelect } },
-    });
-    const results: SocialUserSummary[] = [];
-    for (const row of rows) {
-      const privacy = await this.userSettingsService.getPrivacySettings(row.userId);
-      if (!privacy.allowFindByCharacterName) continue;
-      if (await this.userBlockService.areUsersBlocked(viewerId, row.userId)) {
-        continue;
-      }
-      results.push(this.toSocialUserSummary(row.user));
-    }
-    return results;
-  }
-
   async blockUser(blockerId: number, blockedId: number): Promise<void> {
     await this.userBlockService.blockUser(blockerId, blockedId);
   }

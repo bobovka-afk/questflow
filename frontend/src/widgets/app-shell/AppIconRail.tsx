@@ -1,17 +1,24 @@
 import { SpaLink } from '@shared/lib/navigation';
 import { AppLogo } from '@shared/ui/app-logo/AppLogo';
+import {
+  RailIconCharacter,
+  RailIconLogoutPower,
+  RailIconNotifications,
+  RailIconSettings,
+  RailIconThemeMoon,
+  RailIconThemeSun,
+  RailIconWorkspaces,
+} from './RailNavIcons';
 
 export type AppRailSection =
   | 'workspaces'
   | 'character'
   | 'notifications'
-  | 'messages'
   | 'settings';
 
 type Props = {
   active: AppRailSection;
   notificationCount: number;
-  unreadMessages: number;
   themeIsDark: boolean;
   onThemeToggle: () => void;
   onLogout: () => void;
@@ -29,7 +36,6 @@ function RailBadge({ count }: { count: number }) {
 export function AppIconRail({
   active,
   notificationCount,
-  unreadMessages,
   themeIsDark,
   onThemeToggle,
   onLogout,
@@ -41,89 +47,78 @@ export function AppIconRail({
       </SpaLink>
 
       <SpaLink
-        className={`px-rail-btn${active === 'workspaces' ? ' px-rail-btn--active' : ''}`}
+        className={`px-rail-btn px-rail-btn--nav${active === 'workspaces' ? ' px-rail-btn--active' : ''}`}
         to="/workspaces"
         title="Рабочие пространства"
         aria-current={active === 'workspaces' ? 'page' : undefined}
       >
-        ▦
+        <RailIconWorkspaces className="px-rail-btn__ico" />
+        <span className="px-rail-btn__label">Доски</span>
       </SpaLink>
 
       <SpaLink
-        className={`px-rail-btn${active === 'character' ? ' px-rail-btn--active' : ''}`}
+        className={`px-rail-btn px-rail-btn--nav${active === 'character' ? ' px-rail-btn--active' : ''}`}
         to="/profile/character"
         title="Персонаж"
         aria-current={active === 'character' ? 'page' : undefined}
       >
-        ⚔
+        <RailIconCharacter className="px-rail-btn__ico" />
+        <span className="px-rail-btn__label">Портрет</span>
       </SpaLink>
 
       <SpaLink
-        className={`px-rail-btn px-rail-btn--badge${active === 'notifications' ? ' px-rail-btn--active' : ''}`}
+        className={`px-rail-btn px-rail-btn--nav px-rail-btn--badge${active === 'notifications' ? ' px-rail-btn--active' : ''}`}
         to="/notifications"
         title="Уведомления"
         aria-current={active === 'notifications' ? 'page' : undefined}
       >
-        🔔
+        <RailIconNotifications className="px-rail-btn__ico" />
+        <span className="px-rail-btn__label">Инфо</span>
         <RailBadge count={notificationCount} />
       </SpaLink>
 
       <SpaLink
-        className={`px-rail-btn px-rail-btn--badge${active === 'messages' ? ' px-rail-btn--active' : ''}`}
-        to="/profile/character?tab=messages"
-        title="Сообщения"
-        aria-current={active === 'messages' ? 'page' : undefined}
-      >
-        ✉
-        <RailBadge count={unreadMessages} />
-      </SpaLink>
-
-      <SpaLink
-        className={`px-rail-btn${active === 'settings' ? ' px-rail-btn--active' : ''}`}
+        className={`px-rail-btn px-rail-btn--nav${active === 'settings' ? ' px-rail-btn--active' : ''}`}
         to="/settings"
         title="Настройки"
         aria-current={active === 'settings' ? 'page' : undefined}
       >
-        ⚙
+        <RailIconSettings className="px-rail-btn__ico" />
+        <span className="px-rail-btn__label">Опции</span>
       </SpaLink>
 
       <div className="px-rail-spacer" />
 
       <button
         type="button"
-        className="px-rail-btn px-rail-btn--theme"
+        className="px-rail-btn px-rail-btn--icon-only px-rail-btn--theme"
         title={themeIsDark ? 'Светлая тема' : 'Тёмная тема'}
         aria-label={themeIsDark ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
         onClick={onThemeToggle}
       >
-        {themeIsDark ? '☀' : '☾'}
+        {themeIsDark ? (
+          <RailIconThemeSun className="px-rail-btn__ico" />
+        ) : (
+          <RailIconThemeMoon className="px-rail-btn__ico" />
+        )}
       </button>
 
       <button
         type="button"
-        className="px-rail-btn px-rail-btn--logout"
+        className="px-rail-btn px-rail-btn--icon-only px-rail-btn--logout"
         title="Выйти"
         aria-label="Выйти"
         onClick={onLogout}
       >
-        <svg className="px-rail-power-icon" viewBox="0 0 24 24" aria-hidden>
-          <path
-            fill="currentColor"
-            d="M13 3h-2v8h2V3zm-1 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"
-          />
-        </svg>
+        <RailIconLogoutPower className="px-rail-btn__ico px-rail-power-icon" />
       </button>
     </aside>
   );
 }
 
-export function resolveAppRailSection(pathname: string, search: string): AppRailSection {
+export function resolveAppRailSection(pathname: string, _search: string): AppRailSection {
   if (pathname.startsWith('/settings')) return 'settings';
   if (pathname === '/notifications') return 'notifications';
-  if (pathname.startsWith('/profile/character')) {
-    const tab = new URLSearchParams(search).get('tab');
-    if (tab === 'messages') return 'messages';
-    return 'character';
-  }
+  if (pathname.startsWith('/profile/character')) return 'character';
   return 'workspaces';
 }

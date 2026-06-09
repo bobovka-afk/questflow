@@ -41,7 +41,7 @@ export function InviteAcceptPage({ accessToken }: Props) {
           json: { token },
         });
         clearPendingInviteToken();
-        if (!cancelled) navigate('/profile/me');
+        if (!cancelled) navigate('/profile/character');
       } catch (e) {
         if (!cancelled) setMsg(formatError(e));
       } finally {

@@ -16,7 +16,7 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import type { UserPublic, UserProfileView } from './interface';
+import type { UserPublic } from './interface';
 import type { AuthedRequest } from '../common/type';
 import type { File as MulterFile } from 'multer';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -73,19 +73,6 @@ export class UserController {
   @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
   async getProfile(@Req() req: AuthedRequest): Promise<UserPublic | null> {
     return this.userService.getById(String(req.user.id));
-  }
-
-  @Get('profile/:userId')
-  @ApiOperation({ summary: 'Get another user profile (shared workspace required)' })
-  @ApiResponse({ status: 200, description: 'Public user profile returned successfully.' })
-  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
-  @ApiResponse({ status: 403, description: "code: 'ACCESS_DENIED'" })
-  @ApiResponse({ status: 404, description: "code: 'USER_NOT_FOUND'" })
-  async getUserProfile(
-    @Req() req: AuthedRequest,
-    @Param('userId', ParseIntPipe) userId: number,
-  ): Promise<UserProfileView> {
-    return this.userService.getProfileForViewer(userId, req.user.id);
   }
 
   @Patch('me')

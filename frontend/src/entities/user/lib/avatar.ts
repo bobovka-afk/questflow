@@ -22,7 +22,7 @@ export function avatarInitials(name: string): string {
 }
 
 export function userProfilePath(userId: number): string {
-  return `/profile/${userId}`;
+  return userCharacterPath(userId);
 }
 
 export function userCharacterPath(userId: number): string {
@@ -31,8 +31,8 @@ export function userCharacterPath(userId: number): string {
 
 export function openUserProfile(userId: number, currentUserId: number | null | undefined) {
   if (currentUserId != null && userId === currentUserId) {
-    navigate('/profile/me');
+    navigate('/profile/character');
     return;
   }
-  navigate(userProfilePath(userId));
+  navigate(userCharacterPath(userId));
 }

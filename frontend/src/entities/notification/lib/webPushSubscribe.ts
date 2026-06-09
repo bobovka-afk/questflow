@@ -9,12 +9,34 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return out;
 }
 
+export type WebPushSupportStatus = 'supported' | 'insecure_context' | 'unsupported';
+
+/** Why Web Push may be unavailable in this tab (HTTPS required except localhost). */
+export function getWebPushSupportStatus(): WebPushSupportStatus {
+  if (typeof window === 'undefined') return 'unsupported';
+  if (!window.isSecureContext) return 'insecure_context';
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'unsupported';
+  return 'supported';
+}
+
+export function isWebPushSupported(): boolean {
+  return getWebPushSupportStatus() === 'supported';
+}
+
 export type WebPushSubscribeResult =
   | { ok: true }
-  | { ok: false; reason: 'unsupported' | 'no_vapid' | 'denied' | 'error'; message?: string };
+  | {
+      ok: false;
+      reason: 'unsupported' | 'insecure_context' | 'no_vapid' | 'denied' | 'error';
+      message?: string;
+    };
 
 export async function subscribeWebPush(accessToken: string): Promise<WebPushSubscribeResult> {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+  const supportStatus = getWebPushSupportStatus();
+  if (supportStatus === 'insecure_context') {
+    return { ok: false, reason: 'insecure_context' };
+  }
+  if (supportStatus === 'unsupported') {
     return { ok: false, reason: 'unsupported' };
   }
 
@@ -104,10 +126,6 @@ export async function unsubscribeWebPush(accessToken: string): Promise<void> {
   if (typeof localStorage !== 'undefined') {
     localStorage.removeItem('qf_push_endpoint');
   }
-}
-
-export function isWebPushSupported(): boolean {
-  return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
 }
 
 export async function fetchVapidPublicKey(accessToken: string): Promise<string | null> {

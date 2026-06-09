@@ -10,6 +10,6 @@ export type CardAttachmentView = {
   isImage: boolean;
   isVideoLink: boolean;
   isCover: boolean;
-  uploader: { id: number; name: string };
+  uploader: { id: number; name: string; avatarPath?: string | null };
   createdAt: string;
 };

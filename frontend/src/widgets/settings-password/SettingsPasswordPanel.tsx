@@ -124,14 +124,16 @@ export function SettingsPasswordPanel({ accessToken, user, onUserUpdated }: Prop
           disabled={busy}
         />
       </label>
-      <button
-        type="button"
-        className="trello-btn trello-btn-primary trello-btn-sm"
-        disabled={busy}
-        onClick={() => void submit()}
-      >
-        {busy ? '…' : user?.hasPassword ? 'Изменить пароль' : 'Установить пароль'}
-      </button>
+      <div className="trello-settings-card-actions">
+        <button
+          type="button"
+          className="trello-btn trello-btn-primary trello-btn-sm"
+          disabled={busy}
+          onClick={() => void submit()}
+        >
+          {busy ? '…' : user?.hasPassword ? 'Изменить пароль' : 'Установить пароль'}
+        </button>
+      </div>
       <AlertModal
         open={errorModal != null}
         title="Ошибка"

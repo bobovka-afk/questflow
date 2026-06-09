@@ -15,7 +15,7 @@ import {
 } from '@entities/user-settings';
 import { isValidUsername, normalizeUsername, profilePathForUsername, updateUsername } from '@entities/user';
 import { api, formatApiError } from '@shared/api';
-import { formatDateTimeRuWithYear } from '@shared/lib/formatDateRu';
+import { formatDateTimeRuSettings } from '@shared/lib/formatDateRu';
 import { SpaLink } from '@shared/lib';
 import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 import { SettingsSwitch } from '@shared/ui/settings-switch/SettingsSwitch';
@@ -266,9 +266,11 @@ export function SettingsPage(props: Props) {
       case 'account':
         return (
           <div className="trello-settings-section">
-            <p className="trello-settings-section-lead">
-              Просмотр данных аккаунта. Имя и аватар редактируются в профиле.
-            </p>
+            <header className="trello-settings-section-head">
+              <h2 className="trello-settings-section-lead">
+                Просмотр данных аккаунта. Имя и аватар редактируются в профиле.
+              </h2>
+            </header>
             {emailChangeMsg ? (
               <div className="trello-banner trello-banner-warn">{emailChangeMsg}</div>
             ) : null}
@@ -312,14 +314,16 @@ export function SettingsPage(props: Props) {
                   />
                 </label>
               ) : null}
-              <button
-                type="button"
-                className="trello-btn trello-btn-primary trello-btn-sm"
-                disabled={emailChangeBusy || !newEmail.trim()}
-                onClick={() => void handleRequestEmailChange()}
-              >
-                {emailChangeBusy ? '…' : 'Отправить подтверждения'}
-              </button>
+              <div className="trello-settings-card-actions">
+                <button
+                  type="button"
+                  className="trello-btn trello-btn-primary trello-btn-sm"
+                  disabled={emailChangeBusy || !newEmail.trim()}
+                  onClick={() => void handleRequestEmailChange()}
+                >
+                  {emailChangeBusy ? '…' : 'Отправить подтверждения'}
+                </button>
+              </div>
             </article>
             <article className="trello-settings-card">
               <h2 className="trello-settings-card-title">Публичный @username</h2>
@@ -349,14 +353,16 @@ export function SettingsPage(props: Props) {
                   maxLength={32}
                 />
               </label>
-              <button
-                type="button"
-                className="trello-btn trello-btn-primary trello-btn-sm"
-                disabled={usernameBusy || !usernameDraft.trim()}
-                onClick={() => void handleSaveUsername()}
-              >
-                {usernameBusy ? '…' : 'Сохранить username'}
-              </button>
+              <div className="trello-settings-card-actions">
+                <button
+                  type="button"
+                  className="trello-btn trello-btn-primary trello-btn-sm"
+                  disabled={usernameBusy || !usernameDraft.trim()}
+                  onClick={() => void handleSaveUsername()}
+                >
+                  {usernameBusy ? '…' : 'Сохранить username'}
+                </button>
+              </div>
             </article>
             <article className="trello-settings-card">
               <h2 className="trello-settings-card-title">Часовой пояс отображения</h2>
@@ -367,40 +373,39 @@ export function SettingsPage(props: Props) {
               {timezoneMsg ? (
                 <p className="trello-settings-card-hint">{timezoneMsg}</p>
               ) : null}
-              <label className="trello-field">
-                <span className="trello-label">IANA timezone</span>
-                <input
-                  className="trello-input"
-                  type="text"
-                  list="qf-timezone-suggestions"
+              <div className="trello-field trello-settings-timezone-field">
+                <select
+                  className="trello-input trello-settings-timezone-select"
                   value={displayTimezone}
                   onChange={(e) => setDisplayTimezone(e.target.value)}
-                  placeholder="Europe/Moscow"
                   disabled={timezoneBusy}
-                />
-                <datalist id="qf-timezone-suggestions">
-                  {DISPLAY_TIMEZONE_SUGGESTIONS.map((z) => (
-                    <option key={z} value={z} />
+                >
+                  {!displayTimezone ? (
+                    <option value="" disabled>
+                      Выберите часовой пояс
+                    </option>
+                  ) : null}
+                  {(displayTimezone &&
+                  !DISPLAY_TIMEZONE_SUGGESTIONS.includes(displayTimezone)
+                    ? [displayTimezone, ...DISPLAY_TIMEZONE_SUGGESTIONS]
+                    : DISPLAY_TIMEZONE_SUGGESTIONS
+                  ).map((z) => (
+                    <option key={z} value={z}>
+                      {z}
+                    </option>
                   ))}
-                </datalist>
-              </label>
-              <button
-                type="button"
-                className="trello-btn trello-btn-primary trello-btn-sm"
-                disabled={timezoneBusy || !displayTimezone.trim()}
-                onClick={() => void handleSaveTimezone()}
-              >
-                {timezoneBusy ? '…' : 'Сохранить часовой пояс'}
-              </button>
-            </article>
-            <article className="trello-settings-card">
-              <h2 className="trello-settings-card-title">Профиль</h2>
-              <p className="trello-settings-card-hint">
-                Отображаемое имя и фото аккаунта настраиваются на странице профиля.
-              </p>
-              <SpaLink className="trello-btn trello-btn-primary trello-btn-sm" to="/profile/me">
-                Открыть профиль
-              </SpaLink>
+                </select>
+              </div>
+              <div className="trello-settings-card-actions">
+                <button
+                  type="button"
+                  className="trello-btn trello-btn-primary trello-btn-sm"
+                  disabled={timezoneBusy || !displayTimezone.trim()}
+                  onClick={() => void handleSaveTimezone()}
+                >
+                  {timezoneBusy ? '…' : 'Сохранить часовой пояс'}
+                </button>
+              </div>
             </article>
             {props.accessToken && props.onAccountDeleted ? (
               <SettingsDeleteAccountPanel
@@ -415,9 +420,11 @@ export function SettingsPage(props: Props) {
       case 'security':
         return (
           <div className="trello-settings-section">
-            <p className="trello-settings-section-lead">
-              Пароль и активные сессии на ваших устройствах.
-            </p>
+            <header className="trello-settings-section-head">
+              <h2 className="trello-settings-section-lead">
+                Пароль и активные сессии на ваших устройствах.
+              </h2>
+            </header>
 
             {props.accessToken ? (
               <SettingsPasswordPanel
@@ -472,13 +479,17 @@ export function SettingsPage(props: Props) {
                                 {session.isCurrent ? ' · текущая' : ''}
                               </strong>
                               <span className="trello-settings-session-meta">
-                                Последняя активность: {formatDateTimeRuWithYear(session.lastSeenAt)}
-                                {session.ipAddress ? ` · ${session.ipAddress}` : ''}
+                                Последняя активность:{' '}
+                                {formatDateTimeRuSettings(session.lastSeenAt)}
                               </span>
                             </div>
                             <button
                               type="button"
-                              className="trello-btn trello-btn-ghost trello-btn-sm"
+                              className={`trello-btn trello-btn-sm ${
+                                session.isCurrent
+                                  ? 'trello-settings-session-btn--current trello-btn-primary'
+                                  : 'trello-btn-ghost'
+                              }`}
                               disabled={session.isCurrent || sessionBusyId === session.id}
                               onClick={() => void handleRevokeSession(session.id)}
                             >
@@ -504,9 +515,11 @@ export function SettingsPage(props: Props) {
       case 'notifications':
         return (
           <div className="trello-settings-section">
-            <p className="trello-settings-section-lead">
-              Email-уведомления и связь с in-app оповещениями о наградах.
-            </p>
+            <header className="trello-settings-section-head">
+              <h2 className="trello-settings-section-lead">
+                Письма на почту и оповещения в колоколе на сайте.
+              </h2>
+            </header>
             <div
               className="trello-settings-switches"
               aria-busy={notificationMeta.loading || undefined}
@@ -519,8 +532,8 @@ export function SettingsPage(props: Props) {
                 onChange={(checked) => setNotificationSettings({ emailSecurity: checked })}
               />
               <SettingsSwitch
-                label="Приглашения в workspace"
-                description="Письма с приглашением в команду."
+                label="Приглашения в команду"
+                description="Письма с приглашением в рабочее пространство."
                 checked={notificationSettings.emailWorkspaceInvites}
                 disabled={notificationMeta.saving || notificationMeta.loading}
                 onChange={(checked) =>
@@ -528,8 +541,8 @@ export function SettingsPage(props: Props) {
                 }
               />
               <SettingsSwitch
-                label="In-app: квесты, сундуки, достижения"
-                description="Колокол в шапке — геймификация."
+                label="Квесты, сундуки и достижения"
+                description="Колокол в шапке."
                 checked={notificationSettings.inAppGamification}
                 disabled={notificationMeta.saving || notificationMeta.loading}
                 onChange={(checked) =>
@@ -537,25 +550,29 @@ export function SettingsPage(props: Props) {
                 }
               />
               <SettingsSwitch
-                label="In-app: @упоминания"
+                label="Упоминания (@)"
+                description="Колокол в шапке."
                 checked={notificationSettings.inAppMentions}
                 disabled={notificationMeta.saving || notificationMeta.loading}
                 onChange={(checked) => setNotificationSettings({ inAppMentions: checked })}
               />
               <SettingsSwitch
-                label="In-app: дедлайны карточек"
+                label="Дедлайны карточек"
+                description="Колокол в шапке."
                 checked={notificationSettings.inAppDeadlines}
                 disabled={notificationMeta.saving || notificationMeta.loading}
                 onChange={(checked) => setNotificationSettings({ inAppDeadlines: checked })}
               />
               <SettingsSwitch
-                label="In-app: назначение на карточку"
+                label="Назначение на карточку"
+                description="Колокол в шапке."
                 checked={notificationSettings.inAppAssign}
                 disabled={notificationMeta.saving || notificationMeta.loading}
                 onChange={(checked) => setNotificationSettings({ inAppAssign: checked })}
               />
               <SettingsSwitch
-                label="In-app: друзья и рейды"
+                label="Друзья и рейды"
+                description="Колокол в шапке."
                 checked={notificationSettings.inAppSocial}
                 disabled={notificationMeta.saving || notificationMeta.loading}
                 onChange={(checked) => setNotificationSettings({ inAppSocial: checked })}
@@ -563,20 +580,26 @@ export function SettingsPage(props: Props) {
               <p className="trello-settings-card-hint">
                 Всплывающие XP на доске — вкладка «Геймификация» (не дублируют колокол).
               </p>
+              <p className="trello-settings-card-hint">
+                Всплывающие уведомления браузера (нужна подписка ниже):
+              </p>
               <SettingsSwitch
-                label="Push: назначение на карточку"
+                label="Назначение на карточку"
+                description="Всплывающее уведомление браузера."
                 checked={notificationSettings.pushAssign}
                 disabled={notificationMeta.saving || notificationMeta.loading}
                 onChange={(checked) => setNotificationSettings({ pushAssign: checked })}
               />
               <SettingsSwitch
-                label="Push: @упоминания"
+                label="Упоминания (@)"
+                description="Всплывающее уведомление браузера."
                 checked={notificationSettings.pushMention}
                 disabled={notificationMeta.saving || notificationMeta.loading}
                 onChange={(checked) => setNotificationSettings({ pushMention: checked })}
               />
               <SettingsSwitch
-                label="Push: заявки в друзья"
+                label="Заявки в друзья"
+                description="Всплывающее уведомление браузера."
                 checked={notificationSettings.pushFriendRequest}
                 disabled={notificationMeta.saving || notificationMeta.loading}
                 onChange={(checked) =>
@@ -593,9 +616,11 @@ export function SettingsPage(props: Props) {
       case 'gamification':
         return (
           <div className="trello-settings-section">
-            <p className="trello-settings-section-lead">
-              Поведение на доске при закрытии карточки и начислении опыта.
-            </p>
+            <header className="trello-settings-section-head">
+              <h2 className="trello-settings-section-lead">
+                Поведение на доске при закрытии карточки и начислении опыта.
+              </h2>
+            </header>
             <div
               className="trello-settings-switches"
               aria-busy={gamificationMeta.loading || undefined}
@@ -625,10 +650,12 @@ export function SettingsPage(props: Props) {
       case 'privacy':
         return (
           <div className="trello-settings-section">
-            <p className="trello-settings-section-lead">
-              Кто видит ваш публичный профиль и персонажа среди участников общих воркспейсов.
-              Email другим пользователям не показывается.
-            </p>
+            <header className="trello-settings-section-head">
+              <h2 className="trello-settings-section-lead">
+                Кто видит ваш публичный профиль и персонажа среди участников общих
+                воркспейсов. Email другим пользователям не показывается.
+              </h2>
+            </header>
             <div className="trello-settings-switches" aria-busy={privacyMeta.loading || undefined}>
               <SettingsSwitch
                 label="Показывать персонажа другим"
@@ -644,15 +671,6 @@ export function SettingsPage(props: Props) {
                 disabled={privacyMeta.saving || privacyMeta.loading}
                 onChange={(checked) =>
                   setPrivacySettings({ showAccountAvatarOnPublicProfile: checked })
-                }
-              />
-              <SettingsSwitch
-                label="Находить по имени персонажа"
-                description="Другие смогут искать вас в разделе «Друзья» по имени героя."
-                checked={privacySettings.allowFindByCharacterName}
-                disabled={privacyMeta.saving || privacyMeta.loading}
-                onChange={(checked) =>
-                  setPrivacySettings({ allowFindByCharacterName: checked })
                 }
               />
               <SettingsSwitch
@@ -688,8 +706,8 @@ export function SettingsPage(props: Props) {
           </div>
           <h1 className="trello-topbar-stripe-center">Настройки</h1>
           <div className="trello-topbar-actions">
-            <SpaLink className="trello-btn trello-btn-ghost" to="/profile/me">
-              Профиль
+            <SpaLink className="trello-btn trello-btn-ghost" to="/settings">
+              Настройки
             </SpaLink>
           </div>
         </header>

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { uploadCardAttachment, type CardAttachmentRow } from '@features/board/api/cardAttachmentsApi';
+import { validateAttachmentFile, getImageFileFromClipboardEvent } from '@features/board/lib/attachmentFile';
 import { formatApiError } from '@shared/api';
 import { CardAttachmentsSection } from '@features/board/ui/CardAttachmentsSection';
+import { CardPasteAttachmentPrompt } from '@features/board/ui/CardPasteAttachmentPrompt';
 import { CardLabelStrip } from '@features/board/ui/CardLabelStrip';
 import { RichCommentBody } from '@features/board/ui/RichCommentBody';
 import { attachmentMarkdown } from '@features/board/lib/richTextEditor';
@@ -26,6 +28,7 @@ export type CardDetailComment = {
 import type { WorkspaceLabelRow } from '@features/board/lib/boardCardFilters';
 import { avatarInitials, avatarSrcFromPath, userProfilePath } from '@entities/user';
 import { handleSpaTileAuxClick, handleSpaTileClick } from '@shared/lib/navigation-core';
+import { IconAttach } from '@shared/ui/icons/IconAttach';
 
 type WorkspaceMember = {
   userId: number;
@@ -33,6 +36,33 @@ type WorkspaceMember = {
 };
 
 type Panel = 'labels' | 'dates' | 'members' | null;
+
+type PastePreview = {
+  file: File;
+  previewUrl: string;
+  target: 'card' | 'comment';
+};
+
+type PendingCommentAttachment = {
+  id: string;
+  file: File;
+  previewUrl: string;
+  isImage: boolean;
+};
+
+function nextPendingId(): string {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function isCommentAuthor(
+  comment: CardDetailComment,
+  currentUserId: number | null,
+): boolean {
+  if (currentUserId == null) return false;
+  return comment.userId === currentUserId || comment.user.id === currentUserId;
+}
 
 function IconLines() {
   return (
@@ -66,14 +96,6 @@ function IconMember() {
   );
 }
 
-function IconAttach() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z" />
-    </svg>
-  );
-}
-
 function EditorFooter({
   onSave,
   onCancel,
@@ -81,6 +103,9 @@ function EditorFooter({
   saveLabel,
   saving,
   showFormattingHelp,
+  onAttach,
+  attachDisabled,
+  attachLabel = 'Прикрепить файл',
 }: {
   onSave: () => void;
   onCancel: () => void;
@@ -88,6 +113,9 @@ function EditorFooter({
   saveLabel?: string;
   saving?: boolean;
   showFormattingHelp?: boolean;
+  onAttach?: () => void;
+  attachDisabled?: boolean;
+  attachLabel?: string;
 }) {
   return (
     <div className="trello-card-detail-editor-footer">
@@ -108,6 +136,17 @@ function EditorFooter({
         >
           Отмена
         </button>
+        {onAttach ? (
+          <button
+            type="button"
+            className="trello-card-detail-editor-attach-btn"
+            aria-label={attachLabel}
+            disabled={attachDisabled || saving}
+            onClick={onAttach}
+          >
+            <IconAttach />
+          </button>
+        ) : null}
       </div>
       {showFormattingHelp ? (
         <span className="trello-card-detail-editor-help" title="Markdown: **жирный**, *курсив*, списки">
@@ -116,6 +155,15 @@ function EditorFooter({
       ) : null}
     </div>
   );
+}
+
+function resolveMemberAvatar(
+  members: WorkspaceMember[],
+  userId: number,
+  directAvatarPath?: string | null,
+): string | null | undefined {
+  if (directAvatarPath) return directAvatarPath;
+  return members.find((m) => m.user.id === userId)?.user.avatarPath;
 }
 
 function CommentAvatarBubble({
@@ -194,7 +242,7 @@ export type CardDetailModalTrelloProps = {
   commentDraft: string;
   onCommentDraftChange: (v: string) => void;
   commentSubmitBusy: boolean;
-  onSubmitComment: () => void;
+  onSubmitComment: (body: string) => void | Promise<void>;
   formatCommentRelativeAgo: (iso: string, nowMs: number) => string;
   nowTick: number;
   editingCommentId: number | null;
@@ -217,6 +265,10 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
   const [commentSnapshot, setCommentSnapshot] = useState('');
   const [attachUploadBusy, setAttachUploadBusy] = useState(false);
   const [attachError, setAttachError] = useState<string | null>(null);
+  const [pastePreview, setPastePreview] = useState<PastePreview | null>(null);
+  const [pendingCommentAttachments, setPendingCommentAttachments] = useState<
+    PendingCommentAttachment[]
+  >([]);
   const descRef = useRef<HTMLTextAreaElement>(null);
   const commentRef = useRef<HTMLTextAreaElement>(null);
   const cardFileInputRef = useRef<HTMLInputElement>(null);
@@ -224,6 +276,7 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
   const uploadTargetRef = useRef<'card' | 'comment'>('card');
   const openAttachmentPickerRef = useRef<(() => void) | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setPanel(null);
@@ -233,7 +286,85 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
     setCommentExpanded(false);
     setCommentSnapshot('');
     setAttachError(null);
+    setPastePreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return null;
+    });
+    clearPendingCommentAttachments();
   }, [props.card.id]);
+
+  function clearPendingCommentAttachments() {
+    setPendingCommentAttachments((prev) => {
+      for (const item of prev) URL.revokeObjectURL(item.previewUrl);
+      return [];
+    });
+  }
+
+  function queueCommentAttachment(file: File, previewUrl?: string) {
+    const url = previewUrl ?? URL.createObjectURL(file);
+    setPendingCommentAttachments((prev) => [
+      ...prev,
+      {
+        id: nextPendingId(),
+        file,
+        previewUrl: url,
+        isImage: file.type.startsWith('image/'),
+      },
+    ]);
+    setCommentExpanded(true);
+    setAttachError(null);
+  }
+
+  function removePendingCommentAttachment(id: string) {
+    setPendingCommentAttachments((prev) => {
+      const item = prev.find((p) => p.id === id);
+      if (item) URL.revokeObjectURL(item.previewUrl);
+      return prev.filter((p) => p.id !== id);
+    });
+  }
+
+  const commentCanSubmit =
+    props.commentDraft.trim().length > 0 || pendingCommentAttachments.length > 0;
+
+  function clearPastePreview() {
+    setPastePreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return null;
+    });
+  }
+
+  function queuePastePreview(file: File, target: 'card' | 'comment') {
+    const validationError = validateAttachmentFile(file);
+    if (validationError) {
+      setAttachError(validationError);
+      return;
+    }
+    setPastePreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return {
+        file,
+        previewUrl: URL.createObjectURL(file),
+        target,
+      };
+    });
+    setAttachError(null);
+    if (target === 'comment') {
+      setCommentExpanded(true);
+    }
+  }
+
+  async function confirmPastePreview() {
+    if (!pastePreview || attachUploadBusy) return;
+    const { file, target, previewUrl } = pastePreview;
+    setPastePreview(null);
+    if (target === 'comment') {
+      queueCommentAttachment(file, previewUrl);
+      commentRef.current?.focus();
+      return;
+    }
+    URL.revokeObjectURL(previewUrl);
+    await handleFileUpload(file, 'card');
+  }
 
   function openCardFilePicker() {
     uploadTargetRef.current = 'card';
@@ -251,30 +382,99 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
 
   async function handleFileUpload(file: File | undefined, target: 'card' | 'comment') {
     if (!file || !props.accessToken) return;
+    const validationError = validateAttachmentFile(file);
+    if (validationError) {
+      setAttachError(validationError);
+      return;
+    }
+    if (target === 'comment') {
+      queueCommentAttachment(file);
+      if (commentFileInputRef.current) commentFileInputRef.current.value = '';
+      return;
+    }
     setAttachUploadBusy(true);
     setAttachError(null);
     try {
-      const row = await uploadCardAttachment(
+      await uploadCardAttachment(
         props.accessToken,
         props.workspaceId,
         props.card.id,
         file,
       );
       notifyAttachmentsChanged();
-      if (target === 'comment') {
-        const next = `${props.commentDraft}${attachmentMarkdown(row)}`.trimStart();
-        props.onCommentDraftChange(next);
-        setCommentSnapshot(next);
-        setCommentExpanded(true);
-      }
     } catch (e) {
       setAttachError(formatApiError(e));
     } finally {
       setAttachUploadBusy(false);
       if (cardFileInputRef.current) cardFileInputRef.current.value = '';
-      if (commentFileInputRef.current) commentFileInputRef.current.value = '';
     }
   }
+
+  async function submitCommentDraft() {
+    if (!props.accessToken || props.commentSubmitBusy || attachUploadBusy) return;
+    if (!commentCanSubmit) return;
+
+    const text = props.commentDraft.trim();
+    const pending = [...pendingCommentAttachments];
+    setAttachUploadBusy(true);
+    setAttachError(null);
+    try {
+      const markdownParts: string[] = [];
+      for (const item of pending) {
+        const row = await uploadCardAttachment(
+          props.accessToken,
+          props.workspaceId,
+          props.card.id,
+          item.file,
+        );
+        markdownParts.push(attachmentMarkdown(row));
+      }
+      if (markdownParts.length > 0) notifyAttachmentsChanged();
+      const attachmentText = markdownParts.join('');
+      const body = `${text}${attachmentText}`.trim();
+      if (!body) return;
+
+      await props.onSubmitComment(body);
+      clearPendingCommentAttachments();
+      setCommentExpanded(false);
+      props.onCommentDraftChange('');
+      setCommentSnapshot('');
+    } catch (e) {
+      setAttachError(formatApiError(e));
+    } finally {
+      setAttachUploadBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    const modal = modalRef.current;
+    if (!modal || !props.accessToken) return;
+
+    const onPaste = (event: ClipboardEvent) => {
+      if (attachUploadBusy || props.busy) return;
+      const file = getImageFileFromClipboardEvent(event);
+      if (!file) return;
+
+      event.preventDefault();
+      const target =
+        commentRef.current && document.activeElement === commentRef.current
+          ? 'comment'
+          : 'card';
+      queuePastePreview(file, target);
+    };
+
+    modal.addEventListener('paste', onPaste);
+    return () => modal.removeEventListener('paste', onPaste);
+  }, [props.accessToken, props.busy, attachUploadBusy, props.card.id]);
+
+  useEffect(() => {
+    if (!pastePreview) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') clearPastePreview();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [pastePreview]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -406,12 +606,14 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
   }
 
   return (
-    <div
-      className="trello-modal-backdrop trello-modal-backdrop--card-trello"
-      role="presentation"
-      onClick={() => !props.busy && props.onClose()}
-    >
+    <>
       <div
+        className="trello-modal-backdrop trello-modal-backdrop--card-trello"
+        role="presentation"
+        onClick={() => !props.busy && props.onClose()}
+      >
+      <div
+        ref={modalRef}
         className="trello-modal trello-modal-card-detail trello-modal-card-detail--trello"
         role="dialog"
         aria-modal
@@ -612,17 +814,6 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
               >
                 <IconMember /> Участники
               </button>
-              {props.accessToken ? (
-                <button
-                  type="button"
-                  className="trello-card-detail-add-btn"
-                  disabled={attachUploadBusy}
-                  aria-label="Прикрепить файл"
-                  onClick={() => openCardFilePicker()}
-                >
-                  <IconAttach />
-                </button>
-              ) : null}
             </div>
 
             {panelContent}
@@ -674,6 +865,9 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                       props.onDescriptionCancel();
                       setDescExpanded(false);
                     }}
+                    onAttach={props.accessToken ? () => openCardFilePicker() : undefined}
+                    attachDisabled={attachUploadBusy || props.busy}
+                    attachLabel="Прикрепить файл"
                   />
                 ) : null}
               </div>
@@ -723,7 +917,7 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                         .avatarPath
                     }
                     profileTo={
-                      props.currentUserId != null ? '/profile/me' : '/workspaces'
+                      props.currentUserId != null ? '/profile/character' : '/workspaces'
                     }
                   />
                 ) : null}
@@ -753,40 +947,57 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                           commentExpanded &&
                           e.key === 'Enter' &&
                           !e.shiftKey &&
-                          props.commentDraft.trim().length > 0
+                          commentCanSubmit
                         ) {
                           e.preventDefault();
-                          props.onSubmitComment();
-                          setCommentExpanded(false);
+                          void submitCommentDraft();
                         }
                       }}
                     />
-                    <button
-                      type="button"
-                      className="trello-card-detail-comment-attach-btn"
-                      aria-label="Прикрепить файл к комментарию"
-                      disabled={attachUploadBusy || props.commentSubmitBusy}
-                      onClick={() => openCommentFilePicker()}
-                    >
-                      <IconAttach />
-                    </button>
                   </div>
+                  {commentExpanded && pendingCommentAttachments.length > 0 ? (
+                    <ul className="trello-compose-attachments" aria-label="Вложения к комментарию">
+                      {pendingCommentAttachments.map((item) => (
+                        <li key={item.id} className="trello-compose-attachment">
+                          {item.isImage ? (
+                            <img
+                              className="trello-compose-attachment-img"
+                              src={item.previewUrl}
+                              alt={item.file.name}
+                            />
+                          ) : (
+                            <span className="trello-compose-attachment-file">{item.file.name}</span>
+                          )}
+                          <button
+                            type="button"
+                            className="trello-compose-attachment-remove"
+                            aria-label={`Убрать ${item.file.name}`}
+                            disabled={attachUploadBusy || props.commentSubmitBusy}
+                            onClick={() => removePendingCommentAttachment(item.id)}
+                          >
+                            ×
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                   {commentExpanded ? (
                     <EditorFooter
                       saveLabel="Сохранить"
-                      saving={props.commentSubmitBusy}
+                      saving={props.commentSubmitBusy || attachUploadBusy}
                       saveDisabled={
-                        props.commentSubmitBusy || props.commentDraft.trim().length === 0
+                        props.commentSubmitBusy || attachUploadBusy || !commentCanSubmit
                       }
-                      onSave={() => {
-                        props.onSubmitComment();
-                        setCommentExpanded(false);
-                      }}
+                      onSave={() => void submitCommentDraft()}
                       onCancel={() => {
                         props.onCommentDraftChange(commentSnapshot);
+                        clearPendingCommentAttachments();
                         setCommentExpanded(false);
                         commentRef.current?.blur();
                       }}
+                      onAttach={() => openCommentFilePicker()}
+                      attachDisabled={attachUploadBusy || props.commentSubmitBusy}
+                      attachLabel="Прикрепить файл к комментарию"
                     />
                   ) : null}
                 </div>
@@ -805,12 +1016,12 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                       <li key={item.key} className="trello-card-detail-activity-item">
                         <CommentAvatarBubble
                           name={props.currentUserName}
-                          avatarPath={
-                            props.members.find((m) => m.user.id === props.currentUserId)?.user
-                              .avatarPath
-                          }
+                          avatarPath={resolveMemberAvatar(
+                            props.members,
+                            props.currentUserId ?? -1,
+                          )}
                           profileTo={
-                            props.currentUserId != null ? '/profile/me' : '/workspaces'
+                            props.currentUserId != null ? '/profile/character' : '/workspaces'
                           }
                         />
                         <div className="trello-card-detail-activity-body">
@@ -836,10 +1047,11 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                       <li key={item.key} className="trello-card-detail-activity-item">
                         <CommentAvatarBubble
                           name={a.uploader.name}
-                          avatarPath={
-                            props.members.find((m) => m.user.id === a.uploader.id)?.user
-                              .avatarPath
-                          }
+                          avatarPath={resolveMemberAvatar(
+                            props.members,
+                            a.uploader.id,
+                            a.uploader.avatarPath,
+                          )}
                           profileTo={profileTo}
                         />
                         <div className="trello-card-detail-activity-body">
@@ -873,10 +1085,9 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                   }
 
                   const c = item.comment;
-                  const isAuthor =
-                    props.currentUserId != null && c.userId === props.currentUserId;
-                  const canDelete = isAuthor || props.canManageWorkspace;
-                  const authorProfileTo = isAuthor ? '/profile/me' : userProfilePath(c.userId);
+                  const isAuthor = isCommentAuthor(c, props.currentUserId);
+                  const canDeleteComment = isAuthor || props.canManageWorkspace;
+                  const authorProfileTo = isAuthor ? '/profile/character' : userProfilePath(c.userId);
                   return (
                     <li key={item.key} className="trello-card-detail-activity-item">
                       <CommentAvatarBubble
@@ -914,6 +1125,16 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                               >
                                 Отмена
                               </button>
+                              {canDeleteComment ? (
+                                <button
+                                  type="button"
+                                  className="trello-card-detail-text-btn trello-card-detail-text-btn--danger"
+                                  disabled={props.commentEditBusy}
+                                  onClick={() => props.onDeleteComment(c)}
+                                >
+                                  Удалить
+                                </button>
+                              ) : null}
                             </div>
                           </>
                         ) : (
@@ -928,24 +1149,24 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                               </button>
                               <RichCommentBody body={c.body} members={props.members} />
                             </div>
-                            <time
-                              className="trello-card-detail-activity-time"
-                              dateTime={c.createdAt}
-                            >
-                              {props.formatCommentRelativeAgo(c.createdAt, props.nowTick)}
-                            </time>
-                            {(isAuthor || canDelete) && (
-                              <div className="trello-card-comment-actions">
-                                {isAuthor ? (
-                                  <button
-                                    type="button"
-                                    className="trello-card-comment-link"
-                                    onClick={() => props.onStartEditComment(c)}
-                                  >
-                                    Редактировать
-                                  </button>
-                                ) : null}
-                                {canDelete ? (
+                            <div className="trello-card-detail-activity-meta">
+                              <time
+                                className="trello-card-detail-activity-time"
+                                dateTime={c.createdAt}
+                              >
+                                {props.formatCommentRelativeAgo(c.createdAt, props.nowTick)}
+                              </time>
+                              {canDeleteComment ? (
+                                <div className="trello-card-comment-actions">
+                                  {isAuthor ? (
+                                    <button
+                                      type="button"
+                                      className="trello-card-comment-link"
+                                      onClick={() => props.onStartEditComment(c)}
+                                    >
+                                      Редактировать
+                                    </button>
+                                  ) : null}
                                   <button
                                     type="button"
                                     className="trello-card-comment-link trello-card-comment-link-danger"
@@ -953,9 +1174,9 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                                   >
                                     Удалить
                                   </button>
-                                ) : null}
-                              </div>
-                            )}
+                                </div>
+                              ) : null}
+                            </div>
                           </>
                         )}
                       </div>
@@ -967,6 +1188,16 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
           </aside>
         </div>
       </div>
-    </div>
+      </div>
+
+      {pastePreview ? (
+        <CardPasteAttachmentPrompt
+          previewUrl={pastePreview.previewUrl}
+          busy={attachUploadBusy}
+          onConfirm={() => void confirmPastePreview()}
+          onCancel={clearPastePreview}
+        />
+      ) : null}
+    </>
   );
 }

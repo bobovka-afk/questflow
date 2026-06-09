@@ -96,6 +96,31 @@ describe('CardAttachmentsSection', () => {
     });
   });
 
+  it('deletes attachment after confirmation', async () => {
+    vi.mocked(api.fetchCardAttachments).mockResolvedValue([sampleRow]);
+    vi.mocked(api.deleteCardAttachment).mockResolvedValue(undefined);
+
+    render(
+      <CardAttachmentsSection accessToken="tok" workspaceId={1} cardId={42} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('photo.png')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Удалить вложение' }));
+
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    expect(screen.getByText('Удалить вложение?')).toBeInTheDocument();
+    expect(screen.getByText(/photo\.png/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Удалить' }));
+
+    await waitFor(() => {
+      expect(api.deleteCardAttachment).toHaveBeenCalledWith('tok', 1, 42, 1);
+    });
+  });
+
   it('shows error when video file is selected', async () => {
     render(
       <CardAttachmentsSection accessToken="tok" workspaceId={1} cardId={42} />,

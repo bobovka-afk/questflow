@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="ru" class="px-ui">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Questflow — Rail footer: тема и выход (10+10)</title>
+    <style>
+      :root {
+        --px-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+        --px-bg: #f0e6d0;
+        --px-bg2: #e4d4b8;
+        --px-border: #2a2018;
+        --px-accent: #8b4513;
+        --px-text: #2a2018;
+        --px-muted: #7a6858;
+        --px-green: #6b8c5a;
+        --px-green-text: #f8fff0;
+        --px-logout: #c84848;
+        --px-inset-dark: rgba(42, 32, 24, 0.18);
+        --px-inset-light: rgba(255, 255, 255, 0.5);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: var(--px-font);
+        font-size: 17px;
+        line-height: 1.45;
+        color: var(--px-text);
+        background: var(--px-bg);
+      }
+
+      .mock-picker {
+        position: sticky;
+        top: 0;
+        z-index: 200;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 10px 16px;
+        background: #2a2018;
+        color: #f0e6d0;
+        border-bottom: 4px solid #000;
+      }
+      .mock-picker a {
+        color: #f0e6d0;
+        text-decoration: none;
+        padding: 4px 10px;
+        border: 2px solid #7a6858;
+        background: #4a3828;
+        font-size: 15px;
+      }
+      .mock-picker a:hover,
+      .mock-picker a.is-active {
+        border-color: var(--px-green);
+        background: #6b8c5a;
+        color: var(--px-green-text);
+      }
+      .mock-note {
+        margin: 0;
+        padding: 8px 16px;
+        background: var(--px-bg2);
+        border-bottom: 3px solid var(--px-border);
+        color: var(--px-muted);
+        font-size: 15px;
+      }
+
+      .page { display: none; padding: 20px 24px 48px; max-width: 1100px; }
+      .page.is-visible { display: block; }
+
+      h1 { margin: 0 0 6px; font-size: 28px; font-weight: 700; }
+      .lead { margin: 0 0 24px; color: var(--px-muted); font-size: 15px; max-width: 820px; }
+
+      .section { margin-bottom: 36px; }
+      .section h2 { margin: 0 0 6px; font-size: 22px; font-weight: 700; color: var(--px-accent); }
+      .section p { margin: 0 0 14px; color: var(--px-muted); font-size: 14px; max-width: 720px; }
+
+      .icon-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+      .icon-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        width: 88px;
+      }
+      .icon-btn {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--px-border);
+        background: var(--px-bg);
+        color: var(--px-muted);
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        flex-shrink: 0;
+      }
+      .icon-btn .ico { width: 22px; height: 22px; display: block; }
+      .icon-btn.is-pick { cursor: pointer; }
+      .icon-btn.is-pick:hover { border-color: var(--px-accent); color: var(--px-text); }
+      .icon-btn.is-pick.is-selected { outline: 3px solid var(--px-accent); outline-offset: 2px; }
+      .icon-btn.is-current { border-color: var(--px-green); box-shadow: inset 0 0 0 1px var(--px-green); }
+
+      .icon-btn--logout { color: var(--px-logout); }
+      .icon-btn--logout.is-pick:hover,
+      .icon-btn--logout.is-selected {
+        background: #6b2030;
+        color: #ffd8d0;
+        border-color: #c03030;
+      }
+
+      .icon-code { font-size: 13px; font-weight: 700; color: var(--px-accent); }
+      .icon-caption { font-size: 12px; line-height: 1.25; color: var(--px-muted); text-align: center; max-width: 88px; }
+      .icon-title { font-size: 13px; font-weight: 600; color: var(--px-text); text-align: center; }
+
+      .pick-bar {
+        margin: 0 0 24px;
+        padding: 12px 14px;
+        border: 3px solid var(--px-green);
+        background: #edf5ea;
+        font-size: 15px;
+      }
+      .pick-bar strong { color: var(--px-accent); }
+      .px-btn {
+        border: 3px solid var(--px-border);
+        background: var(--px-green);
+        color: var(--px-green-text);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        padding: 8px 14px;
+        cursor: pointer;
+        margin-top: 8px;
+      }
+
+      .combo-row { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 8px; }
+      .combo-rail {
+        width: 76px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 12px 0;
+        gap: 8px;
+        background: var(--px-bg2);
+        border: 4px solid var(--px-border);
+        box-shadow: inset -3px 0 0 #c8b898;
+      }
+      .combo-rail .rail-spacer { flex: 1; min-height: 48px; }
+      .combo-rail .icon-btn { pointer-events: none; }
+      .combo-card {
+        flex: 1;
+        min-width: 240px;
+        max-width: 420px;
+        padding: 14px;
+        border: 3px solid var(--px-border);
+        background: var(--px-bg2);
+        box-shadow: inset -2px -2px 0 var(--px-inset-dark), inset 2px 2px 0 var(--px-inset-light);
+      }
+      .combo-card h3 { margin: 0 0 8px; font-size: 20px; font-weight: 700; }
+      .combo-card ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--px-muted); }
+      .combo-card li { margin-bottom: 4px; }
+
+      .state-note {
+        margin: 8px 0 0;
+        padding: 8px 10px;
+        border: 2px dashed var(--px-border);
+        background: #fff8ef;
+        font-size: 13px;
+        color: var(--px-muted);
+        max-width: 720px;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="mock-picker">
+      <strong>Rail footer ·</strong>
+      <a href="#gallery" data-page="gallery" class="is-active">Галерея (10+10)</a>
+      <a href="#combo" data-page="combo">Сборка rail</a>
+      <a href="rail-menu-icon-variants.html">← Nav icons</a>
+      <a href="theme-sun-icon-variants.html">Солнце (theme) →</a>
+    </nav>
+    <p class="mock-note">
+      <strong>Утверждено и в приложении:</strong> T1 (лунный серп) + S3 (контурное солнце) + P1 (контурный power).
+    </p>
+
+    <main id="gallery" class="page is-visible">
+      <h1>Тема и выход — 10 вариантов каждый</h1>
+      <p class="lead">
+        Формат как у nav-иконок: код (T1…T10 / L1…L10), короткая подпись-метафора и пояснение.
+        Для темы показан вид «светлая тема → перейти в тёмную» (луна/ночь); в тёмной теме иконка меняется на «день».
+      </p>
+
+      <div class="pick-bar" id="my-pick">
+        <strong>Моя сборка:</strong>
+        <span id="pick-theme">T1</span> · <span id="pick-logout">P1</span>
+        <button type="button" class="px-btn" id="goto-combo">На rail →</button>
+      </div>
+
+      <section class="section">
+        <h2>Переключатель темы</h2>
+        <p>Должно читаться с 22px в квадрате 40×40. Не путать с «настройками» и «уведомлениями».</p>
+        <div class="state-note">Подсказка title в приложении: «Тёмная тема» / «Светлая тема». Alt-state — солнце, факел, день-половинка и т.д.</div>
+        <div class="icon-grid" data-group="theme" style="margin-top:14px">
+          <!-- T1 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn is-pick is-current is-selected" data-id="T1" data-group="theme" title="Тёмная тема">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8A9.02 9.02 0 0 0 12 3z"/></svg>
+            </button>
+            <span class="icon-code">T1 ✓</span>
+            <span class="icon-title">Лунный серп</span>
+            <span class="icon-caption">Как сейчас — классика «ночь»</span>
+          </div>
+          <!-- T2 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn is-pick" data-id="T2" data-group="theme" title="Тёмная тема">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><rect x="11" y="1" width="2" height="3"/><rect x="11" y="20" width="2" height="3"/><rect x="1" y="11" width="3" height="2"/><rect x="20" y="11" width="3" height="2"/><rect x="4" y="4" width="2.5" height="2" transform="rotate(-45 5.25 5)"/><rect x="17.5" y="4" width="2.5" height="2" transform="rotate(45 18.75 5)"/><rect x="4" y="18" width="2.5" height="2" transform="rotate(45 5.25 19)"/><rect x="17.5" y="18" width="2.5" height="2" transform="rotate(-45 18.75 19)"/></svg>
+            </button>
+            <span class="icon-code">T2</span>
+            <span class="icon-title">Солнце</span>
+            <span class="icon-caption">Alt-state в тёмной теме — «вернуть день»</span>
+          </div>
+          <!-- T3 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn is-pick" data-id="T3" data-group="theme" title="Тёмная тема">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v20M12 2a10 10 0 0 1 0 20" fill-rule="evenodd"/></svg>
+            </button>
+            <span class="icon-code">T3</span>
+            <span class="icon-title">Полусфера</span>
+            <span class="icon-caption">День/ночь в одном символе</span>
+          </div>
+          <!-- T4 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn is-pick" data-id="T4" data-group="theme" title="Тёмная тема">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><rect x="10" y="14" width="4" height="8"/><rect x="9" y="12" width="6" height="2"/><path d="M12 2c-2 2-3 4-3 6a3 3 0 0 0 6 0c0-2-1-4-3-6z"/><rect x="11" y="4" width="2" height="3" fill="var(--px-bg)"/></svg>
+            </button>
+            <span class="icon-code">T4</span>
+            <span class="icon-title">Факел</span>
+            <span class="icon-caption">RPG-метафора «освещение»</span>
+          </div>
+          <!-- T5 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn is-pick" data-id="T5" data-group="theme" title="Тёмная тема">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="8" ry="5"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>
+            </button>
+            <span class="icon-code">T5</span>
+            <span class="icon-title">Глаз</span>
+            <span class="icon-caption">«Комфорт для глаз» / контраст</span>
+          </div>
+          <!-- T6 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn is-pick" data-id="T6" data-group="theme" title="Тёмная тема">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3v18"/><path d="M12 3a9 9 0 0 1 0 18z"/></svg>
+            </button>
+            <span class="icon-code">T6</span>
+            <span class="icon-title">Инь-ян</span>
+            <span class="icon-caption">Баланс светлого и тёмного</span>
+          </div>
+          <!-- T7 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn is-pick" data-id="T7" data-group="theme" title="Тёмная тема">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"/><rect x="4" y="4" width="8" height="16"/><rect x="6" y="7" width="2" height="2" fill="var(--px-bg)"/><rect x="14" y="7" width="2" height="2"/><rect x="14" y="11" width="2" height="2"/><rect x="14" y="15" width="2" height="2"/></svg>
+            </button>
+            <span class="icon-code">T7</span>
+            <span class="icon-title">Split UI</span>
+            <span class="icon-caption">Половина экрана — смена палитры</span>
+          </div>
+          <!-- T8 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn is-pick" data-id="T8" data-group="theme" title="Тёмная тема">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><rect x="10" y="10" width="4" height="10"/><ellipse cx="12" cy="8" rx="3" ry="4"/><path d="M12 4c1.5 0 2.5.8 2.5 2s-1 2-2.5 2-2.5-.8-2.5-2 1-2 2.5-2z" fill="var(--px-bg)"/></svg>
+            </button>
+            <span class="icon-code">T8</span>
+            <span class="icon-title">Свеча</span>
+            <span class="icon-caption">Уютный «пергамент / подземелье»</span>
+          </div>
+          <!-- T9 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn is-pick" data-id="T9" data-group="theme" title="Тёмная тема">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M6 14a6 6 0 1 1 10.4-4.1A4.5 4.5 0 1 0 6 14z"/></svg>
+            </button>
+            <span class="icon-code">T9</span>
+            <span class="icon-title">Облачная ночь</span>
+            <span class="icon-caption">Луна за облаком — мягче, чем T1</span>
+          </div>
+          <!-- T10 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn is-pick" data-id="T10" data-group="theme" title="Тёмная тема">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><text x="5" y="17" font-size="14" font-family="ui-sans-serif,system-ui,sans-serif" font-weight="700">Aa</text></svg>
+            </button>
+            <span class="icon-code">T10</span>
+            <span class="icon-title">Типографика</span>
+            <span class="icon-caption">Буквы Aa — «читаемость / контраст»</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Питание — 5 альтернатив L1</h2>
+        <p>Все в семействе IEC power (круг + штрих сверху). Красный акцент, hover — bordo.</p>
+        <div class="icon-grid" data-group="logout">
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick is-current is-selected" data-id="P1" data-group="logout" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M12 3v7"/><circle cx="12" cy="13" r="8"/></svg>
+            </button>
+            <span class="icon-code">P1 ✓</span>
+            <span class="icon-title">Контур</span>
+            <span class="icon-caption">В приложении — контурный power</span>
+          </div>
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick" data-id="L1" data-group="logout" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3h-2v8h2V3zm-1 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/></svg>
+            </button>
+            <span class="icon-code">L1</span>
+            <span class="icon-title">Заливка</span>
+            <span class="icon-caption">Классический power — заливка</span>
+          </div>
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick" data-id="P2" data-group="logout" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><rect x="10" y="2" width="4" height="9"/><path d="M4 14a8 8 0 1 0 16 0" fill="none" stroke="currentColor" stroke-width="3"/></svg>
+            </button>
+            <span class="icon-code">P2</span>
+            <span class="icon-title">Pixel</span>
+            <span class="icon-caption">Блочный штрих + толстая дуга</span>
+          </div>
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick" data-id="P3" data-group="logout" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square"><path d="M12 3v6"/><path d="M12 9a7 7 0 1 0 0 14"/><path d="M8.5 9.5A7 7 0 0 1 12 9"/></svg>
+            </button>
+            <span class="icon-code">P3</span>
+            <span class="icon-title">Разрыв</span>
+            <span class="icon-caption">Щель у штриха — standby</span>
+          </div>
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick" data-id="P4" data-group="logout" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 8h-2v5h2V8zm-1 10a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+            </button>
+            <span class="icon-code">P4</span>
+            <span class="icon-title">В рамке</span>
+            <span class="icon-caption">Кнопка на корпусе ПК / консоли</span>
+          </div>
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick" data-id="P5" data-group="logout" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2h-4v9h4V2zm-2 20a9 9 0 1 1 0-18 9 9 0 0 1 0 18z"/></svg>
+            </button>
+            <span class="icon-code">P5</span>
+            <span class="icon-title">Жирный</span>
+            <span class="icon-caption">Шире штрих — заметнее в 22px</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Другие метафоры выхода</h2>
+        <p>Если power не подходит — дверь, ключ, свиток и т.д.</p>
+        <div class="icon-grid" data-group="logout-alt">
+          <!-- L2 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick" data-id="L2" data-group="logout-alt" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M9 4H5v16h4"/><path d="M14 12H8"/><path d="M18 8l4 4-4 4"/></svg>
+            </button>
+            <span class="icon-code">L2</span>
+            <span class="icon-title">Дверь</span>
+            <span class="icon-caption">Стрелка из проёма — «выйти наружу»</span>
+          </div>
+          <!-- L3 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick" data-id="L3" data-group="logout-alt" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="8" width="12" height="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 12h6l-3-3v6l3-3"/><rect x="5" y="10" width="4" height="6" opacity=".35"/></svg>
+            </button>
+            <span class="icon-code">L3</span>
+            <span class="icon-title">Портал</span>
+            <span class="icon-caption">Выход из «комнаты» приложения</span>
+          </div>
+          <!-- L4 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick" data-id="L4" data-group="logout-alt" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><circle cx="8" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><rect x="12" y="10" width="8" height="4"/><rect x="18" y="8" width="2" height="8"/><rect x="6" y="11" width="4" height="2" fill="var(--px-bg)"/></svg>
+            </button>
+            <span class="icon-code">L4</span>
+            <span class="icon-title">Ключ</span>
+            <span class="icon-caption">Завершить сессию / закрыть замок</span>
+          </div>
+          <!-- L5 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick" data-id="L5" data-group="logout-alt" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="3" width="14" height="18" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 7h8M8 11h8M8 15h5"/><path d="M16 18l3 3 3-3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            </button>
+            <span class="icon-code">L5</span>
+            <span class="icon-title">Свиток</span>
+            <span class="icon-caption">Свернуть журнал — RPG «конец смены»</span>
+          </div>
+          <!-- L6 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick" data-id="L6" data-group="logout-alt" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 12h8"/><path d="M6 8a6 6 0 0 1 12 0"/><path d="M6 16a6 6 0 0 0 12 0"/></svg>
+            </button>
+            <span class="icon-code">L6</span>
+            <span class="icon-title">Разрыв</span>
+            <span class="icon-caption">Разорванная связь / unlink</span>
+          </div>
+          <!-- L7 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick" data-id="L7" data-group="logout-alt" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="14" height="18" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 12h11"/><path d="M18 9l3 3-3 3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            </button>
+            <span class="icon-code">L7</span>
+            <span class="icon-title">Стрелка</span>
+            <span class="icon-caption">Log out — стандарт enterprise UI</span>
+          </div>
+          <!-- L8 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick" data-id="L8" data-group="logout-alt" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><rect x="8" y="10" width="8" height="9"/><rect x="6" y="8" width="12" height="3"/><rect x="9" y="5" width="2" height="3"/><rect x="13" y="5" width="2" height="3"/><rect x="10" y="13" width="1.5" height="2" fill="var(--px-bg)"/><rect x="12.5" y="13" width="1.5" height="2" fill="var(--px-bg)"/><rect x="10" y="16" width="4" height="1.5" fill="var(--px-bg)"/></svg>
+            </button>
+            <span class="icon-code">L8</span>
+            <span class="icon-title">Сундук закрыт</span>
+            <span class="icon-caption">«Закрыть квест» — pixel RPG</span>
+          </div>
+          <!-- L9 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick" data-id="L9" data-group="logout-alt" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12c2-2 4-3 6-3"/><path d="M8 9c0-1 1-2 3-2s3 1 3 2"/><path d="M14 9c2 0 4 1 6 3"/><path d="M6 14c1 2 3 3 6 3s5-1 6-3"/></svg>
+            </button>
+            <span class="icon-code">L9</span>
+            <span class="icon-title">Прощание</span>
+            <span class="icon-caption">Мягче, чем power — «до встречи»</span>
+          </div>
+          <!-- L10 -->
+          <div class="icon-wrap">
+            <button type="button" class="icon-btn icon-btn--logout is-pick" data-id="L10" data-group="logout-alt" title="Выйти">
+              <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l8 4v12l-8 4-8-4V6l8-4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            </button>
+            <span class="icon-code">L10</span>
+            <span class="icon-title">Щит ×</span>
+            <span class="icon-caption">Завершить защищённую сессию</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <main id="combo" class="page">
+      <h1>Сборка нижнего rail</h1>
+      <p class="lead">Spacer сверху, затем тема и выход — как в <code>AppIconRail.tsx</code>.</p>
+      <div class="combo-row">
+        <div>
+          <div class="combo-rail" id="rail-custom"></div>
+          <p style="text-align:center;font-size:14px;color:var(--px-muted);margin-top:8px" id="combo-label">T1 + L1</p>
+        </div>
+        <div class="combo-card">
+          <h3>Выбранная пара</h3>
+          <ul id="combo-desc"></ul>
+        </div>
+      </div>
+
+      <div class="combo-row" style="margin-top:28px">
+        <div>
+          <div class="combo-rail">
+            <div class="rail-spacer"></div>
+            <span class="icon-btn" title="Тёмная тема"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8A9.02 9.02 0 0 0 12 3z"/></svg></span>
+            <span class="icon-btn icon-btn--logout" title="Выйти"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4H5v16h4"/><path d="M14 12H8"/><path d="M18 8l4 4-4 4"/></svg></span>
+          </div>
+          <p style="text-align:center;font-size:14px;color:var(--px-muted);margin-top:8px">A · Луна + дверь</p>
+        </div>
+        <div class="combo-card">
+          <h3>Сборка A — «Классика + дверь»</h3>
+          <ul>
+            <li><strong>T1</strong> — лунный серп, минимум шума</li>
+            <li><strong>L2</strong> — дверь понятнее, чем power, для новичков</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="combo-row" style="margin-top:20px">
+        <div>
+          <div class="combo-rail">
+            <div class="rail-spacer"></div>
+            <span class="icon-btn" title="Тёмная тема"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><rect x="10" y="10" width="4" height="10"/><ellipse cx="12" cy="8" rx="3" ry="4"/></svg></span>
+            <span class="icon-btn icon-btn--logout" title="Выйти"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><rect x="8" y="10" width="8" height="9"/><rect x="6" y="8" width="12" height="3"/></svg></span>
+          </div>
+          <p style="text-align:center;font-size:14px;color:var(--px-muted);margin-top:8px">B · RPG-сет</p>
+        </div>
+        <div class="combo-card">
+          <h3>Сборка B — «Подземелье»</h3>
+          <ul>
+            <li><strong>T8</strong> — свеча, атмосфера пергамента</li>
+            <li><strong>L8</strong> — закрытый сундук = конец сессии</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="combo-row" style="margin-top:20px">
+        <div>
+          <div class="combo-rail">
+            <div class="rail-spacer"></div>
+            <span class="icon-btn" title="Тёмная тема"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 1 0 18z"/></svg></span>
+            <span class="icon-btn icon-btn--logout" title="Выйти"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l8 4v12l-8 4-8-4V6l8-4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" stroke-width="2" fill="none"/></svg></span>
+          </div>
+          <p style="text-align:center;font-size:14px;color:var(--px-muted);margin-top:8px">C · Контраст + щит</p>
+        </div>
+        <div class="combo-card">
+          <h3>Сборка C — «Системная»</h3>
+          <ul>
+            <li><strong>T6</strong> — явный баланс тем</li>
+            <li><strong>L10</strong> — «завершить сессию», не путать с удалением</li>
+          </ul>
+        </div>
+      </div>
+    </main>
+
+    <template id="svg-store" style="display:none">
+      <svg data-svg="T1" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8A9.02 9.02 0 0 0 12 3z"/></svg>
+      <svg data-svg="T2" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><rect x="11" y="1" width="2" height="3"/><rect x="11" y="20" width="2" height="3"/><rect x="1" y="11" width="3" height="2"/><rect x="20" y="11" width="3" height="2"/></svg>
+      <svg data-svg="T3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v20M12 2a10 10 0 0 1 0 20" fill-rule="evenodd"/></svg>
+      <svg data-svg="T4" viewBox="0 0 24 24" fill="currentColor"><rect x="10" y="14" width="4" height="8"/><rect x="9" y="12" width="6" height="2"/><path d="M12 2c-2 2-3 4-3 6a3 3 0 0 0 6 0c0-2-1-4-3-6z"/></svg>
+      <svg data-svg="T5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="8" ry="5"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>
+      <svg data-svg="T6" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 1 0 18z"/></svg>
+      <svg data-svg="T7" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"/><rect x="4" y="4" width="8" height="16"/></svg>
+      <svg data-svg="T8" viewBox="0 0 24 24" fill="currentColor"><rect x="10" y="10" width="4" height="10"/><ellipse cx="12" cy="8" rx="3" ry="4"/></svg>
+      <svg data-svg="T9" viewBox="0 0 24 24" fill="currentColor"><path d="M6 14a6 6 0 1 1 10.4-4.1A4.5 4.5 0 1 0 6 14z"/></svg>
+      <svg data-svg="T10" viewBox="0 0 24 24" fill="currentColor"><text x="5" y="17" font-size="14" font-family="ui-sans-serif,system-ui,sans-serif" font-weight="700">Aa</text></svg>
+      <svg data-svg="L1" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3h-2v8h2V3zm-1 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/></svg>
+      <svg data-svg="P1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v7"/><circle cx="12" cy="13" r="8"/></svg>
+      <svg data-svg="P2" viewBox="0 0 24 24" fill="currentColor"><rect x="10" y="2" width="4" height="9"/><path d="M4 14a8 8 0 1 0 16 0" fill="none" stroke="currentColor" stroke-width="3"/></svg>
+      <svg data-svg="P3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v6"/><path d="M12 9a7 7 0 1 0 0 14"/><path d="M8.5 9.5A7 7 0 0 1 12 9"/></svg>
+      <svg data-svg="P4" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 8h-2v5h2V8zm-1 10a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+      <svg data-svg="P5" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2h-4v9h4V2zm-2 20a9 9 0 1 1 0-18 9 9 0 0 1 0 18z"/></svg>
+      <svg data-svg="L2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4H5v16h4"/><path d="M14 12H8"/><path d="M18 8l4 4-4 4"/></svg>
+      <svg data-svg="L3" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="8" width="12" height="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 12h6l-3-3v6l3-3"/></svg>
+      <svg data-svg="L4" viewBox="0 0 24 24" fill="currentColor"><circle cx="8" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><rect x="12" y="10" width="8" height="4"/><rect x="18" y="8" width="2" height="8"/></svg>
+      <svg data-svg="L5" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="3" width="14" height="18" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 7h8M8 11h8M8 15h5"/><path d="M16 18l3 3 3-3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      <svg data-svg="L6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M8 12h8"/><path d="M6 8a6 6 0 0 1 12 0"/><path d="M6 16a6 6 0 0 0 12 0"/></svg>
+      <svg data-svg="L7" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="14" height="18" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 12h11"/><path d="M18 9l3 3-3 3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      <svg data-svg="L8" viewBox="0 0 24 24" fill="currentColor"><rect x="8" y="10" width="8" height="9"/><rect x="6" y="8" width="12" height="3"/><rect x="9" y="5" width="2" height="3"/><rect x="13" y="5" width="2" height="3"/></svg>
+      <svg data-svg="L9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12c2-2 4-3 6-3"/><path d="M8 9c0-1 1-2 3-2s3 1 3 2"/><path d="M14 9c2 0 4 1 6 3"/><path d="M6 14c1 2 3 3 6 3s5-1 6-3"/></svg>
+      <svg data-svg="L10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l8 4v12l-8 4-8-4V6l8-4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+    </template>
+
+    <script>
+      const META = {
+        T1: { title: 'Лунный серп', caption: 'Как сейчас — классика «ночь»' },
+        T2: { title: 'Солнце', caption: 'Alt в тёмной теме — «вернуть день»' },
+        T3: { title: 'Полусфера', caption: 'День/ночь в одном символе' },
+        T4: { title: 'Факел', caption: 'RPG-метафора «освещение»' },
+        T5: { title: 'Глаз', caption: '«Комфорт для глаз» / контраст' },
+        T6: { title: 'Инь-ян', caption: 'Баланс светлого и тёмного' },
+        T7: { title: 'Split UI', caption: 'Половина экрана — смена палитры' },
+        T8: { title: 'Свеча', caption: 'Уютный «пергамент / подземелье»' },
+        T9: { title: 'Облачная ночь', caption: 'Луна за облаком — мягче T1' },
+        T10: { title: 'Типографика', caption: 'Aa — читаемость / контраст' },
+        L1: { title: 'Заливка', caption: 'Как сейчас — классический power' },
+        P1: { title: 'Контур', caption: 'Только обводка — легче, как nav-иконки' },
+        P2: { title: 'Pixel', caption: 'Блочный штрих + толстая дуга' },
+        P3: { title: 'Разрыв', caption: 'Щель у штриха — «standby»' },
+        P4: { title: 'В рамке', caption: 'Кнопка на корпусе ПК / консоли' },
+        P5: { title: 'Жирный', caption: 'Шире штрих — заметнее в 22px' },
+        L2: { title: 'Дверь', caption: 'Стрелка из проёма — «выйти»' },
+        L3: { title: 'Портал', caption: 'Выход из «комнаты» приложения' },
+        L4: { title: 'Ключ', caption: 'Завершить сессию / закрыть замок' },
+        L5: { title: 'Свиток', caption: 'Свернуть журнал — RPG «конец смены»' },
+        L6: { title: 'Разрыв', caption: 'Разорванная связь / unlink' },
+        L7: { title: 'Стрелка', caption: 'Log out — enterprise UI' },
+        L8: { title: 'Сундук закрыт', caption: '«Закрыть квест» — pixel RPG' },
+        L9: { title: 'Прощание', caption: 'Мягче power — «до встречи»' },
+        L10: { title: 'Щит ×', caption: 'Завершить защищённую сессию' },
+      };
+
+      const pick = { theme: 'T1', logout: 'P1' };
+
+      function cloneSvg(id) {
+        const src = document.querySelector(`#svg-store [data-svg="${id}"]`);
+        if (!src) return null;
+        const s = src.cloneNode(true);
+        s.classList.add('ico');
+        s.removeAttribute('data-svg');
+        return s;
+      }
+
+      function makeIconBtn(id, logout) {
+        const el = document.createElement('span');
+        el.className = 'icon-btn' + (logout ? ' icon-btn--logout' : '');
+        el.title = logout ? 'Выйти' : 'Тёмная тема';
+        const svg = cloneSvg(id);
+        if (svg) el.appendChild(svg);
+        return el;
+      }
+
+      function renderRail() {
+        const rail = document.getElementById('rail-custom');
+        rail.innerHTML = '';
+        const sp = document.createElement('div');
+        sp.className = 'rail-spacer';
+        rail.appendChild(sp);
+        rail.appendChild(makeIconBtn(pick.theme, false));
+        rail.appendChild(makeIconBtn(pick.logout, true));
+        document.getElementById('combo-label').textContent = `${pick.theme} + ${pick.logout}`;
+        document.getElementById('pick-theme').textContent = pick.theme;
+        document.getElementById('pick-logout').textContent = pick.logout;
+        const ul = document.getElementById('combo-desc');
+        ul.innerHTML = [
+          `<li><strong>${pick.theme}</strong> ${META[pick.theme].title} — ${META[pick.theme].caption}</li>`,
+          `<li><strong>${pick.logout}</strong> ${META[pick.logout].title} — ${META[pick.logout].caption}</li>`,
+        ].join('');
+      }
+
+      document.querySelectorAll('.icon-btn.is-pick').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const g = btn.dataset.group;
+          const id = btn.dataset.id;
+          if (g === 'theme') pick.theme = id;
+          if (g === 'logout' || g === 'logout-alt') pick.logout = id;
+          if (g === 'theme') {
+            document.querySelectorAll('.icon-btn.is-pick[data-group="theme"]').forEach((b) => b.classList.remove('is-selected'));
+          } else if (g === 'logout' || g === 'logout-alt') {
+            document.querySelectorAll('.icon-btn.is-pick[data-group="logout"], .icon-btn.is-pick[data-group="logout-alt"]').forEach((b) => b.classList.remove('is-selected'));
+          }
+          btn.classList.add('is-selected');
+          renderRail();
+        });
+      });
+
+      document.querySelectorAll('[data-page]').forEach((a) => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          const id = a.dataset.page;
+          document.querySelectorAll('.page').forEach((p) => p.classList.toggle('is-visible', p.id === id));
+          document.querySelectorAll('[data-page]').forEach((l) => l.classList.toggle('is-active', l.dataset.page === id));
+          history.replaceState(null, '', '#' + id);
+        });
+      });
+
+      document.getElementById('goto-combo').addEventListener('click', () => {
+        document.querySelector('[data-page="combo"]').click();
+      });
+
+      const h = location.hash.replace('#', '');
+      if (h && document.getElementById(h)) document.querySelector(`[data-page="${h}"]`)?.click();
+
+      renderRail();
+    </script>
+  </body>
+</html>
