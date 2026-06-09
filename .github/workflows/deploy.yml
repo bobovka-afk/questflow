@@ -19,11 +19,11 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script_stop: true
           command_timeout: 30m
           script: |
             set -euo pipefail
             cd /opt/questflow
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             chmod +x scripts/deploy.sh
             ./scripts/deploy.sh
