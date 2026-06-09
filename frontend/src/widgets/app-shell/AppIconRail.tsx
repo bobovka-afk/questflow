@@ -63,7 +63,7 @@ export function AppIconRail({
         aria-current={active === 'character' ? 'page' : undefined}
       >
         <RailIconCharacter className="px-rail-btn__ico" />
-        <span className="px-rail-btn__label">Портрет</span>
+        <span className="px-rail-btn__label">Персонаж</span>
       </SpaLink>
 
       <SpaLink
