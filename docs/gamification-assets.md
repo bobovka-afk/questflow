@@ -3,7 +3,7 @@
 Спецификация ассетов для текущих механик: квесты, сундуки, косметика, пыль, достижения, персонаж.  
 Для продукта и художника/AI-генерации; при подключении в коде ориентир — **имя файла = `CosmeticItem.key`** (где применимо).
 
-**Связанные документы:** [gamification-roadmap.md](gamification-roadmap.md), [gamification-agent-context.md](gamification-agent-context.md), [promt.md](promt.md) (AI-промты, 1 абзац = 1 файл).
+**Связанные документы:** [gamification-roadmap.md](gamification-roadmap.md), [gamification-agent-context.md](gamification-agent-context.md).
 
 **Статус кода (на момент документа):** `CharacterPortraitWithFrame` — слои в квадрате портрета: **`PROFILE_BACKGROUND`** → персонаж → **`PORTRAIT_FRAME`**. Значки титула (`TITLE_BADGE`) в v1 **не используются** — блок снят с ТЗ на арт.
 
@@ -250,7 +250,7 @@ frame:   trello-character-profile-portrait-frame
 | Эпический сундук (иконка + закрытый кадр) | `chests/epic/1.png` | Epic | **1024×1024** | Закрытый epic, первый кадр tap (аналог `rare/1.png`) |
 | Эпический сундук (тапы 2–4) | `chests/epic/2.png` … `chests/epic/4.png` | Epic | **1024×1024** | **3 тапа** до открытия |
 
-**Party boss (Phase 5.party):** иконки в UI — `ui/bosses/{rust_king|colossus|void}.png` (**512×512** в промте, в UI 48–64 px); промты сущностей — `bosses/{key}.png`; boss-сундуки — `chests/boss/{key}/0–4.png`. Промты: [promt.md](promt.md).
+**Party boss (Phase 5.party):** иконки в UI — `ui/bosses/{rust_king|colossus|void}.png` (**512×512** в промте, в UI 48–64 px); промты сущностей — `bosses/{key}.png`; boss-сундуки — `chests/boss/{key}/0–4.png`.
 
 **Использование в UI:**
 
