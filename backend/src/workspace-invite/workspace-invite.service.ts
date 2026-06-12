@@ -14,6 +14,7 @@ import { WorkspaceInviteStatus } from '../generated/prisma/enums';
 import { MailService } from '../mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 import { WorkspaceService } from '../workspace/workspace.service';
+import { nextWorkspaceMemberSortOrder } from '../workspace/lib/member-sort-order';
 import { WorkspaceActivityService } from '../workspace-activity/workspace-activity.service';
 import { UserSettingsService } from '../user-settings/user-settings.service';
 import { WorkspaceActivityType } from '../generated/prisma/enums';
@@ -245,11 +246,13 @@ export class WorkspaceInviteService {
 
     try {
       await this.prisma.$transaction(async (tx) => {
+        const sortOrder = await nextWorkspaceMemberSortOrder(tx, userId);
         await tx.workspaceMember.create({
           data: {
             workspaceId: invite.workspaceId,
             userId,
             role: invite.role,
+            sortOrder,
           },
         });
         await this.workspaceActivityService.record(tx, {

@@ -12,14 +12,14 @@ export const BOSS_TEMPLATES: BossTemplate[] = [
   {
     key: 'rust_king',
     nameRu: 'Rust King',
-    descriptionRu: 'Easy boss for your first raid. Chest with basic raid cosmetics.',
+    descriptionRu: 'Простой босс для первого рейда. Сундук с базовой рейдовой косметикой.',
     chestTier: 'COMMON',
     sortOrder: 1,
   },
   {
     key: 'colossus',
     nameRu: 'Colossus',
-    descriptionRu: 'Medium boss. Rare boss chest with improved loot.',
+    descriptionRu: 'Босс средней сложности. Редкий босс-сундук с улучшенной добычей.',
     chestTier: 'RARE',
     sortOrder: 2,
   },
@@ -27,7 +27,7 @@ export const BOSS_TEMPLATES: BossTemplate[] = [
     key: 'maw_of_void',
     nameRu: 'Maw of the Void',
     descriptionRu:
-      'Hard boss. A rift between worlds — epic boss chest for an experienced party.',
+      'Сложный босс. Разлом между мирами — эпический босс-сундук для опытной команды.',
     chestTier: 'EPIC',
     sortOrder: 3,
   },

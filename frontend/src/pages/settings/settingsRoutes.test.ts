@@ -9,7 +9,7 @@ describe('settingsRoutes', () => {
   it('parses tab from route', () => {
     expect(parseSettingsTabFromRoute('/settings/privacy')).toBe('privacy');
     expect(parseSettingsTabFromRoute('/settings/gamification')).toBe('gamification');
-    expect(parseSettingsTabFromRoute('/settings')).toBe('security');
+    expect(parseSettingsTabFromRoute('/settings')).toBe('account');
     expect(parseSettingsTabFromRoute('/settings/security')).toBe('security');
   });
 

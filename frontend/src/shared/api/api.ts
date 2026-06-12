@@ -47,9 +47,14 @@ const API_ERROR_CODE_RU: Record<string, string> = {
   CHARACTER_ALREADY_EXISTS: 'Персонаж для этого аккаунта уже создан.',
   CHARACTER_AVATAR_GENDER_MISMATCH:
     'Выберите аватар, который соответствует полу персонажа (мужские / женские варианты).',
+  AVATAR_PRESET_INVALID: 'Этот образ персонажа недоступен.',
   CHARACTER_UPDATE_FIELDS_REQUIRED: 'Укажите хотя бы одно поле для изменения.',
   XP_EVENT_ALREADY_RECORDED: 'Вы уже получали опыт за эту карточку.',
-  DAILY_TASK_XP_LIMIT: 'Сегодня лимит опыта за карточки исчерпан.',
+  DAILY_ACTIVITY_XP_LIMIT: 'Достигнут дневной лимит активности (500 XP).',
+  DAILY_TASK_XP_LIMIT: 'Достигнут дневной лимит активности (500 XP).',
+  DAILY_HABIT_XP_LIMIT: 'Достигнут дневной лимит активности (500 XP).',
+  PERSONAL_DAILY_ALREADY_DONE: 'Эта ежедневная задача уже выполнена сегодня.',
+  HABIT_LOG_NOT_ALLOWED: 'Это действие недоступно для данной привычки.',
   CHECKIN_ALREADY_DONE: 'Сегодня серия за этот день уже засчитана.',
   XP_EVENT_DAY_KEY_REQUIRED: 'Для этого действия требуется игровой день.',
   CHEST_NOT_FOUND: 'Сундук не найден.',
@@ -59,9 +64,6 @@ const API_ERROR_CODE_RU: Record<string, string> = {
   COSMETIC_EQUIP_NOT_SUPPORTED: 'Этот тип косметики нельзя надеть здесь.',
   COSMETIC_NOT_EQUIPPED: 'Этот предмет сейчас не надет.',
   COSMETIC_ALREADY_OWNED: 'У вас уже есть этот предмет.',
-  COSMETIC_AVATAR_NOT_OWNED: 'Сначала получите этот образ из сундука.',
-  AVATAR_PRESET_QUEST_NOT_ON_CREATE:
-    'Квестовый образ нельзя выбрать при создании персонажа.',
   INSUFFICIENT_DUST: 'Недостаточно пыли для покупки сундука.',
   DUST_SHOP_TIER_INVALID: 'Недопустимый тип сундука.',
   FRIEND_CODE_INVALID: 'Код друга должен состоять из 4 цифр.',
@@ -231,13 +233,10 @@ export function isXpGrantErrorCode(code?: string): boolean {
   return (
     code === 'CHARACTER_NOT_FOUND' ||
     code === 'XP_EVENT_ALREADY_RECORDED' ||
-    code === 'DAILY_TASK_XP_LIMIT'
+    code === 'DAILY_ACTIVITY_XP_LIMIT' ||
+    code === 'DAILY_TASK_XP_LIMIT' ||
+    code === 'DAILY_HABIT_XP_LIMIT'
   );
-}
-
-/** Не модальное «ошибка», а мягкое оповещение (карточка на сервере уже закрыта). */
-export function isXpTaskSoftNoticeCode(code?: string): boolean {
-  return code === 'DAILY_TASK_XP_LIMIT';
 }
 
 function isNetworkFetchError(e: unknown): boolean {

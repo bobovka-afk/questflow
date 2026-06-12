@@ -20,9 +20,10 @@ import { UserSettingsService } from '../../user-settings/user-settings.service';
 import { ForbiddenException } from '@nestjs/common';
 import {
   CHARACTER_HEALTH_MAX,
-  DAILY_TASK_XP_COMPLETIONS_MAX,
+  DAILY_ACTIVITY_XP_MAX,
   HP_GAIN_PER_XP_EVENT,
   XP_DAILY_CHECKIN,
+  XP_PER_HABIT_POSITIVE,
   XP_PER_TASK_COMPLETED,
 } from '../../gamification/config/rewards';
 import { getTodayGameDayKey, getYesterdayGameDayKey } from '../../gamification/core/game-day';
@@ -30,7 +31,7 @@ import { getTodayGameDayKey, getYesterdayGameDayKey } from '../../gamification/c
 const baseXpStats = {
   currentXp: 0,
   level: 1,
-  dailyTaskXpCount: 0,
+  dailyActivityXpEarned: 0,
   health: 100,
   manaCurrent: 0,
   checkinStreak: 0,
@@ -188,13 +189,52 @@ describe('CharacterService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('enforces daily task XP limit', async () => {
+    it('enforces unified daily activity XP limit', async () => {
       tx.character.findUnique.mockResolvedValue({
         ...baseXpStats,
-        dailyTaskXpCount: DAILY_TASK_XP_COMPLETIONS_MAX,
+        dailyActivityXpEarned: DAILY_ACTIVITY_XP_MAX,
       });
       await expect(
         service.addExperience(1, XP_PER_TASK_COMPLETED, XpEventType.TASK_COMPLETED),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('allows habit XP when room remains in daily activity pool', async () => {
+      tx.character.findUnique.mockResolvedValue({
+        ...baseXpStats,
+        dailyActivityXpEarned: DAILY_ACTIVITY_XP_MAX - XP_PER_HABIT_POSITIVE,
+      });
+      tx.xpEvent.create.mockResolvedValue({});
+      tx.character.update.mockResolvedValue({ level: 1, checkinStreak: 0 });
+
+      const dayKey = new Date('2026-05-25T00:00:00.000Z');
+      await expect(
+        service.addExperience(
+          1,
+          XP_PER_HABIT_POSITIVE,
+          XpEventType.HABIT_POSITIVE,
+          null,
+          dayKey,
+          { personalHabitId: 1 },
+        ),
+      ).resolves.toBeDefined();
+    });
+
+    it('rejects activity XP that would exceed daily pool', async () => {
+      tx.character.findUnique.mockResolvedValue({
+        ...baseXpStats,
+        dailyActivityXpEarned: DAILY_ACTIVITY_XP_MAX - XP_PER_HABIT_POSITIVE + 1,
+      });
+      const dayKey = new Date('2026-05-25T00:00:00.000Z');
+      await expect(
+        service.addExperience(
+          1,
+          XP_PER_HABIT_POSITIVE,
+          XpEventType.HABIT_POSITIVE,
+          null,
+          dayKey,
+          { personalHabitId: 1 },
+        ),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -241,7 +281,7 @@ describe('CharacterService', () => {
             currentXp: 150,
             health: 85,
             checkinStreak: 1,
-            dailyTaskXpCount: { increment: 1 },
+            dailyActivityXpEarned: { increment: XP_PER_TASK_COMPLETED },
           }),
         }),
       );
@@ -388,7 +428,7 @@ describe('CharacterService', () => {
     it('does not auto check-in when already done today', async () => {
       tx.character.findUnique.mockResolvedValue({
         ...baseXpStats,
-        dailyTaskXpCount: 1,
+        dailyActivityXpEarned: XP_PER_TASK_COMPLETED,
         health: 95,
         checkinStreak: 1,
       });

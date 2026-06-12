@@ -13,7 +13,6 @@ const COSMETIC_CATALOG: Record<
   bg_lake_forest: { nameRu: 'Фон «Озеро в лесу»', tier: 'COMMON' },
   frame_gold: { nameRu: 'Золотая рамка', tier: 'RARE' },
   bg_night: { nameRu: 'Фон «Ночь»', tier: 'RARE' },
-  QUEST_MAGE_MAN: { nameRu: 'Образ мага (квест)', tier: 'RARE' },
   frame_mystic: { nameRu: 'Мистическая рамка', tier: 'EPIC' },
 };
 
@@ -25,7 +24,7 @@ const LOOT_KEYS_BY_CHEST: Record<ChestTier, string[]> = {
     'bg_woods',
     'bg_lake_forest',
   ],
-  RARE: ['frame_gold', 'bg_night', 'QUEST_MAGE_MAN'],
+  RARE: ['frame_gold', 'bg_night'],
   EPIC: ['frame_mystic'],
 };
 
@@ -160,5 +159,36 @@ export function formatLootOddsPercent(percent: number): string {
   return Number.isInteger(rounded) ? `${rounded}%` : `${rounded.toFixed(1)}%`;
 }
 
-/** Без прокрутки в модалке — только стрелки; влезает в окно при компактном списке. */
+/** Все награды обычного сундука (7) — одна страница без прокрутки. */
 export const CHEST_LOOT_ODDS_ROWS_PER_PAGE = 7;
+
+/** Блоки списка: заголовок секции, разделитель, строка награды. */
+export function countChestLootOddsBlocks(
+  flatRows: ReadonlyArray<{ sectionKey: string }>,
+): number {
+  let blocks = 0;
+  for (let i = 0; i < flatRows.length; i++) {
+    const prev = i > 0 ? flatRows[i - 1] : null;
+    const row = flatRows[i];
+    if (!prev || prev.sectionKey !== row.sectionKey) {
+      if (i > 0) blocks += 1;
+      blocks += 1;
+    }
+    blocks += 1;
+  }
+  return blocks;
+}
+
+/** Квадрат модалки под число блоков (шапка + пагинация + строки). */
+export function estimateChestLootOddsModalSize(
+  flatRows: ReadonlyArray<{ sectionKey: string }>,
+): number {
+  const blocks = countChestLootOddsBlocks(flatRows);
+  const size = 136 + blocks * 48;
+  return Math.min(Math.max(size, 400), 640);
+}
+
+/** Единый размер окна шансов — как у обычного сундука (самый большой список). */
+export const CHEST_LOOT_ODDS_MODAL_SIZE_PX = estimateChestLootOddsModalSize(
+  buildChestLootOdds('COMMON').flatRows,
+);

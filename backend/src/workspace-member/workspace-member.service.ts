@@ -2,6 +2,10 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import type { WorkspaceMember } from '../generated/prisma/client';
 import { WorkspaceActivityType, WorkspaceRole } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  toUserBrief,
+  userBriefWithCharacterSelect,
+} from '../common/lib/user-brief';
 import { WorkspaceActivityService } from '../workspace-activity/workspace-activity.service';
 import { PaginationDto } from '../workspace/dto/pagination.dto';
 import type { WorkspaceMemberWithUser } from './interface';
@@ -27,13 +31,7 @@ export class WorkspaceMemberService {
     const rows = await this.prisma.workspaceMember.findMany({
       where: { workspaceId },
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            avatarPath: true,
-          },
-        },
+        user: { select: userBriefWithCharacterSelect },
       },
       orderBy: {
         createdAt: 'desc',
@@ -43,6 +41,7 @@ export class WorkspaceMemberService {
     });
     return rows.map((m) => ({
       ...m,
+      user: toUserBrief(m.user),
       permissions: resolveMemberPermissions(m.role, m.permissions),
     }));
   }

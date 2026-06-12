@@ -128,6 +128,18 @@ describe('SocialService — friends', () => {
   });
 
   describe('getUserRelation', () => {
+    const targetUser = {
+      id: 2,
+      name: 'Alice',
+      avatarPath: null,
+      lastActiveAt: null,
+      character: { name: 'HeroTwo', friendCode: 1002, avatarPreset: 'druid_m' },
+    };
+
+    beforeEach(() => {
+      prisma.user!.findUnique!.mockResolvedValue(targetUser);
+    });
+
     it('returns incoming pending request id', async () => {
       prisma.friendRequest!.findFirst!.mockResolvedValue({
         id: 9,
@@ -137,6 +149,8 @@ describe('SocialService — friends', () => {
       });
       prisma.workspaceMember!.findFirst!.mockResolvedValue(null);
       const rel = await service.getUserRelation(1, 2);
+      expect(rel.user.userId).toBe(2);
+      expect(rel.user.characterName).toBe('HeroTwo');
       expect(rel.incomingRequestId).toBe(9);
       expect(rel.outgoingRequestId).toBeNull();
       expect(rel.isFriend).toBe(false);

@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, formatApiError, type ApiError } from '@shared/api';
+import { CharacterStatsPanel } from '@widgets/character-stats/CharacterStatsPanel';
+import { UserCharacterProfileFoot } from '@widgets/user-character-profile-foot/UserCharacterProfileFoot';
 import { CheckinStreakCounter } from '@widgets/checkin-streak/counter/CheckinStreakCounter';
 import { type CharacterDto } from '@entities/character';
 import { CharacterPortraitWithFrame } from '@widgets/character-portrait/CharacterPortraitWithFrame';
-import { CHARACTER_HEALTH_MAX } from '@entities/reward';
 import { getCharacterXpTowardNext } from '@entities/character/lib/level-curve';
 import { SpaLink } from '@shared/lib/navigation';
 import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 import { navigate } from '@shared/lib/navigation-core';
-import { SocialUserBlockButton } from '@widgets/social-user-block/SocialUserBlockButton';
 import {
   acceptFriendRequest,
   fetchUserRelation,
-  formatFriendCode,
   sendFriendRequest,
   type UserRelationView,
 } from '@entities/social';
@@ -111,9 +110,6 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
   function openMessages() {
     navigate(`/profile/character?with=${userId}`);
   }
-
-  const socialBlocked =
-    relation?.blockedByMe === true || relation?.blockedByThem === true;
 
   async function handleAddFriend() {
     if (!character?.friendCode) return;
@@ -231,9 +227,9 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
 
         {socialMsg && <div className="trello-banner trello-banner-error">{socialMsg}</div>}
 
-        <section className="trello-character-profile">
-          <div className="trello-character-profile-hero trello-character-profile-hero--stacked">
-            <div className="trello-character-profile-portrait-column">
+        <section className="trello-character-profile trello-character-profile--other-user trello-character-profile--other-user-dashboard">
+          <div className="trello-character-other-user-dashboard">
+            <div className="trello-character-other-user-dashboard-col trello-character-other-user-dashboard-col--portrait">
               <div className="trello-character-profile-portrait-wrap trello-character-profile-portrait-wrap--square">
                 <CharacterPortraitWithFrame
                   avatarPreset={character.avatarPreset}
@@ -241,117 +237,35 @@ export function UserCharacterPage({ accessToken, userId, currentUserId }: Props)
                   profileBackgroundKey={character.equippedProfileBackgroundKey}
                 />
               </div>
-            </div>
-            <div className="trello-character-profile-info-col">
+              <p className="trello-character-other-user-name">{character.name}</p>
               <div className="trello-character-streak-block">
                 <CheckinStreakCounter streak={character.checkinStreak ?? 0} size="profile" />
               </div>
-              <div className="trello-character-stat-row">
-                <div className="trello-character-stat-pill trello-character-stat-pill--level">
-                  <span className="trello-character-stat-label">Уровень</span>
-                  <div
-                    className="trello-character-stat-meter"
-                    role="img"
-                    aria-label={`Уровень ${character.level}`}
-                  >
-                    <div
-                      className="trello-character-stat-bar-fill trello-character-stat-bar-fill--level"
-                      style={{ width: '100%' }}
-                      aria-hidden
-                    />
-                    <span className="trello-character-stat-meter-value">{character.level}</span>
-                  </div>
-                </div>
-                <div className="trello-character-stat-pill trello-character-stat-pill--xp">
-                  <span className="trello-character-stat-label">Опыт</span>
-                  <div
-                    className="trello-character-stat-meter"
-                    role="img"
-                    aria-label={
-                      xpToward.atMaxLevel
-                        ? 'Опыт: максимальный уровень'
-                        : `Опыт ${xpToward.into} из ${xpToward.needed}`
-                    }
-                  >
-                    <div
-                      className="trello-character-stat-bar-fill trello-character-stat-bar-fill--xp"
-                      style={{ width: `${xpToward.pct}%` }}
-                      aria-hidden
-                    />
-                    <span className="trello-character-stat-meter-value trello-character-stat-meter-value--xp">
-                      {xpToward.atMaxLevel ? (
-                        <>Макс. уровень</>
-                      ) : (
-                        <>
-                          {xpToward.into} / {xpToward.needed}
-                        </>
-                      )}
-                    </span>
-                  </div>
-                </div>
-                <div className="trello-character-stat-pill trello-character-stat-pill--health">
-                  <span className="trello-character-stat-label">Здоровье</span>
-                  <div
-                    className="trello-character-stat-meter"
-                    role="img"
-                    aria-label={`Здоровье ${character.health}`}
-                  >
-                    <div
-                      className="trello-character-stat-bar-fill trello-character-stat-bar-fill--health"
-                      style={{
-                        width: `${Math.min(100, Math.round((character.health / CHARACTER_HEALTH_MAX) * 100))}%`,
-                      }}
-                      aria-hidden
-                    />
-                    <span className="trello-character-stat-meter-value">{character.health}</span>
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
-          {relation && (
-            <div className="trello-social-user-actions">
-              {character.friendCode != null && (
-                <span className="trello-muted trello-social-user-code">
-                  ID: {formatFriendCode(character.friendCode)}
-                </span>
-              )}
-              {!socialBlocked && !relation.isFriend && !relation.outgoingRequestId && (
-                <button
-                  type="button"
-                  className="trello-btn trello-btn-primary trello-btn-sm"
-                  disabled={socialBusy || character.friendCode == null}
-                  onClick={() => void handleAddFriend()}
-                >
-                  {relation.incomingRequestId != null
-                    ? 'Принять заявку'
-                    : 'Добавить в друзья'}
-                </button>
-              )}
-              {!socialBlocked && relation.outgoingRequestId != null && !relation.isFriend && (
-                <span className="trello-muted">Заявка отправлена</span>
-              )}
-              {!socialBlocked && relation.isFriend && (
-                <span className="trello-muted">В друзьях</span>
-              )}
-              {relation.canMessage && (
-                <button
-                  type="button"
-                  className="trello-btn trello-btn-ghost trello-btn-sm"
-                  onClick={openMessages}
-                >
-                  Написать
-                </button>
-              )}
-              <SocialUserBlockButton
-                accessToken={accessToken}
-                userId={userId}
-                relation={relation}
-                onRelationChange={setRelation}
-                onError={setSocialMsg}
+            <div className="trello-character-other-user-dashboard-col trello-character-other-user-dashboard-col--stats">
+              <CharacterStatsPanel
+                character={character}
+                xpToward={xpToward}
+                variant="dashboard"
               />
             </div>
-          )}
+            {relation ? (
+              <div className="trello-character-other-user-dashboard-col trello-character-other-user-dashboard-col--social">
+                <UserCharacterProfileFoot
+                  accessToken={accessToken}
+                  userId={userId}
+                  friendCode={character.friendCode}
+                  relation={relation}
+                  socialBusy={socialBusy}
+                  onAddFriend={() => void handleAddFriend()}
+                  onMessage={openMessages}
+                  onRelationChange={setRelation}
+                  onError={setSocialMsg}
+                  layout="sidebar"
+                />
+              </div>
+            ) : null}
+          </div>
         </section>
       </div>
     </div>

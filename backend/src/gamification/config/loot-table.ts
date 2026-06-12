@@ -4,19 +4,10 @@ import {
   GenderCharacter,
 } from '../../generated/prisma/enums';
 
-export const QUEST_MAGE_LOOT_KEY = 'QUEST_MAGE_MAN';
-
-export function resolveQuestMageLootKey(gender: GenderCharacter): string {
-  return gender === GenderCharacter.FEMALE ? 'QUEST_MAGE_WOMAN' : 'QUEST_MAGE_MAN';
-}
-
 export function resolveLootCosmeticKey(
   rolledKey: string,
-  gender: GenderCharacter,
+  _gender: GenderCharacter,
 ): string {
-  if (rolledKey === QUEST_MAGE_LOOT_KEY) {
-    return resolveQuestMageLootKey(gender);
-  }
   return rolledKey;
 }
 
@@ -34,9 +25,8 @@ export const LOOT_TABLE_BY_TIER: Record<ChestTier, LootEntry[]> = {
     { cosmeticKey: 'bg_lake_forest', weight: 20 },
   ],
   [ChestTier.RARE]: [
-    { cosmeticKey: 'frame_gold', weight: 35 },
-    { cosmeticKey: 'bg_night', weight: 35 },
-    { cosmeticKey: 'QUEST_MAGE_MAN', weight: 30 },
+    { cosmeticKey: 'frame_gold', weight: 50 },
+    { cosmeticKey: 'bg_night', weight: 50 },
   ],
   [ChestTier.EPIC]: [{ cosmeticKey: 'frame_mystic', weight: 100 }],
 };

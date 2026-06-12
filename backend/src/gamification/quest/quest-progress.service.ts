@@ -12,7 +12,6 @@ import { AchievementService } from '../achievement/achievement.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { resolveGameDayTimeZone } from '../lib/resolve-game-day-timezone';
 import { ChestService } from '../chest/chest.service';
-import { getGameDayKey, getTodayGameDayKey } from '../core/game-day';
 import type { ChestTier } from '../../generated/prisma/enums';
 import type {
   CharacterQuestsView,
@@ -84,6 +83,7 @@ export class QuestProgressService {
             current: row?.current ?? 0,
             completed: Boolean(row?.completedAt),
             completedAt: row?.completedAt ?? null,
+            rewardChestTier: t.rewardChestTier,
             chest: row?.chest
               ? {
                   id: row.chest.id,
@@ -120,75 +120,6 @@ export class QuestProgressService {
 
     const tz = this.getTimeZone();
     const now = new Date();
-    const dayKey = getTodayGameDayKey(tz);
-    const dailyKey = getDailyPeriodKey(now, tz);
-    const weeklyKey = getWeeklyPeriodKey(now, tz);
-    const monthlyKey = getMonthlyPeriodKey(now, tz);
-
-    const results = await this.prisma.$transaction(async (tx) => {
-      await tx.userWorkspaceQuestDay.upsert({
-        where: {
-          userId_workspaceId_dayKey: {
-            userId,
-            workspaceId: input.workspaceId,
-            dayKey,
-          },
-        },
-        create: {
-          userId,
-          workspaceId: input.workspaceId,
-          dayKey,
-        },
-        update: {},
-      });
-
-      const batch: QuestCompletionResult[] = [];
-
-      batch.push(
-        ...(await this.incrementMetric(
-          tx,
-          userId,
-          QuestMetric.CARDS_COMPLETED,
-          dailyKey,
-          weeklyKey,
-          monthlyKey,
-        )),
-      );
-
-      if (input.dueDate && this.isDueToday(input.dueDate, tz)) {
-        batch.push(
-          ...(await this.incrementMetric(
-            tx,
-            userId,
-            QuestMetric.CARDS_COMPLETED_WITH_DUE_TODAY,
-            dailyKey,
-            weeklyKey,
-            monthlyKey,
-          )),
-        );
-      }
-
-      batch.push(
-        ...(await this.syncDistinctWorkspacesProgress(
-          tx,
-          userId,
-          weeklyKey,
-          tz,
-        )),
-      );
-
-      return batch;
-    });
-    await this.notifyQuestCompletions(userId, results);
-    return results;
-  }
-
-  async recordCommentCreated(userId: number): Promise<QuestCompletionResult[]> {
-    if (!(await this.hasCharacter(userId))) {
-      return [];
-    }
-    const tz = this.getTimeZone();
-    const now = new Date();
     const dailyKey = getDailyPeriodKey(now, tz);
     const weeklyKey = getWeeklyPeriodKey(now, tz);
     const monthlyKey = getMonthlyPeriodKey(now, tz);
@@ -197,7 +128,7 @@ export class QuestProgressService {
       this.incrementMetric(
         tx,
         userId,
-        QuestMetric.COMMENTS_CREATED,
+        QuestMetric.CARDS_COMPLETED,
         dailyKey,
         weeklyKey,
         monthlyKey,
@@ -228,6 +159,108 @@ export class QuestProgressService {
       ),
     );
     await this.notifyQuestCompletions(userId, results);
+    return results;
+  }
+
+  async recordPersonalTodoCompleted(userId: number): Promise<QuestCompletionResult[]> {
+    return this.recordPersonalAction(userId);
+  }
+
+  async recordPersonalDailyCompleted(userId: number): Promise<QuestCompletionResult[]> {
+    const actionResults = await this.recordPersonalAction(userId);
+    const allDoneResults = await this.recordAllDailiesDoneIfNeeded(userId);
+    return [...actionResults, ...allDoneResults];
+  }
+
+  async recordHabitPositiveLogged(userId: number): Promise<QuestCompletionResult[]> {
+    if (!(await this.hasCharacter(userId))) {
+      return [];
+    }
+    const tz = this.getTimeZone();
+    const now = new Date();
+    const dailyKey = getDailyPeriodKey(now, tz);
+    const weeklyKey = getWeeklyPeriodKey(now, tz);
+    const monthlyKey = getMonthlyPeriodKey(now, tz);
+
+    const results = await this.prisma.$transaction((tx) =>
+      this.incrementMetric(
+        tx,
+        userId,
+        QuestMetric.HABIT_POSITIVE_LOGGED,
+        dailyKey,
+        weeklyKey,
+        monthlyKey,
+      ),
+    );
+    await this.notifyQuestCompletions(userId, results);
+    return results;
+  }
+
+  private async recordPersonalAction(userId: number): Promise<QuestCompletionResult[]> {
+    if (!(await this.hasCharacter(userId))) {
+      return [];
+    }
+    const tz = this.getTimeZone();
+    const now = new Date();
+    const dailyKey = getDailyPeriodKey(now, tz);
+    const weeklyKey = getWeeklyPeriodKey(now, tz);
+    const monthlyKey = getMonthlyPeriodKey(now, tz);
+
+    const results = await this.prisma.$transaction((tx) =>
+      this.incrementMetric(
+        tx,
+        userId,
+        QuestMetric.PERSONAL_ACTIONS_COMPLETED,
+        dailyKey,
+        weeklyKey,
+        monthlyKey,
+      ),
+    );
+    await this.notifyQuestCompletions(userId, results);
+    return results;
+  }
+
+  private async recordAllDailiesDoneIfNeeded(
+    userId: number,
+  ): Promise<QuestCompletionResult[]> {
+    const tz = this.getTimeZone();
+    const todayKey = getDailyPeriodKey(new Date(), tz);
+    const dayDate = new Date(`${todayKey}T12:00:00.000Z`);
+
+    const dailies = await this.prisma.personalDaily.findMany({
+      where: { userId, archivedAt: null },
+      select: { lastCompletedDayKey: true },
+    });
+    if (dailies.length === 0) {
+      return [];
+    }
+    const allDone = dailies.every(
+      (d) =>
+        d.lastCompletedDayKey &&
+        d.lastCompletedDayKey.toISOString().slice(0, 10) === dayDate.toISOString().slice(0, 10),
+    );
+    if (!allDone) {
+      return [];
+    }
+
+    const weeklyKey = getWeeklyPeriodKey(new Date(), tz);
+    const monthlyKey = getMonthlyPeriodKey(new Date(), tz);
+    const results = await this.prisma.$transaction((tx) =>
+      this.incrementMetric(
+        tx,
+        userId,
+        QuestMetric.PERSONAL_DAILIES_ALL_DONE,
+        todayKey,
+        weeklyKey,
+        monthlyKey,
+      ),
+    );
+    await this.notifyQuestCompletions(userId, results);
+    await this.achievementService.recordIncrement(
+      userId,
+      AchievementMetric.PERSONAL_DAILIES_ALL_DONE_TOTAL,
+      1,
+    );
     return results;
   }
 
@@ -295,12 +328,6 @@ export class QuestProgressService {
       select: { id: true },
     });
     return Boolean(row);
-  }
-
-  private isDueToday(dueDate: Date, timeZone: string): boolean {
-    const today = getTodayGameDayKey(timeZone);
-    const dueDay = getGameDayKey(dueDate, timeZone);
-    return dueDay.getTime() === today.getTime();
   }
 
   private resolvePeriodKey(
@@ -457,42 +484,6 @@ export class QuestProgressService {
       template,
       weeklyKey,
       count,
-    );
-  }
-
-  private async syncDistinctWorkspacesProgress(
-    tx: QuestTx,
-    userId: number,
-    weeklyKey: string,
-    timeZone: string,
-  ): Promise<QuestCompletionResult[]> {
-    const template = await tx.questTemplate.findFirst({
-      where: {
-        active: true,
-        metric: QuestMetric.DISTINCT_WORKSPACES_ACTIVE,
-        period: QuestPeriod.WEEKLY,
-      },
-    });
-    if (!template) {
-      return [];
-    }
-
-    const { start, end } = getWeekDayKeyRange(weeklyKey, timeZone);
-    const rows = await tx.userWorkspaceQuestDay.findMany({
-      where: {
-        userId,
-        dayKey: { gte: start, lte: end },
-      },
-      select: { workspaceId: true },
-      distinct: ['workspaceId'],
-    });
-
-    return this.setTemplateProgressTo(
-      tx,
-      userId,
-      template,
-      weeklyKey,
-      rows.length,
     );
   }
 

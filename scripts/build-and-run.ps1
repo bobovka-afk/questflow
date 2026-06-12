@@ -7,7 +7,7 @@
 # Из папки backend:
 #   npm run prod              # build + run (рекомендуется)
 #   npm run prod:run          # тот же ps1-скрипт
-#   ..\scripts\build-and-run.ps1
+#   .\scripts\build-and-run.ps1
 
 param(
     [switch]$SkipBuild

@@ -18,7 +18,7 @@ import {
 } from '../gamification/core/checkin-streak-milestones';
 import {
   CHARACTER_HEALTH_MAX,
-  DAILY_TASK_XP_COMPLETIONS_MAX,
+  DAILY_ACTIVITY_XP_MAX,
   HP_GAIN_PER_XP_EVENT,
   MANA_MAX,
   MANA_PER_TASK_COMPLETED,
@@ -29,16 +29,15 @@ import {
   GenderCharacter,
   XpEventType,
 } from '../generated/prisma/enums';
-import {
-  genderForAvatarPreset,
-  isQuestAvatarPreset,
-} from './config/quest-avatar-presets';
+import { genderForAvatarPreset, isQuestAvatarPresetKey } from './lib/avatar-preset-gender';
 import {
   XP_EVENT_TYPES_REQUIRING_DAY_KEY,
 } from '../gamification/constants';
 import { getTodayGameDayKey } from '../gamification/core/game-day';
+import { isDailyActivityXpEvent, isTaskLikeXpEvent } from '../gamification/core/task-like-xp-events';
 import { resolveGameDayTimeZone } from '../gamification/lib/resolve-game-day-timezone';
 import { QuestProgressService } from '../gamification/quest/quest-progress.service';
+import { buildXpGainNotificationPayload } from '../gamification/xp/xp-gain-notification-payload';
 import { AchievementService } from '../gamification/achievement/achievement.service';
 import { AchievementMetric } from '../generated/prisma/enums';
 import type {
@@ -161,13 +160,7 @@ export class CharacterService {
 
     const nextGender = dto.gender ?? existing.gender;
     if (dto.avatarPreset !== undefined) {
-      await this.assertAvatarPresetUpdateAllowed(
-        userId,
-        dto.avatarPreset,
-        nextGender,
-      );
-    } else if (dto.gender !== undefined && isQuestAvatarPreset(existing.avatarPreset)) {
-      this.assertAvatarPresetMatchesGender(existing.avatarPreset, nextGender);
+      await this.assertAvatarPresetUpdateAllowed(dto.avatarPreset, nextGender);
     }
 
     return this.prisma.character.update({
@@ -198,6 +191,11 @@ export class CharacterService {
     eventType: XpEventType,
     cardId?: number | null,
     dayKey?: Date | null,
+    personalRef?: {
+      personalTodoId?: number | null;
+      personalDailyId?: number | null;
+      personalHabitId?: number | null;
+    },
   ): Promise<XpGrantResult> {
     if (XP_EVENT_TYPES_REQUIRING_DAY_KEY.includes(eventType) && !dayKey) {
       this.throwXpEventDayKeyRequired();
@@ -211,7 +209,7 @@ export class CharacterService {
         select: {
           currentXp: true,
           level: true,
-          dailyTaskXpCount: true,
+          dailyActivityXpEarned: true,
           health: true,
           manaCurrent: true,
           checkinStreak: true,
@@ -226,10 +224,10 @@ export class CharacterService {
       }
 
       if (
-        eventType === XpEventType.TASK_COMPLETED &&
-        userStats.dailyTaskXpCount >= DAILY_TASK_XP_COMPLETIONS_MAX
+        isDailyActivityXpEvent(eventType) &&
+        userStats.dailyActivityXpEarned + xpAmount > DAILY_ACTIVITY_XP_MAX
       ) {
-        this.throwDailyTaskXpLimit();
+        this.throwDailyActivityXpLimit();
       }
 
       const rewards: XpGrantRewards = {
@@ -244,7 +242,7 @@ export class CharacterService {
         streakMilestonesReached: [],
       };
 
-      const grantHp = eventType === XpEventType.TASK_COMPLETED;
+      const grantHp = isTaskLikeXpEvent(eventType) || eventType === XpEventType.HABIT_POSITIVE;
       const healthBefore = userStats.health;
       let stats: CharacterXpStats = { ...userStats };
 
@@ -256,17 +254,22 @@ export class CharacterService {
           xpAmount,
           cardId: cardId ?? null,
           dayKey: dayKey ?? null,
+          personalTodoId: personalRef?.personalTodoId ?? null,
+          personalDailyId: personalRef?.personalDailyId ?? null,
+          personalHabitId: personalRef?.personalHabitId ?? null,
         },
         stats,
         grantHp,
       );
 
-      if (eventType === XpEventType.TASK_COMPLETED) {
+      if (isTaskLikeXpEvent(eventType)) {
         rewards.taskXp = xpAmount;
         const manaRoom = Math.max(0, MANA_MAX - stats.manaCurrent);
         const manaGained = Math.min(MANA_PER_TASK_COMPLETED, manaRoom);
         stats.manaCurrent += manaGained;
         rewards.manaGained = manaGained;
+      } else if (eventType === XpEventType.HABIT_POSITIVE) {
+        rewards.taskXp = xpAmount;
       } else if (eventType === XpEventType.DAILY_CHECKIN) {
         rewards.checkinXp = xpAmount;
         stats = await this.applyCheckinStreakAndMilestones(
@@ -303,8 +306,8 @@ export class CharacterService {
         checkinStreak: stats.checkinStreak,
         lastCheckinDayKey: stats.lastCheckinDayKey,
       };
-      if (eventType === XpEventType.TASK_COMPLETED) {
-        data.dailyTaskXpCount = { increment: 1 };
+      if (isDailyActivityXpEvent(eventType)) {
+        data.dailyActivityXpEarned = { increment: xpAmount };
       }
 
       const character = await tx.character.update({
@@ -329,15 +332,9 @@ export class CharacterService {
       result.character.checkinStreak,
     );
 
-    const xpNotified =
-      result.rewards.taskXp +
-      result.rewards.checkinXp +
-      result.rewards.streakMilestoneXp;
-    if (xpNotified > 0) {
-      await this.notificationService.notifyXpGain(userId, {
-        xpAmount: xpNotified,
-        source: eventType,
-      });
+    const xpPayload = buildXpGainNotificationPayload(result.rewards, eventType);
+    if (xpPayload) {
+      await this.notificationService.notifyXpGain(userId, xpPayload);
     }
 
     return result;
@@ -471,6 +468,9 @@ export class CharacterService {
           userId,
           type: event.type,
           cardId: event.cardId,
+          personalTodoId: event.personalTodoId ?? null,
+          personalDailyId: event.personalDailyId ?? null,
+          personalHabitId: event.personalHabitId ?? null,
           dayKey: event.dayKey,
           xpAmount: event.xpAmount,
         },
@@ -544,37 +544,26 @@ export class CharacterService {
     avatarPreset: CharacterAvatarPreset,
     gender: GenderCharacter,
   ): void {
-    if (isQuestAvatarPreset(avatarPreset)) {
+    if (isQuestAvatarPresetKey(avatarPreset)) {
       throw new BadRequestException({
-        code: 'AVATAR_PRESET_QUEST_NOT_ON_CREATE',
-        message: 'Quest avatar presets cannot be used when creating a character',
+        code: 'AVATAR_PRESET_INVALID',
+        message: 'This avatar preset cannot be used',
       });
     }
     this.assertAvatarPresetMatchesGender(avatarPreset, gender);
   }
 
   private async assertAvatarPresetUpdateAllowed(
-    userId: number,
     avatarPreset: CharacterAvatarPreset,
     gender: GenderCharacter,
   ): Promise<void> {
-    this.assertAvatarPresetMatchesGender(avatarPreset, gender);
-    if (!isQuestAvatarPreset(avatarPreset)) {
-      return;
-    }
-    const owned = await this.prisma.inventoryItem.findFirst({
-      where: {
-        userId,
-        cosmeticItem: { key: avatarPreset },
-      },
-      select: { id: true },
-    });
-    if (!owned) {
-      throw new ConflictException({
-        code: 'COSMETIC_AVATAR_NOT_OWNED',
-        message: 'Quest avatar preset is not owned',
+    if (isQuestAvatarPresetKey(avatarPreset)) {
+      throw new BadRequestException({
+        code: 'AVATAR_PRESET_INVALID',
+        message: 'This avatar preset cannot be used',
       });
     }
+    this.assertAvatarPresetMatchesGender(avatarPreset, gender);
   }
 
   private assertAvatarPresetMatchesGender(
@@ -596,11 +585,30 @@ export class CharacterService {
     });
   }
 
-  private throwDailyTaskXpLimit(): never {
+  private throwDailyActivityXpLimit(): never {
     throw new ConflictException({
-      code: 'DAILY_TASK_XP_LIMIT',
-      message: 'Daily limit of task experience rewards reached',
+      code: 'DAILY_ACTIVITY_XP_LIMIT',
+      message: 'Daily limit of activity experience rewards reached',
     });
+  }
+
+  async applyHealthDelta(userId: number, delta: number): Promise<number> {
+    const character = await this.prisma.character.findUnique({
+      where: { userId },
+      select: { health: true },
+    });
+    if (!character) {
+      throw new NotFoundException({
+        code: 'CHARACTER_NOT_FOUND',
+        message: 'Character not found',
+      });
+    }
+    const health = Math.max(0, Math.min(CHARACTER_HEALTH_MAX, character.health + delta));
+    await this.prisma.character.update({
+      where: { userId },
+      data: { health },
+    });
+    return health;
   }
 
   private throwXpEventDuplicate(eventType: XpEventType): never {

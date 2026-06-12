@@ -1,3 +1,5 @@
+import type { UserBrief } from '../../common/interface';
+
 export type CardAttachmentView = {
   id: number;
   cardId: number;
@@ -10,6 +12,6 @@ export type CardAttachmentView = {
   isImage: boolean;
   isVideoLink: boolean;
   isCover: boolean;
-  uploader: { id: number; name: string; avatarPath?: string | null };
+  uploader: UserBrief;
   createdAt: string;
 };

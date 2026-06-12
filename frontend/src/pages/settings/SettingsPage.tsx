@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   fetchPendingEmailChange,
   fetchUserSessions,
@@ -13,16 +13,14 @@ import {
   type PendingEmailChangeDto,
   type UserSessionDto,
 } from '@entities/user-settings';
-import { isValidUsername, normalizeUsername, profilePathForUsername, updateUsername } from '@entities/user';
 import { api, formatApiError } from '@shared/api';
 import { formatDateTimeRuSettings } from '@shared/lib/formatDateRu';
-import { SpaLink } from '@shared/lib';
-import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 import { SettingsSwitch } from '@shared/ui/settings-switch/SettingsSwitch';
 import { SettingsPasswordPanel } from '@widgets/settings-password/SettingsPasswordPanel';
 import { SettingsDeleteAccountPanel } from '@widgets/settings-delete-account/SettingsDeleteAccountPanel';
 import { SettingsSecurityLogModal } from '@widgets/settings-security-log/SettingsSecurityLogModal';
 import { SettingsWebPushPanel } from '@widgets/settings-web-push/SettingsWebPushPanel';
+import { ThemedSelect } from '@features/board/ui/ThemedSelect';
 import {
   SETTINGS_TAB_LABELS,
   SETTINGS_TABS,
@@ -34,7 +32,6 @@ type UserSafe = {
   id: number;
   email: string;
   name: string;
-  username: string | null;
   hasPassword: boolean;
 };
 
@@ -56,7 +53,7 @@ type Props = {
 export function SettingsPage(props: Props) {
   const [user, setUser] = useState<UserSafe | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [tab, setTab] = useState<SettingsTab>(props.initialTab ?? 'security');
+  const [tab, setTab] = useState<SettingsTab>(props.initialTab ?? 'account');
   const [gamificationSettings, setGamificationSettings, gamificationMeta] =
     useGamificationSettings(props.accessToken);
   const [privacySettings, setPrivacySettings, privacyMeta] = usePrivacySettings(
@@ -74,14 +71,18 @@ export function SettingsPage(props: Props) {
   const [sessionBusyId, setSessionBusyId] = useState<string | null>(null);
   const [revokeOthersBusy, setRevokeOthersBusy] = useState(false);
   const [securityLogOpen, setSecurityLogOpen] = useState(false);
-  const [usernameDraft, setUsernameDraft] = useState('');
-  const [usernameBusy, setUsernameBusy] = useState(false);
-  const [usernameMsg, setUsernameMsg] = useState<string | null>(null);
   const [displayTimezone, setDisplayTimezone] = useState('');
   const [timezoneBusy, setTimezoneBusy] = useState(false);
   const [timezoneMsg, setTimezoneMsg] = useState<string | null>(null);
+  const timezoneOptions = useMemo(() => {
+    const zones =
+      displayTimezone && !DISPLAY_TIMEZONE_SUGGESTIONS.includes(displayTimezone)
+        ? [displayTimezone, ...DISPLAY_TIMEZONE_SUGGESTIONS]
+        : DISPLAY_TIMEZONE_SUGGESTIONS;
+    return zones.map((z) => ({ value: z, label: z }));
+  }, [displayTimezone]);
   useEffect(() => {
-    setTab(props.initialTab ?? 'security');
+    setTab(props.initialTab ?? 'account');
     requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'auto' });
     });
@@ -91,9 +92,6 @@ export function SettingsPage(props: Props) {
     if (tab === key) return;
     setTab(key);
     replaceSettingsTabInUrl(key);
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: 'auto' });
-    });
   }
 
   useEffect(() => {
@@ -109,7 +107,6 @@ export function SettingsPage(props: Props) {
           accessToken: props.accessToken,
         });
         setUser(res);
-        setUsernameDraft(res.username ?? '');
       } catch (e) {
         setMsg(formatApiError(e));
       }
@@ -205,27 +202,6 @@ export function SettingsPage(props: Props) {
     }
   }
 
-  async function handleSaveUsername() {
-    if (!props.accessToken) return;
-    const normalized = normalizeUsername(usernameDraft);
-    if (!isValidUsername(normalized)) {
-      setUsernameMsg('3–32 символа: латиница, цифры, подчёркивание.');
-      return;
-    }
-    setUsernameBusy(true);
-    setUsernameMsg(null);
-    try {
-      const updated = await updateUsername(props.accessToken, normalized);
-      setUser((u) => (u ? { ...u, username: updated.username } : u));
-      setUsernameDraft(updated.username ?? normalized);
-      setUsernameMsg('Username сохранён.');
-    } catch (e) {
-      setUsernameMsg(formatApiError(e));
-    } finally {
-      setUsernameBusy(false);
-    }
-  }
-
   async function handleSaveTimezone() {
     if (!props.accessToken) return;
     const tz = displayTimezone.trim();
@@ -266,13 +242,9 @@ export function SettingsPage(props: Props) {
       case 'account':
         return (
           <div className="trello-settings-section">
-            <header className="trello-settings-section-head">
-              <h2 className="trello-settings-section-lead">
-                Просмотр данных аккаунта. Имя и аватар редактируются в профиле.
-              </h2>
-            </header>
+            <div className="trello-settings-cards">
             {emailChangeMsg ? (
-              <div className="trello-banner trello-banner-warn">{emailChangeMsg}</div>
+              <p className="trello-settings-inline-msg">{emailChangeMsg}</p>
             ) : null}
             <article className="trello-settings-card">
               <h2 className="trello-settings-card-title">Текущая почта</h2>
@@ -326,45 +298,6 @@ export function SettingsPage(props: Props) {
               </div>
             </article>
             <article className="trello-settings-card">
-              <h2 className="trello-settings-card-title">Публичный @username</h2>
-              <p className="trello-settings-card-hint">
-                Ссылка для других:{' '}
-                {user?.username ? (
-                  <SpaLink to={profilePathForUsername(user.username)}>
-                    {profilePathForUsername(user.username)}
-                  </SpaLink>
-                ) : (
-                  'задайте ник ниже'
-                )}
-              </p>
-              {usernameMsg ? (
-                <p className="trello-settings-card-hint">{usernameMsg}</p>
-              ) : null}
-              <label className="trello-field">
-                <span className="trello-label">Username</span>
-                <input
-                  className="trello-input"
-                  type="text"
-                  value={usernameDraft}
-                  onChange={(e) => setUsernameDraft(e.target.value)}
-                  placeholder="hero_42"
-                  autoComplete="off"
-                  disabled={usernameBusy}
-                  maxLength={32}
-                />
-              </label>
-              <div className="trello-settings-card-actions">
-                <button
-                  type="button"
-                  className="trello-btn trello-btn-primary trello-btn-sm"
-                  disabled={usernameBusy || !usernameDraft.trim()}
-                  onClick={() => void handleSaveUsername()}
-                >
-                  {usernameBusy ? '…' : 'Сохранить username'}
-                </button>
-              </div>
-            </article>
-            <article className="trello-settings-card">
               <h2 className="trello-settings-card-title">Часовой пояс отображения</h2>
               <p className="trello-settings-card-hint">
                 Для дедлайнов и подписей времени в интерфейсе. Сброс игровых суток на сервере
@@ -374,27 +307,16 @@ export function SettingsPage(props: Props) {
                 <p className="trello-settings-card-hint">{timezoneMsg}</p>
               ) : null}
               <div className="trello-field trello-settings-timezone-field">
-                <select
-                  className="trello-input trello-settings-timezone-select"
+                <ThemedSelect
+                  className="trello-settings-timezone-select"
                   value={displayTimezone}
-                  onChange={(e) => setDisplayTimezone(e.target.value)}
+                  options={timezoneOptions}
+                  includeEmptyOption={!displayTimezone}
+                  emptyOption={{ value: '', label: 'Выберите часовой пояс' }}
                   disabled={timezoneBusy}
-                >
-                  {!displayTimezone ? (
-                    <option value="" disabled>
-                      Выберите часовой пояс
-                    </option>
-                  ) : null}
-                  {(displayTimezone &&
-                  !DISPLAY_TIMEZONE_SUGGESTIONS.includes(displayTimezone)
-                    ? [displayTimezone, ...DISPLAY_TIMEZONE_SUGGESTIONS]
-                    : DISPLAY_TIMEZONE_SUGGESTIONS
-                  ).map((z) => (
-                    <option key={z} value={z}>
-                      {z}
-                    </option>
-                  ))}
-                </select>
+                  aria-label="Часовой пояс отображения"
+                  onChange={setDisplayTimezone}
+                />
               </div>
               <div className="trello-settings-card-actions">
                 <button
@@ -414,18 +336,13 @@ export function SettingsPage(props: Props) {
                 onDeleted={props.onAccountDeleted}
               />
             ) : null}
+            </div>
           </div>
         );
 
       case 'security':
         return (
           <div className="trello-settings-section">
-            <header className="trello-settings-section-head">
-              <h2 className="trello-settings-section-lead">
-                Пароль и активные сессии на ваших устройствах.
-              </h2>
-            </header>
-
             {props.accessToken ? (
               <SettingsPasswordPanel
                 accessToken={props.accessToken}
@@ -515,11 +432,8 @@ export function SettingsPage(props: Props) {
       case 'notifications':
         return (
           <div className="trello-settings-section">
-            <header className="trello-settings-section-head">
-              <h2 className="trello-settings-section-lead">
-                Письма на почту и оповещения в колоколе на сайте.
-              </h2>
-            </header>
+            <div className="trello-settings-cards">
+            <article className="trello-settings-card">
             <div
               className="trello-settings-switches"
               aria-busy={notificationMeta.loading || undefined}
@@ -607,24 +521,23 @@ export function SettingsPage(props: Props) {
                 }
               />
             </div>
+            </article>
             {props.accessToken ? (
               <SettingsWebPushPanel accessToken={props.accessToken} />
             ) : null}
+            </div>
           </div>
         );
 
       case 'gamification':
         return (
           <div className="trello-settings-section">
-            <header className="trello-settings-section-head">
-              <h2 className="trello-settings-section-lead">
-                Поведение на доске при закрытии карточки и начислении опыта.
-              </h2>
-            </header>
-            <div
-              className="trello-settings-switches"
-              aria-busy={gamificationMeta.loading || undefined}
-            >
+            <div className="trello-settings-cards">
+              <article className="trello-settings-card">
+                <div
+                  className="trello-settings-switches"
+                  aria-busy={gamificationMeta.loading || undefined}
+                >
               <SettingsSwitch
                 label="Анимация чекина при закрытии карточки"
                 description="Счётчик серии 🔥 с прокруткой в уведомлении о чекине за день."
@@ -643,6 +556,8 @@ export function SettingsPage(props: Props) {
                   setGamificationSettings({ xpGainNotifications: checked })
                 }
               />
+                </div>
+              </article>
             </div>
           </div>
         );
@@ -650,13 +565,12 @@ export function SettingsPage(props: Props) {
       case 'privacy':
         return (
           <div className="trello-settings-section">
-            <header className="trello-settings-section-head">
-              <h2 className="trello-settings-section-lead">
-                Кто видит ваш публичный профиль и персонажа среди участников общих
-                воркспейсов. Email другим пользователям не показывается.
-              </h2>
-            </header>
-            <div className="trello-settings-switches" aria-busy={privacyMeta.loading || undefined}>
+            <div className="trello-settings-cards">
+              <article className="trello-settings-card">
+                <div
+                  className="trello-settings-switches"
+                  aria-busy={privacyMeta.loading || undefined}
+                >
               <SettingsSwitch
                 label="Показывать персонажа другим"
                 description="Если выключено, коллеги не откроют страницу персонажа и не увидят кнопку «Персонаж»."
@@ -682,6 +596,8 @@ export function SettingsPage(props: Props) {
                   setPrivacySettings({ showOnlineStatusToFriends: checked })
                 }
               />
+                </div>
+              </article>
             </div>
           </div>
         );
@@ -692,26 +608,14 @@ export function SettingsPage(props: Props) {
   }
 
   return (
-    <div className="trello-app-shell">
-      <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
-          <div className="trello-topbar-stripe-left">
-            <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-              <AppLogo />
-              <span className="trello-top-left-brand-text">Questflow</span>
-            </SpaLink>
-            <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/workspaces">
-              Назад
-            </SpaLink>
-          </div>
-          <h1 className="trello-topbar-stripe-center">Настройки</h1>
-          <div className="trello-topbar-actions">
-            <SpaLink className="trello-btn trello-btn-ghost" to="/settings">
-              Настройки
-            </SpaLink>
-          </div>
-        </header>
+    <div className="px-page settings-page">
+      <header className="px-topbar">
+        <div className="px-topbar-left">
+          <h1 className="px-topbar-title">Настройки</h1>
+        </div>
+      </header>
 
+      <div className="px-content settings-page-content">
         {msg ? <div className="trello-banner trello-banner-warn">{msg}</div> : null}
 
         <section className="trello-panel trello-settings-panel trello-settings-panel--split">

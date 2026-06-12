@@ -7,12 +7,39 @@ import { CardPasteAttachmentPrompt } from '@features/board/ui/CardPasteAttachmen
 import { CardLabelStrip } from '@features/board/ui/CardLabelStrip';
 import { RichCommentBody } from '@features/board/ui/RichCommentBody';
 import { attachmentMarkdown } from '@features/board/lib/richTextEditor';
-import { CARD_REMINDER_OPTIONS } from '@features/board/lib/boardCardFilters';
+import { CardDatesPopover } from '@features/board/ui/CardDatesPopover';
+import { attachmentIdsEmbeddedInComments } from '@features/board/lib/commentAttachmentActivity';
+import {
+  setCardColorCover,
+  type CardCoverDisplayMode,
+  type CardCoverPatch,
+} from '@features/board/api/cardCoverApi';
+import { CardColorCoverPopover } from '@features/board/ui/CardColorCoverPopover';
+import { CardMembersPopover } from '@features/board/ui/CardMembersPopover';
+import { CardMembersStrip } from '@features/board/ui/CardMembersStrip';
+import { CardDetailIconTooltip } from '@features/board/ui/CardDetailIconTooltip';
+import { CARD_TITLE_MAX_LENGTH } from '@entities/card/lib/cardLimits';
+import { listHeaderColor } from '@entities/board';
+import type { ListColorPresetKey } from '@entities/board';
+import { characterPortraitUrl } from '@entities/character';
+import type { WorkspaceLabelRow } from '@features/board/lib/boardCardFilters';
+import {
+  activityUserDisplayName,
+  avatarInitials,
+  avatarSrcFromPath,
+  userProfilePath,
+  type ActivityUserBrief,
+} from '@entities/user';
+import { handleSpaTileAuxClick, handleSpaTileClick } from '@shared/lib/navigation-core';
+import { IconAttach } from '@shared/ui/icons/IconAttach';
+
 export type CardDetailCard = {
   id: number;
   title: string;
   isCompleted?: boolean;
   coverImageUrl?: string | null;
+  coverColorPreset?: string | null;
+  coverDisplayMode?: CardCoverDisplayMode;
   attachmentCount?: number;
   labels?: WorkspaceLabelRow[];
   createdAt: string;
@@ -23,16 +50,12 @@ export type CardDetailComment = {
   userId: number;
   body: string;
   createdAt: string;
-  user: { id: number; name: string; avatarPath?: string | null };
+  user: ActivityUserBrief;
 };
-import type { WorkspaceLabelRow } from '@features/board/lib/boardCardFilters';
-import { avatarInitials, avatarSrcFromPath, userProfilePath } from '@entities/user';
-import { handleSpaTileAuxClick, handleSpaTileClick } from '@shared/lib/navigation-core';
-import { IconAttach } from '@shared/ui/icons/IconAttach';
 
 type WorkspaceMember = {
   userId: number;
-  user: { id: number; name: string; avatarPath?: string | null };
+  user: ActivityUserBrief;
 };
 
 type Panel = 'labels' | 'dates' | 'members' | null;
@@ -92,6 +115,14 @@ function IconMember() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+    </svg>
+  );
+}
+
+function IconCover() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
     </svg>
   );
 }
@@ -157,44 +188,60 @@ function EditorFooter({
   );
 }
 
-function resolveMemberAvatar(
+function resolveActivityUser(
   members: WorkspaceMember[],
   userId: number,
-  directAvatarPath?: string | null,
-): string | null | undefined {
-  if (directAvatarPath) return directAvatarPath;
-  return members.find((m) => m.user.id === userId)?.user.avatarPath;
+  direct?: Partial<ActivityUserBrief>,
+): ActivityUserBrief {
+  const memberUser = members.find((m) => m.user.id === userId)?.user;
+  return {
+    id: userId,
+    name: direct?.name ?? memberUser?.name ?? 'Участник',
+    avatarPath: direct?.avatarPath ?? memberUser?.avatarPath ?? null,
+    characterName: direct?.characterName ?? memberUser?.characterName ?? null,
+    characterAvatarPreset:
+      direct?.characterAvatarPreset ?? memberUser?.characterAvatarPreset ?? null,
+  };
 }
 
 function CommentAvatarBubble({
-  name,
-  avatarPath,
+  user,
   profileTo,
 }: {
-  name: string;
-  avatarPath?: string | null;
+  user: ActivityUserBrief;
   profileTo: string;
 }) {
   const [broken, setBroken] = useState(false);
-  const src = avatarSrcFromPath(avatarPath);
+  const label = activityUserDisplayName(user);
+  const characterSrc = user.characterAvatarPreset
+    ? characterPortraitUrl(user.characterAvatarPreset)
+    : null;
+  const accountSrc = avatarSrcFromPath(user.avatarPath);
+  const src = characterSrc ?? accountSrc;
+  const isCharacter = Boolean(characterSrc);
   return (
     <button
       type="button"
       className="trello-card-comment-avatar trello-card-comment-avatar-btn"
       onClick={(e) => handleSpaTileClick(e, profileTo)}
       onAuxClick={(e) => handleSpaTileAuxClick(e, profileTo)}
-      title={name}
+      title={label}
     >
       {src && !broken ? (
         <img
-          className="trello-card-comment-avatar-img"
+          className={[
+            'trello-card-comment-avatar-img',
+            isCharacter ? 'trello-card-comment-avatar-img--character' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
           src={src}
           alt=""
           onError={() => setBroken(true)}
         />
       ) : (
         <span className="trello-card-comment-avatar-fallback" aria-hidden>
-          {avatarInitials(name)}
+          {avatarInitials(label)}
         </span>
       )}
     </button>
@@ -210,9 +257,11 @@ export type CardDetailModalTrelloProps = {
   currentUserName: string;
   busy: boolean;
   onClose: () => void;
-  onSave: () => void;
   onDelete: () => void;
-  onCoverChange: () => void;
+  onArchive: () => void;
+  /** Pass patch for instant local update; omit to refetch card from board (attachments). */
+  onCoverChange: (patch?: CardCoverPatch) => void;
+  canArchive?: boolean;
   onToggleComplete: (e: React.MouseEvent<HTMLButtonElement>) => void;
   completionBusy?: boolean;
   title: string;
@@ -227,9 +276,9 @@ export type CardDetailModalTrelloProps = {
   onDescriptionSave: () => void;
   onDescriptionCancel: () => void;
   due: string;
-  onDueChange: (v: string) => void;
   reminder: string;
-  onReminderChange: (v: string) => void;
+  onDatesSave: (due: string, reminder: string) => void | Promise<void>;
+  onDatesRemove: () => void | Promise<void>;
   assigneeId: number | null;
   onAssigneeChange: (id: number | null) => void;
   labelIds: number[];
@@ -260,6 +309,7 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
   const [cardAttachments, setCardAttachments] = useState<CardAttachmentRow[]>([]);
   const [attachRev, setAttachRev] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [coverPopoverOpen, setCoverPopoverOpen] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
   const [commentExpanded, setCommentExpanded] = useState(false);
   const [commentSnapshot, setCommentSnapshot] = useState('');
@@ -276,7 +326,52 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
   const uploadTargetRef = useRef<'card' | 'comment'>('card');
   const openAttachmentPickerRef = useRef<(() => void) | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const coverRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  const coverDisplayMode = props.card.coverDisplayMode ?? 'NONE';
+  const coverColor = props.card.coverColorPreset
+    ? listHeaderColor(props.card.coverColorPreset)
+    : null;
+  const hasColorCover =
+    Boolean(coverColor) && coverDisplayMode !== 'NONE';
+  /* В модалке BANNER и FULL — только полоса шапки; полная заливка только в колонке */
+  const isBannerCover =
+    Boolean(props.card.coverImageUrl) || hasColorCover;
+  const topbarOnCover = isBannerCover;
+
+  async function applyColorCover(
+    preset: ListColorPresetKey | null,
+    mode: CardCoverDisplayMode,
+  ) {
+    if (!props.accessToken) return;
+
+    const nextMode: CardCoverDisplayMode = preset == null ? 'NONE' : mode;
+    const currentPreset = props.card.coverColorPreset ?? null;
+    if (currentPreset === preset && coverDisplayMode === nextMode) {
+      return;
+    }
+
+    const patch: CardCoverPatch = {
+      coverColorPreset: preset,
+      coverDisplayMode: nextMode,
+      ...(preset != null ? { coverImageUrl: null } : {}),
+    };
+    props.onCoverChange(patch);
+
+    try {
+      await setCardColorCover(
+        props.accessToken,
+        props.workspaceId,
+        props.card.id,
+        preset,
+        nextMode,
+      );
+    } catch (e) {
+      props.onCoverChange();
+      setAttachError(formatApiError(e));
+    }
+  }
 
   useEffect(() => {
     setPanel(null);
@@ -420,6 +515,7 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
     setAttachError(null);
     try {
       const markdownParts: string[] = [];
+      const uploadedRows: CardAttachmentRow[] = [];
       for (const item of pending) {
         const row = await uploadCardAttachment(
           props.accessToken,
@@ -427,9 +523,20 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
           props.card.id,
           item.file,
         );
+        uploadedRows.push(row);
         markdownParts.push(attachmentMarkdown(row));
       }
-      if (markdownParts.length > 0) notifyAttachmentsChanged();
+      if (uploadedRows.length > 0) {
+        setCardAttachments((prev) => {
+          const known = new Set(prev.map((r) => r.id));
+          const next = [...prev];
+          for (const row of uploadedRows) {
+            if (!known.has(row.id)) next.push(row);
+          }
+          return next;
+        });
+        notifyAttachmentsChanged();
+      }
       const attachmentText = markdownParts.join('');
       const body = `${text}${attachmentText}`.trim();
       if (!body) return;
@@ -489,8 +596,34 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
 
   const togglePanel = (p: Panel) => setPanel((cur) => (cur === p ? null : p));
 
-  const assigneeMember = useMemo(
-    () => props.members.find((m) => m.user.id === props.assigneeId),
+  const cardMemberUserIds = useMemo(
+    () => (props.assigneeId != null ? [props.assigneeId] : []),
+    [props.assigneeId],
+  );
+
+  const popoverMembers = useMemo((): WorkspaceMember[] => {
+    const list = [...props.members];
+    if (props.currentUserId == null) return list;
+    if (list.some((m) => m.userId === props.currentUserId || m.user.id === props.currentUserId)) {
+      return list;
+    }
+    list.unshift({
+      userId: props.currentUserId,
+      user: resolveActivityUser(props.members, props.currentUserId, {
+        name: props.currentUserName,
+      }),
+    });
+    return list;
+  }, [props.members, props.currentUserId, props.currentUserName]);
+
+  const cardMemberUsers = useMemo(
+    () => {
+      if (props.assigneeId == null) return [];
+      const row = props.members.find(
+        (m) => m.userId === props.assigneeId || m.user.id === props.assigneeId,
+      );
+      return row ? [row.user] : [];
+    },
     [props.members, props.assigneeId],
   );
 
@@ -504,15 +637,22 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
     | { kind: 'attachment'; at: string; key: string; row: CardAttachmentRow }
     | { kind: 'comment'; at: string; key: string; comment: CardDetailComment };
 
+  const attachmentIdsInComments = useMemo(
+    () => attachmentIdsEmbeddedInComments(cardAttachments, props.comments),
+    [cardAttachments, props.comments],
+  );
+
   const activityItems = useMemo((): ActivityItem[] => {
     const items: ActivityItem[] = [
       { kind: 'created', at: props.card.createdAt, key: 'created' },
-      ...cardAttachments.map((row) => ({
-        kind: 'attachment' as const,
-        at: row.createdAt,
-        key: `att-${row.id}`,
-        row,
-      })),
+      ...cardAttachments
+        .filter((row) => !attachmentIdsInComments.has(row.id))
+        .map((row) => ({
+          kind: 'attachment' as const,
+          at: row.createdAt,
+          key: `att-${row.id}`,
+          row,
+        })),
       ...props.comments.map((comment) => ({
         kind: 'comment' as const,
         at: comment.createdAt,
@@ -523,7 +663,12 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
     return items.sort(
       (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
     );
-  }, [props.card.createdAt, cardAttachments, props.comments]);
+  }, [
+    props.card.createdAt,
+    cardAttachments,
+    props.comments,
+    attachmentIdsInComments,
+  ]);
 
   let panelContent: ReactNode = null;
   if (panel === 'labels' && props.wsLabels.length > 0) {
@@ -552,56 +697,28 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
     );
   } else if (panel === 'dates') {
     panelContent = (
-      <div className="trello-card-detail-popover trello-card-detail-popover--dates">
-        <label className="trello-field">
-          <span className="trello-label">Срок</span>
-          <input
-            className="trello-input"
-            type="datetime-local"
-            value={props.due}
-            onChange={(e) => props.onDueChange(e.target.value)}
-          />
-        </label>
-        <label className="trello-field">
-          <span className="trello-label">Напоминание</span>
-          <select
-            className="trello-input"
-            value={props.reminder}
-            onChange={(e) => props.onReminderChange(e.target.value)}
-            disabled={props.busy || !props.due}
-          >
-            {CARD_REMINDER_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <CardDatesPopover
+        key={`dates-${props.card.id}-${props.due}-${props.reminder}`}
+        due={props.due}
+        reminder={props.reminder}
+        busy={props.busy}
+        onClose={() => setPanel(null)}
+        onSave={props.onDatesSave}
+        onRemove={props.onDatesRemove}
+      />
     );
   } else if (panel === 'members') {
     panelContent = (
-      <div className="trello-card-detail-popover trello-card-detail-popover--members">
-        <label className="trello-field">
-          <span className="trello-label">Исполнитель</span>
-          <select
-            className="trello-input trello-card-assignee-select"
-            value={props.assigneeId == null ? '' : String(props.assigneeId)}
-            onChange={(e) => {
-              const v = e.target.value;
-              props.onAssigneeChange(v === '' ? null : Number(v));
-            }}
-            disabled={props.busy}
-          >
-            <option value="">Не назначен</option>
-            {props.members.map((m) => (
-              <option key={m.user.id} value={m.user.id}>
-                {m.user.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <CardMembersPopover
+        selectedUserIds={cardMemberUserIds}
+        members={popoverMembers}
+        busy={props.busy}
+        onClose={() => setPanel(null)}
+        onSelectedChange={(ids) => {
+          const next = ids[0] ?? null;
+          props.onAssigneeChange(next);
+        }}
+      />
     );
   }
 
@@ -614,21 +731,145 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
       >
       <div
         ref={modalRef}
-        className="trello-modal trello-modal-card-detail trello-modal-card-detail--trello"
+        className={[
+          'trello-modal',
+          'trello-modal-card-detail',
+          'trello-modal-card-detail--trello',
+          topbarOnCover ? 'trello-modal-card-detail--has-cover-band' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         role="dialog"
         aria-modal
         aria-label={props.card.title}
         onClick={(e) => e.stopPropagation()}
       >
-        {props.card.coverImageUrl ? (
-          <div className="trello-card-detail-cover-wrap">
-            <img
-              className="trello-card-detail-cover-img"
-              src={props.card.coverImageUrl}
-              alt=""
-            />
+        {isBannerCover ? (
+          <div
+            className={[
+              'trello-card-detail-cover-band',
+              props.card.coverImageUrl
+                ? 'trello-card-detail-cover-band--image'
+                : 'trello-card-detail-cover-band--color',
+            ].join(' ')}
+            style={
+              hasColorCover && coverColor ? { backgroundColor: coverColor } : undefined
+            }
+          >
+            {props.card.coverImageUrl ? (
+              <img
+                className="trello-card-detail-cover-band-img"
+                src={props.card.coverImageUrl}
+                alt=""
+              />
+            ) : null}
           </div>
         ) : null}
+
+        <div
+          className={
+            topbarOnCover
+              ? 'trello-card-detail-topbar trello-card-detail-topbar--on-cover'
+              : 'trello-card-detail-topbar'
+          }
+        >
+          <div className="trello-card-detail-list-badge" title={props.listName}>
+            <span>{props.listName}</span>
+          </div>
+          <div className="trello-card-detail-topbar-actions">
+            {props.accessToken ? (
+              <CardDetailIconTooltip label="Обложка">
+                <div className="trello-card-detail-cover-wrap-btn" ref={coverRef}>
+                  <button
+                    type="button"
+                    className="trello-card-detail-icon-btn trello-card-detail-cover-btn"
+                    aria-label="Обложка"
+                    aria-expanded={coverPopoverOpen}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setCoverPopoverOpen((v) => !v);
+                    }}
+                  >
+                    <IconCover />
+                  </button>
+                  <CardColorCoverPopover
+                    open={coverPopoverOpen}
+                    colorPreset={props.card.coverColorPreset ?? null}
+                    displayMode={
+                      coverDisplayMode === 'FULL' ? 'FULL' : 'BANNER'
+                    }
+                    busy={false}
+                    onClose={() => setCoverPopoverOpen(false)}
+                    onSelectColor={(preset, mode) =>
+                      void applyColorCover(preset, mode)
+                    }
+                    onRemoveCover={() => {
+                      void applyColorCover(null, 'NONE');
+                      setCoverPopoverOpen(false);
+                    }}
+                  />
+                </div>
+              </CardDetailIconTooltip>
+            ) : null}
+            <CardDetailIconTooltip label="Действия">
+              <div className="trello-card-detail-menu-wrap" ref={menuRef}>
+                <button
+                  type="button"
+                  className="trello-card-detail-icon-btn"
+                  aria-label="Действия"
+                  aria-expanded={menuOpen}
+                  onClick={() => {
+                    setCoverPopoverOpen(false);
+                    setMenuOpen((v) => !v);
+                  }}
+                >
+                  <span className="trello-card-detail-ellipsis" aria-hidden>
+                    •••
+                  </span>
+                </button>
+                {menuOpen ? (
+                  <div className="trello-card-detail-menu" role="menu">
+                    {props.canArchive !== false ? (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={props.busy}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          props.onArchive();
+                        }}
+                      >
+                        В архив
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="trello-card-detail-menu-danger"
+                      disabled={props.busy}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        props.onDelete();
+                      }}
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </CardDetailIconTooltip>
+            <CardDetailIconTooltip label="Закрыть">
+              <button
+                type="button"
+                className="trello-card-detail-icon-btn trello-card-detail-close-btn"
+                aria-label="Закрыть"
+                onClick={() => !props.busy && props.onClose()}
+              >
+                ×
+              </button>
+            </CardDetailIconTooltip>
+          </div>
+        </div>
 
         <div className="trello-card-detail-layout">
           <div className="trello-card-detail-layout-main">
@@ -663,11 +904,11 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                       className="trello-card-detail-title-input"
                       value={props.title}
                       onChange={(e) => props.onTitleChange(e.target.value)}
-                      maxLength={50}
+                      maxLength={CARD_TITLE_MAX_LENGTH}
                       disabled={props.busy}
                       rows={2}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
+                        if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
                           e.preventDefault();
                           props.onTitleSave();
                         }
@@ -711,56 +952,6 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                   </button>
                 )}
               </div>
-              <div className="trello-card-detail-header-actions">
-                <div className="trello-card-detail-menu-wrap" ref={menuRef}>
-                  <button
-                    type="button"
-                    className="trello-card-detail-icon-btn"
-                    aria-label="Действия"
-                    aria-expanded={menuOpen}
-                    onClick={() => setMenuOpen((v) => !v)}
-                  >
-                    <span className="trello-card-detail-ellipsis" aria-hidden>
-                      •••
-                    </span>
-                  </button>
-                  {menuOpen ? (
-                    <div className="trello-card-detail-menu" role="menu">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        disabled={props.title.trim().length < 3 || props.busy}
-                        onClick={() => {
-                          setMenuOpen(false);
-                          props.onSave();
-                        }}
-                      >
-                        Сохранить
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="trello-card-detail-menu-danger"
-                        disabled={props.busy}
-                        onClick={() => {
-                          setMenuOpen(false);
-                          props.onDelete();
-                        }}
-                      >
-                        Удалить карточку
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-                <button
-                  type="button"
-                  className="trello-card-detail-icon-btn trello-card-detail-close-btn"
-                  aria-label="Закрыть"
-                  onClick={() => !props.busy && props.onClose()}
-                >
-                  ×
-                </button>
-              </div>
             </div>
 
             {props.accessToken ? (
@@ -790,44 +981,59 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                 {attachError}
               </p>
             ) : null}
-            <div className="trello-card-detail-add-row">
-              {props.wsLabels.length > 0 ? (
-                <button
-                  type="button"
-                  className={`trello-card-detail-add-btn${panel === 'labels' ? ' trello-card-detail-add-btn--active' : ''}`}
-                  onClick={() => togglePanel('labels')}
-                >
-                  <IconLabel /> Метки
-                </button>
+
+            <div className="trello-card-detail-meta-rows">
+              {(props.card.labels?.length ?? 0) > 0 ? (
+                <div className="trello-card-detail-meta-row">
+                  <CardLabelStrip labels={props.card.labels} />
+                </div>
               ) : null}
-              <button
-                type="button"
-                className={`trello-card-detail-add-btn${panel === 'dates' ? ' trello-card-detail-add-btn--active' : ''}`}
-                onClick={() => togglePanel('dates')}
-              >
-                <IconClock /> Даты
-              </button>
-              <button
-                type="button"
-                className={`trello-card-detail-add-btn${panel === 'members' ? ' trello-card-detail-add-btn--active' : ''}`}
-                onClick={() => togglePanel('members')}
-              >
-                <IconMember /> Участники
-              </button>
+              {cardMemberUsers.length > 0 ? (
+                <div className="trello-card-detail-meta-row trello-card-detail-meta-row--members">
+                  <CardMembersStrip
+                    members={cardMemberUsers}
+                    onAddClick={() => togglePanel('members')}
+                    addDisabled={props.busy}
+                  />
+                </div>
+              ) : null}
             </div>
 
-            {panelContent}
-
-            {(props.card.labels?.length ?? 0) > 0 ? (
-              <div className="trello-card-detail-meta-row">
-                <CardLabelStrip labels={props.card.labels} />
+            <div
+              className={
+                panel === 'members'
+                  ? 'trello-card-detail-add-row-wrap trello-card-detail-add-row-wrap--members-open'
+                  : 'trello-card-detail-add-row-wrap'
+              }
+            >
+              <div className="trello-card-detail-add-row">
+                {props.wsLabels.length > 0 ? (
+                  <button
+                    type="button"
+                    className={`trello-card-detail-add-btn${panel === 'labels' ? ' trello-card-detail-add-btn--active' : ''}`}
+                    onClick={() => togglePanel('labels')}
+                  >
+                    <IconLabel /> Метки
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className={`trello-card-detail-add-btn${panel === 'dates' ? ' trello-card-detail-add-btn--active' : ''}`}
+                  onClick={() => togglePanel('dates')}
+                >
+                  <IconClock /> Даты
+                </button>
+                <button
+                  type="button"
+                  className={`trello-card-detail-add-btn${panel === 'members' ? ' trello-card-detail-add-btn--active' : ''}`}
+                  onClick={() => togglePanel('members')}
+                >
+                  <IconMember /> Участники
+                </button>
               </div>
-            ) : null}
-            {assigneeMember ? (
-              <p className="trello-card-detail-assignee-hint">
-                Исполнитель: {assigneeMember.user.name}
-              </p>
-            ) : null}
+
+              {panelContent}
+            </div>
 
             <section className="trello-card-detail-section">
               <div className="trello-card-detail-section-head">
@@ -909,16 +1115,12 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                     : 'trello-card-detail-comment-compose'
                 }
               >
-                {commentExpanded ? (
+                {commentExpanded && props.currentUserId != null ? (
                   <CommentAvatarBubble
-                    name={props.currentUserName}
-                    avatarPath={
-                      props.members.find((m) => m.user.id === props.currentUserId)?.user
-                        .avatarPath
-                    }
-                    profileTo={
-                      props.currentUserId != null ? '/profile/character' : '/workspaces'
-                    }
+                    user={resolveActivityUser(props.members, props.currentUserId, {
+                      name: props.currentUserName,
+                    })}
+                    profileTo="/profile/character"
                   />
                 ) : null}
                 <div
@@ -1012,22 +1214,24 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
               ) : (
                 activityItems.map((item) => {
                   if (item.kind === 'created') {
+                    const creatorUser =
+                      props.currentUserId != null
+                        ? resolveActivityUser(props.members, props.currentUserId, {
+                            name: props.currentUserName,
+                          })
+                        : resolveActivityUser(props.members, -1, { name: props.currentUserName });
                     return (
                       <li key={item.key} className="trello-card-detail-activity-item">
                         <CommentAvatarBubble
-                          name={props.currentUserName}
-                          avatarPath={resolveMemberAvatar(
-                            props.members,
-                            props.currentUserId ?? -1,
-                          )}
+                          user={creatorUser}
                           profileTo={
                             props.currentUserId != null ? '/profile/character' : '/workspaces'
                           }
                         />
                         <div className="trello-card-detail-activity-body">
                           <p>
-                            <strong>{props.currentUserName}</strong> добавил(а) эту карточку в
-                            список <strong>{props.listName}</strong>
+                            <strong>{activityUserDisplayName(creatorUser)}</strong> добавил(а) эту
+                            карточку в список <strong>{props.listName}</strong>
                           </p>
                           <time
                             className="trello-card-detail-activity-time"
@@ -1046,12 +1250,7 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                     return (
                       <li key={item.key} className="trello-card-detail-activity-item">
                         <CommentAvatarBubble
-                          name={a.uploader.name}
-                          avatarPath={resolveMemberAvatar(
-                            props.members,
-                            a.uploader.id,
-                            a.uploader.avatarPath,
-                          )}
+                          user={resolveActivityUser(props.members, a.uploader.id, a.uploader)}
                           profileTo={profileTo}
                         />
                         <div className="trello-card-detail-activity-body">
@@ -1090,11 +1289,7 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                   const authorProfileTo = isAuthor ? '/profile/character' : userProfilePath(c.userId);
                   return (
                     <li key={item.key} className="trello-card-detail-activity-item">
-                      <CommentAvatarBubble
-                        name={c.user.name}
-                        avatarPath={c.user.avatarPath}
-                        profileTo={authorProfileTo}
-                      />
+                      <CommentAvatarBubble user={c.user} profileTo={authorProfileTo} />
                       <div className="trello-card-detail-activity-body">
                         {props.editingCommentId === c.id ? (
                           <>

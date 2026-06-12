@@ -34,6 +34,7 @@ import {
   WorkspaceBoardsPage,
   WorkspaceMembersPage,
   WorkspacesPage,
+  PersonalPage,
 } from '@pages/index';
 import { GamificationIntroModal, ProfileInvitesSection } from '@widgets/index';
 import { AppShell, routeUsesAppShell } from '@widgets/app-shell';
@@ -506,7 +507,7 @@ function Home(props: { onAuthed: (token: string, options?: AuthedOptions) => voi
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="trello-home-form">
             {mode === 'register' && (
               <label className="trello-field">
                 <span className="trello-label">Имя</span>
@@ -728,6 +729,7 @@ function AppContent() {
       route === '/workspaces' ||
       route.startsWith('/workspaces/') ||
       route.startsWith('/profile') ||
+      route.startsWith('/personal') ||
       route.startsWith('/invites') ||
       route.startsWith('/notifications') ||
       route.startsWith('/settings') ||
@@ -872,6 +874,13 @@ function AppContent() {
   } else if (route.startsWith('/dashboard')) {
     // Google callback redirects here; we no longer show dashboard UI.
     page = <WorkspacesPage accessToken={accessToken} />;
+  } else if (route.startsWith('/personal')) {
+    page =
+      !accessToken ? (
+        <Home onAuthed={handleAuthed} hasSession={false} />
+      ) : (
+        <PersonalPage accessToken={accessToken} />
+      );
   } else if (route.startsWith('/workspaces')) {
     page = <WorkspacesPage accessToken={accessToken} />;
   } else if (route === '/settings' || route.startsWith('/settings/')) {

@@ -146,8 +146,18 @@ const QF_CSS_VARS: ReadonlyArray<[keyof PixelThemeTokens, string]> = [
   ['muted', '--qf-text-muted'],
   ['bg', '--qf-body-bg'],
   ['bg2', '--qf-panel-bg'],
-  ['border', '--qf-panel-border'],
 ];
+
+const QF_SOFT_BORDERS: Record<AppThemeMode, { panel: string; control: string }> = {
+  light: {
+    panel: 'rgba(42, 32, 24, 0.12)',
+    control: 'rgba(42, 32, 24, 0.14)',
+  },
+  dark: {
+    panel: 'rgba(255, 255, 255, 0.1)',
+    control: 'rgba(255, 255, 255, 0.12)',
+  },
+};
 
 const LEGACY_CSS_VAR_KEYS = [
   '--trello-primary',
@@ -178,6 +188,9 @@ export function applyPixelThemeTokensToElement(el: HTMLElement, tokens: PixelThe
   for (const cssVar of LEGACY_CSS_VAR_KEYS) {
     el.style.setProperty(cssVar, legacy[cssVar]);
   }
+  const soft = QF_SOFT_BORDERS[resolvedMode];
+  el.style.setProperty('--qf-panel-border', soft.panel);
+  el.style.setProperty('--qf-control-border', soft.control);
 }
 
 export function clearPixelThemeTokensFromElement(el: HTMLElement) {

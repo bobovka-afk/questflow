@@ -4,11 +4,11 @@ import { DUST_FOR_DUPLICATE_BY_TIER, type ChestTier } from '@entities/quest';
 import {
   CHARACTER_GRACE_PERIOD_HOURS,
   CHARACTER_HEALTH_MAX,
-  DAILY_TASK_XP_COMPLETIONS_MAX,
-  DEFAULT_GAME_DAY_TZ,
+  DAILY_ACTIVITY_XP_MAX,
   HP_GAIN_PER_XP_EVENT,
   HP_INACTIVITY_PENALTY,
   XP_DAILY_CHECKIN,
+  XP_PER_HABIT_POSITIVE,
   XP_PER_TASK_COMPLETED,
 } from '@entities/reward';
 import { GameDayHint } from '@widgets/game-day-hint/GameDayHint';
@@ -47,8 +47,7 @@ export function GamificationGuide(props: Props) {
           </p>
           <p>
             <strong>Игровые сутки.</strong> Лимиты и серия считаются по календарному дню в часовом
-            поясе сервера (<code>{DEFAULT_GAME_DAY_TZ}</code> по умолчанию, задаётся в{' '}
-            <code>GAME_DAY_TZ</code>). Сброс счётчика XP за карточки — в полночь этого пояса.
+            поясе сервера (UTC). Сброс счётчика XP за активность — в полночь этого пояса.
             <GameDayHint className="trello-game-day-hint trello-game-day-hint--guide" />
           </p>
         </div>
@@ -64,9 +63,15 @@ export function GamificationGuide(props: Props) {
             карточки опыт не даёт.
           </p>
           <p>
-            <strong>Лимит в день.</strong> Опыт за закрытие карточек начисляется не более{' '}
-            <strong>{DAILY_TASK_XP_COMPLETIONS_MAX}</strong> раз в сутки на одного персонажа; после
-            лимита карточки по-прежнему закрываются, без XP.
+            <strong>Лимит в день.</strong> Опыт за карточки, личные дела, ежедневные задачи и привычки
+            начисляется в общем объёме не более <strong>{DAILY_ACTIVITY_XP_MAX} XP</strong> за
+            игровые сутки; после лимита действия по-прежнему выполняются, без XP.{' '}
+            {STREAK_LABEL} за день (<strong>+{XP_DAILY_CHECKIN} XP</strong>) и бонусы порогов серии
+            в этот лимит не входят.
+          </p>
+          <p>
+            <strong>Привычки.</strong> За отметку «+» — <strong>+{XP_PER_HABIT_POSITIVE} XP</strong>{' '}
+            (не более одного начисления на привычку за сутки).
           </p>
         </div>
       </details>
@@ -102,16 +107,13 @@ export function GamificationGuide(props: Props) {
         <summary>Квесты, сундуки и пыль</summary>
         <div className="trello-character-guide-section-body">
           <p>
-            <strong>Квесты.</strong> Дневные и недельные задания (карточки, комментарии, серия,
-            активность). За каждый выполненный квест — отдельный сундук; откройте его в блоке ниже.
+            <strong>Квесты.</strong> Дневные, недельные и месячные задания (карточки, активность,
+            чекины). За каждый выполненный квест — отдельный сундук; откройте его в блоке ниже.
             Зачёт карточек — как у XP (исполнитель или закрывший).
           </p>
           <p>
-            <strong>Сундуки и косметика.</strong> Из сундука — рамка, фон, значок или редкий образ
-            мага. Косметика без статов: не влияет на XP и HP. Рамки, фоны и значки — «Надеть» в
-            инвентаре. Квестовый образ мага — кнопка «Применить образ» после открытия или в
-            редактировании персонажа (нужно владение предметом; женским персонажам выпадает женский
-            вариант).
+            <strong>Сундуки и косметика.</strong> Из сундука — рамка, фон или значок. Косметика без
+            статов: не влияет на XP и HP. Рамки, фоны и значки — «Надеть» в инвентаре.
           </p>
           <p>
             <strong>Пыль.</strong> Дубликат косметики → пыль: {DUST_DUPLICATE_LINES.join('; ')}.

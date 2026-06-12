@@ -96,7 +96,7 @@ export function WorkspaceLabelsModal({
   return (
     <div className="trello-modal-backdrop" role="presentation" onClick={() => !busy && onClose()}>
       <div
-        className="trello-modal trello-labels-modal"
+        className="trello-modal trello-modal--board-form trello-labels-modal"
         role="dialog"
         aria-modal
         aria-label="Метки рабочего пространства"

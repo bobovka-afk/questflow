@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatApiError } from '@shared/api';
 import {
   fetchConversations,
+  fetchUserRelation,
   type ConversationPreview,
   type SocialUserSummary,
 } from '@entities/social';
@@ -11,6 +12,7 @@ type Props = {
   accessToken: string;
   currentUserId: number;
   initialPeerUserId?: number | null;
+  initialPeer?: SocialUserSummary | null;
   visible: boolean;
   onInboxChange?: () => void;
 };
@@ -23,6 +25,7 @@ export function MessagesPanel({
   accessToken,
   currentUserId,
   initialPeerUserId,
+  initialPeer,
   visible,
   onInboxChange,
 }: Props) {
@@ -30,6 +33,8 @@ export function MessagesPanel({
   const [selectedPeerId, setSelectedPeerId] = useState<number | null>(
     initialPeerUserId ?? null,
   );
+  const [peerProfiles, setPeerProfiles] = useState<Record<number, SocialUserSummary>>({});
+  const [loadingPeerProfile, setLoadingPeerProfile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,16 +76,45 @@ export function MessagesPanel({
     }
   }, [initialPeerUserId]);
 
-  const selectedPeer: SocialUserSummary | null =
-    selectedPeerId == null
-      ? null
-      : conversations.find((c) => c.peerUserId === selectedPeerId)?.peer ?? {
-          userId: selectedPeerId,
-          name: `Игрок #${selectedPeerId}`,
-          avatarPath: null,
-          characterName: null,
-          friendCode: null,
-        };
+  useEffect(() => {
+    if (initialPeer) {
+      setPeerProfiles((prev) => ({ ...prev, [initialPeer.userId]: initialPeer }));
+    }
+  }, [initialPeer]);
+
+  useEffect(() => {
+    if (selectedPeerId == null || !visible) return;
+    if (conversations.some((c) => c.peerUserId === selectedPeerId)) return;
+    if (peerProfiles[selectedPeerId]) return;
+
+    let cancelled = false;
+    setLoadingPeerProfile(true);
+    void fetchUserRelation(accessToken, selectedPeerId)
+      .then((rel) => {
+        if (!cancelled) {
+          setPeerProfiles((prev) => ({ ...prev, [selectedPeerId]: rel.user }));
+        }
+      })
+      .catch(() => {
+        /* keep pane empty until reload */
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPeerProfile(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, conversations, peerProfiles, selectedPeerId, visible]);
+
+  const selectedPeer: SocialUserSummary | null = useMemo(() => {
+    if (selectedPeerId == null) return null;
+    return (
+      conversations.find((c) => c.peerUserId === selectedPeerId)?.peer ??
+      peerProfiles[selectedPeerId] ??
+      null
+    );
+  }, [conversations, peerProfiles, selectedPeerId]);
 
   return (
     <div className="trello-social-messages-layout trello-social-messages-layout--cards">
@@ -123,7 +157,9 @@ export function MessagesPanel({
         )}
       </aside>
       <div className="trello-social-conversation-pane trello-social-messages-panel">
-        {selectedPeer && selectedPeerId != null ? (
+        {selectedPeerId != null && loadingPeerProfile && !selectedPeer ? (
+          <p className="trello-muted">Загрузка диалога…</p>
+        ) : selectedPeer && selectedPeerId != null ? (
           <ConversationView
             accessToken={accessToken}
             currentUserId={currentUserId}

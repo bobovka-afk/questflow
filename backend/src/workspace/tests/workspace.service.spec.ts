@@ -45,7 +45,38 @@ describe('WorkspaceService', () => {
   it('getUserWorkspaces paginates', async () => {
     prisma.workspaceMember!.findMany!.mockResolvedValue([]);
     await service.getUserWorkspaces(1, { limit: 10, offset: 0 });
-    expect(prisma.workspaceMember!.findMany).toHaveBeenCalled();
+    expect(prisma.workspaceMember!.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+      }),
+    );
+  });
+
+  it('reorderUserWorkspace throws when membership missing', async () => {
+    const tx = {
+      workspaceMember: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+    };
+    prisma.$transaction!.mockImplementation(async (fn) => fn(tx as never));
+    await expect(
+      service.reorderUserWorkspace(1, { memberId: 99, position: 0 }),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('reorderUserWorkspace updates sort order', async () => {
+    const tx = {
+      workspaceMember: {
+        findFirst: jest.fn().mockResolvedValue({ id: 2 }),
+        findMany: jest.fn().mockResolvedValue([{ id: 1 }, { id: 2 }, { id: 3 }]),
+        update: jest.fn().mockResolvedValue({}),
+      },
+    };
+    prisma.$transaction!.mockImplementation(async (fn) => fn(tx as never));
+    await expect(
+      service.reorderUserWorkspace(5, { memberId: 2, position: 0 }),
+    ).resolves.toEqual({ ok: true });
+    expect(tx.workspaceMember.update).toHaveBeenCalledTimes(3);
   });
 
   it('updateWorkspace updates and records activity', async () => {
@@ -86,6 +117,9 @@ describe('WorkspaceService', () => {
 
   it('createWorkspace runs transaction', async () => {
     const tx = {
+      workspaceMember: {
+        aggregate: jest.fn().mockResolvedValue({ _max: { sortOrder: 2 } }),
+      },
       workspace: {
         create: jest.fn().mockResolvedValue({
           id: 1,

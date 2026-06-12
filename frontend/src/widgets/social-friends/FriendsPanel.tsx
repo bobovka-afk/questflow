@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatApiError } from '@shared/api';
 import { formatDateTimeRu } from '@shared/lib/formatDateRu';
-import { avatarInitials, avatarSrcFromPath, userProfilePath } from '@entities/user';
 import { SpaLink } from '@shared/lib';
+import { userProfilePath } from '@entities/user';
 import {
   acceptFriendRequest,
   cancelFriendRequest,
@@ -15,21 +15,19 @@ import {
   parseFriendCodeInput,
   removeFriend,
   sendFriendRequest,
+  SocialUserCharacterAvatar,
+  socialUserDisplayName,
   type FriendRequestView,
   type FriendView,
-  formatFriendCode,
   type SocialUserSummary,
+  formatFriendCode,
 } from '@entities/social';
 
 type Props = {
   accessToken: string;
-  onMessagePeer?: (userId: number) => void;
+  onMessagePeer?: (user: SocialUserSummary) => void;
   onInboxChange?: () => void;
 };
-
-function displayName(user: SocialUserSummary): string {
-  return user.characterName?.trim() || user.name;
-}
 
 export function FriendsPanel({ accessToken, onMessagePeer, onInboxChange }: Props) {
   const [myCode, setMyCode] = useState<string | null>(null);
@@ -214,7 +212,7 @@ export function FriendsPanel({ accessToken, onMessagePeer, onInboxChange }: Prop
             {incoming.map((req) => (
               <li key={req.id} className="trello-social-list-row">
                 <span className="trello-social-list-name">
-                  {displayName(req.otherUser)}
+                  {socialUserDisplayName(req.otherUser)}
                   {req.otherUser.friendCode != null && (
                     <span className="trello-social-list-code">
                       {formatFriendCode(req.otherUser.friendCode)}
@@ -251,7 +249,7 @@ export function FriendsPanel({ accessToken, onMessagePeer, onInboxChange }: Prop
           <ul className="trello-social-list">
             {outgoing.map((req) => (
               <li key={req.id} className="trello-social-list-row">
-                <span className="trello-social-list-name">{displayName(req.otherUser)}</span>
+                <span className="trello-social-list-name">{socialUserDisplayName(req.otherUser)}</span>
                 <span className="trello-social-list-actions">
                   <button
                     type="button"
@@ -275,8 +273,7 @@ export function FriendsPanel({ accessToken, onMessagePeer, onInboxChange }: Prop
         ) : (
           <ul className="trello-social-friends-grid">
             {friends.map((f) => {
-              const label = displayName(f.user);
-              const avatarSrc = avatarSrcFromPath(f.user.avatarPath);
+              const label = socialUserDisplayName(f.user);
               const onlineLabel = f.user.isOnline
                 ? 'в сети'
                 : f.user.lastSeenAt
@@ -289,19 +286,11 @@ export function FriendsPanel({ accessToken, onMessagePeer, onInboxChange }: Prop
                     to={userProfilePath(f.user.userId)}
                     title={`Профиль: ${label}`}
                   >
-                    <span className="trello-social-friend-avatar" aria-hidden>
-                      {avatarSrc ? (
-                        <img src={avatarSrc} alt="" className="trello-social-friend-avatar-img" />
-                      ) : (
-                        <span className="trello-social-friend-avatar-fallback">
-                          {avatarInitials(label)}
-                        </span>
-                      )}
-                    </span>
+                    <SocialUserCharacterAvatar user={f.user} />
                     <span className="trello-social-friend-name">
-                      {label}
+                      <span className="trello-social-friend-name-text">{label}</span>
                       {onlineLabel ? (
-                        <span className="trello-social-friend-presence"> · {onlineLabel}</span>
+                        <span className="trello-social-friend-presence">{onlineLabel}</span>
                       ) : null}
                     </span>
                   </SpaLink>
@@ -310,7 +299,7 @@ export function FriendsPanel({ accessToken, onMessagePeer, onInboxChange }: Prop
                       <button
                         type="button"
                         className="trello-btn trello-btn-ghost trello-btn-sm"
-                        onClick={() => onMessagePeer(f.user.userId)}
+                        onClick={() => onMessagePeer(f.user)}
                       >
                         Написать
                       </button>

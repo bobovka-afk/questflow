@@ -16,6 +16,7 @@ export type QuestProgressItem = {
   current: number;
   completed: boolean;
   completedAt: Date | null;
+  rewardChestTier: ChestTier;
   chest: QuestChestSnippet | null;
 };
 

@@ -37,17 +37,10 @@ function hasCheckinToastContent(
   rewards: XpGrantRewards,
   showXp: boolean,
 ): boolean {
-  if (
-    showXp &&
-    (rewards.checkinXp > 0 || (rewards.streakMilestoneXp ?? 0) > 0)
-  ) {
-    return true;
-  }
-  return (
-    rewards.streakIncreased ||
-    rewards.checkinStreak > 0 ||
-    (rewards.streakMilestonesReached?.length ?? 0) > 0
-  );
+  if (rewards.streakIncreased) return true;
+  if ((rewards.streakMilestonesReached?.length ?? 0) > 0) return true;
+  if (!showXp) return false;
+  return rewards.checkinXp > 0 || (rewards.streakMilestoneXp ?? 0) > 0;
 }
 
 export const REWARD_TOAST_VISIBLE_MS = 2800;

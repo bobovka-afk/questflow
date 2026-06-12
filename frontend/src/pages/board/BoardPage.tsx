@@ -21,11 +21,11 @@ import {
 	formatApiError,
 	isRateLimitMessage,
 	isXpGrantErrorCode,
-	isXpTaskSoftNoticeCode,
 	type ApiError
 } from '@shared/api'
 import { CheckinRewardToast, TaskRewardToast } from '@widgets/reward-grant-toast/RewardGrantToast'
 import { writeCharacterStreakSnapshot } from '@entities/character/lib/characterStreakSnapshot'
+import type { ActivityUserBrief } from '@entities/user'
 import {
 	buildRewardToastSteps,
 	delayMs,
@@ -60,6 +60,9 @@ import { WorkspaceSearchModal } from '@widgets/workspace-search/WorkspaceSearchM
 import { WorkspaceLabelsModal } from '@widgets/workspace-labels/WorkspaceLabelsModal'
 import { useWorkspaceSearchHotkey } from '@shared/lib/useWorkspaceSearchHotkey'
 import { LIST_COLOR_PRESET_KEYS, listHeaderColor } from '@entities/board'
+import { CARD_TITLE_MAX_LENGTH } from '@entities/card/lib/cardLimits'
+import { archiveCard } from '@features/board/api/cardCoverApi'
+import type { CardCoverDisplayMode } from '@features/board/api/cardCoverApi'
 
 type ListRow = {
 	id: number
@@ -83,6 +86,8 @@ export type CardRow = {
 	isCompleted?: boolean
 	labels?: WorkspaceLabelRow[]
 	coverImageUrl?: string | null
+	coverColorPreset?: string | null
+	coverDisplayMode?: CardCoverDisplayMode
 	attachmentCount?: number
 	commentCount?: number
 	createdAt: string
@@ -103,12 +108,12 @@ export type CommentRow = {
 	body: string
 	createdAt: string
 	updatedAt: string
-	user: { id: number; name: string; avatarPath?: string | null }
+	user: ActivityUserBrief
 }
 
 type WorkspaceMemberApiRow = {
 	userId: number
-	user: { id: number; name: string; avatarPath?: string | null }
+	user: ActivityUserBrief
 }
 
 function formatError(e: unknown) {
@@ -143,17 +148,183 @@ const LIST_DRAG_PREFIX = 'list-'
 const BOARD_PAN_BLOCK_SELECTOR =
 	'.trello-list-wrap,.trello-card,.trello-board-hpan-strip,button,a,input,textarea,select,[role="dialog"]'
 
+function adjustTextareaHeight(el: HTMLTextAreaElement | null) {
+	if (!el) return
+	el.style.height = 'auto'
+	el.style.height = `${el.scrollHeight}px`
+}
+
+function InlineAddCardForm({
+	title,
+	busy,
+	textareaRef,
+	onTitleChange,
+	onSubmit,
+	onCancel
+}: {
+	title: string
+	busy: boolean
+	textareaRef: React.RefObject<HTMLTextAreaElement | null>
+	onTitleChange: (value: string) => void
+	onSubmit: () => void
+	onCancel: () => void
+}) {
+	const rootRef = useRef<HTMLDivElement>(null)
+
+	useEffect(() => {
+		function handlePointerDown(e: PointerEvent) {
+			const root = rootRef.current
+			if (!root || root.contains(e.target as Node)) return
+			if (busy) return
+			if (title.trim().length >= 3) {
+				onSubmit()
+			} else {
+				onCancel()
+			}
+		}
+		document.addEventListener('pointerdown', handlePointerDown, true)
+		return () =>
+			document.removeEventListener('pointerdown', handlePointerDown, true)
+	}, [title, busy, onSubmit, onCancel])
+
+	return (
+		<div ref={rootRef} className='trello-inline-add-card'>
+			<textarea
+				ref={textareaRef}
+				className='trello-inline-add-card-input'
+				value={title}
+				onChange={e => {
+					onTitleChange(e.target.value)
+					adjustTextareaHeight(e.target)
+				}}
+				onKeyDown={e => {
+					if (e.key === 'Escape') {
+						e.preventDefault()
+						onCancel()
+						return
+					}
+					if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+						e.preventDefault()
+						if (!busy && title.trim().length >= 3) {
+							onSubmit()
+						}
+					}
+				}}
+				maxLength={CARD_TITLE_MAX_LENGTH}
+				rows={1}
+				disabled={busy}
+				aria-label='Название карточки'
+			/>
+			<div className='trello-inline-add-card-actions'>
+				<button
+					type='button'
+					className='trello-inline-add-card-submit'
+					disabled={busy || title.trim().length < 3}
+					onClick={() => onSubmit()}
+				>
+					{busy ? 'Добавление…' : 'Добавить карточку'}
+				</button>
+				<button
+					type='button'
+					className='trello-inline-add-card-cancel'
+					onClick={onCancel}
+					disabled={busy}
+					aria-label='Отмена'
+				>
+					×
+				</button>
+			</div>
+		</div>
+	)
+}
+
+function ListHeaderName({
+	list,
+	canEdit,
+	editing,
+	editName,
+	busy,
+	inputRef,
+	onStartEdit,
+	onNameChange,
+	onSave,
+	onCancel
+}: {
+	list: ListRow
+	canEdit: boolean
+	editing: boolean
+	editName: string
+	busy: boolean
+	inputRef: React.RefObject<HTMLInputElement | null>
+	onStartEdit: () => void
+	onNameChange: (value: string) => void
+	onSave: () => void
+	onCancel: () => void
+}) {
+	if (editing) {
+		return (
+			<div
+				className='trello-list-header-title-edit'
+				data-list-name-edit={list.id}
+			>
+				<input
+					ref={inputRef}
+					className='trello-list-header-title-input'
+					value={editName}
+					onChange={e => onNameChange(e.target.value)}
+					onKeyDown={e => {
+						if (e.key === 'Enter') {
+							e.preventDefault()
+							onSave()
+						}
+						if (e.key === 'Escape') {
+							e.preventDefault()
+							onCancel()
+						}
+					}}
+					onBlur={e => {
+						const next = e.relatedTarget as HTMLElement | null
+						if (next?.closest('.trello-list-menu-wrap')) return
+						onSave()
+					}}
+					maxLength={50}
+					disabled={busy}
+					aria-label='Название колонки'
+					onMouseDown={e => e.stopPropagation()}
+				/>
+			</div>
+		)
+	}
+
+	return (
+		<button
+			type='button'
+			className='trello-list-header-title-hit'
+			disabled={!canEdit}
+			title={canEdit ? 'Изменить название' : undefined}
+			onMouseDown={e => e.stopPropagation()}
+			onClick={e => {
+				e.stopPropagation()
+				if (!canEdit) return
+				onStartEdit()
+			}}
+		>
+			<span className='trello-list-header-title'>{list.name}</span>
+		</button>
+	)
+}
+
 function TrelloListCardsPane({
 	listId,
 	cardCount,
 	chromeColor,
-	onAddCard,
+	addCardFooter,
 	children
 }: {
 	listId: number
 	cardCount: number
 	chromeColor: string
-	onAddCard: () => void
+	addCardFooter: ReactNode
 	children: ReactNode
 }) {
 	const scrollRef = useRef<HTMLDivElement>(null)
@@ -177,6 +348,9 @@ function TrelloListCardsPane({
 		syncFades()
 		const ro = new ResizeObserver(syncFades)
 		ro.observe(el)
+		for (const child of el.children) {
+			ro.observe(child)
+		}
 		return () => ro.disconnect()
 	}, [syncFades, listId, cardCount])
 
@@ -214,37 +388,15 @@ function TrelloListCardsPane({
 					/>
 				) : null}
 			</div>
-			<div className='trello-list-add-card-footer'>
-				<button
-					type='button'
-					className='trello-add-card-btn'
-					onClick={onAddCard}
-				>
-					<span className='trello-add-card-btn-plus' aria-hidden>
-						+
-					</span>
-					<span>Добавить карточку</span>
-				</button>
-			</div>
+			<div className='trello-list-add-card-footer'>{addCardFooter}</div>
 		</div>
 	)
 }
 
-function dueDateToInputValue(iso: string | null | undefined): string {
-	if (!iso) return ''
-	const d = new Date(iso)
-	if (Number.isNaN(d.getTime())) return ''
-	const pad = (n: number) => String(n).padStart(2, '0')
-	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-function inputValueToIsoOrNull(v: string): string | null {
-	const t = v.trim()
-	if (!t) return null
-	const d = new Date(t)
-	if (Number.isNaN(d.getTime())) return null
-	return d.toISOString()
-}
+import {
+	dueDateToInputValue,
+	inputValueToIso,
+} from '@features/board/lib/cardDatesUtils'
 
 /** Относительное время для комментариев (Intl, ru). */
 function formatCommentRelativeAgo(iso: string, nowMs: number): string {
@@ -294,6 +446,12 @@ export function BoardPage({
 	const [editName, setEditName] = useState('')
 	const [editColor, setEditColor] = useState<string>('GRAY')
 	const [editBusy, setEditBusy] = useState(false)
+	const [editingListNameId, setEditingListNameId] = useState<number | null>(
+		null
+	)
+	const [editingListName, setEditingListName] = useState('')
+	const listNameInputRef = useRef<HTMLInputElement>(null)
+	const inlineListNameSaveLock = useRef(false)
 	const [activeListMenuId, setActiveListMenuId] = useState<number | null>(
 		null
 	)
@@ -304,15 +462,15 @@ export function BoardPage({
 
 	const [moveBusy, setMoveBusy] = useState(false)
 	const [workspaceMembers, setWorkspaceMembers] = useState<
-		{ userId: number; user: { id: number; name: string; avatarPath?: string | null } }[]
+		{ userId: number; user: ActivityUserBrief }[]
 	>([])
 
 	const [createCardListId, setCreateCardListId] = useState<number | null>(
 		null
 	)
 	const [createCardTitle, setCreateCardTitle] = useState('')
-	const [createCardDesc, setCreateCardDesc] = useState('')
 	const [createCardBusy, setCreateCardBusy] = useState(false)
+	const createCardTextareaRef = useRef<HTMLTextAreaElement>(null)
 
 	const [editCard, setEditCard] = useState<CardRow | null>(null)
 	const [editCardTitle, setEditCardTitle] = useState('')
@@ -346,16 +504,16 @@ export function BoardPage({
 
 	useEffect(() => {
 		if (activeListMenuId == null) return
-		function handlePointerDown(e: globalThis.MouseEvent) {
+		function handlePointerDown(e: PointerEvent) {
 			const wrap = document.querySelector(
 				`[data-list-menu-id="${activeListMenuId}"]`,
 			)
-			if (wrap && !wrap.contains(e.target as Node)) {
-				setActiveListMenuId(null)
-			}
+			if (wrap && wrap.contains(e.target as Node)) return
+			setActiveListMenuId(null)
 		}
-		document.addEventListener('mousedown', handlePointerDown)
-		return () => document.removeEventListener('mousedown', handlePointerDown)
+		document.addEventListener('pointerdown', handlePointerDown, true)
+		return () =>
+			document.removeEventListener('pointerdown', handlePointerDown, true)
 	}, [activeListMenuId])
 
 	const [comments, setComments] = useState<CommentRow[]>([])
@@ -382,16 +540,9 @@ export function BoardPage({
 	} | null>(null)
 	const rewardToastRunIdRef = useRef(0)
 	const [gamificationSettings] = useGamificationSettings(accessToken)
-	const [xpBottomNotice, setXpBottomNotice] = useState<{
-		id: number
-		text: string
-	} | null>(null)
-	const xpBottomNoticeTimerRef = useRef(0)
-
 	useEffect(() => {
 		return () => {
 			rewardToastRunIdRef.current += 1
-			window.clearTimeout(xpBottomNoticeTimerRef.current)
 		}
 	}, [])
 
@@ -590,26 +741,42 @@ export function BoardPage({
 		}
 	}, [accessToken, workspaceId, boardId, canArchiveLists])
 
+	const listIdsKey = useMemo(
+		() =>
+			lists
+				.map(list => list.id)
+				.sort((a, b) => a - b)
+				.join(','),
+		[lists]
+	)
+
 	const loadCards = useCallback(async () => {
-		if (!accessToken || lists.length === 0) {
+		if (!accessToken) {
+			setCardsByListId({})
+			return
+		}
+		const listIds = listIdsKey
+			? listIdsKey.split(',').map(id => Number(id))
+			: []
+		if (listIds.length === 0) {
 			setCardsByListId({})
 			return
 		}
 		try {
 			const entries = await Promise.all(
-				lists.map(async list => {
+				listIds.map(async listId => {
 					const raw = await api<CardRow[]>(
-						`/workspace/${workspaceId}/lists/${list.id}/cards`,
+						`/workspace/${workspaceId}/lists/${listId}/cards`,
 						{ method: 'GET', accessToken }
 					)
-					return [list.id, Array.isArray(raw) ? raw : []] as const
+					return [listId, Array.isArray(raw) ? raw : []] as const
 				})
 			)
 			setCardsByListId(Object.fromEntries(entries))
 		} catch {
 			setCardsByListId({})
 		}
-	}, [accessToken, workspaceId, lists])
+	}, [accessToken, workspaceId, listIdsKey])
 
 	const loadComments = useCallback(
 		async (cardId: number) => {
@@ -675,6 +842,26 @@ export function BoardPage({
 	}, [cardTitleEditing])
 
 	useEffect(() => {
+		if (createCardListId == null) return
+		requestAnimationFrame(() => {
+			const el = createCardTextareaRef.current
+			if (!el) return
+			el.focus()
+			adjustTextareaHeight(el)
+		})
+	}, [createCardListId])
+
+	useEffect(() => {
+		if (editingListNameId == null) return
+		requestAnimationFrame(() => {
+			const el = listNameInputRef.current
+			if (!el) return
+			el.focus()
+			el.select()
+		})
+	}, [editingListNameId])
+
+	useEffect(() => {
 		if (!accessToken) {
 			setWorkspaceMembers([])
 			return
@@ -693,6 +880,8 @@ export function BoardPage({
 							id: r.user.id,
 							name: r.user.name,
 							avatarPath: r.user.avatarPath ?? null,
+							characterName: r.user.characterName ?? null,
+							characterAvatarPreset: r.user.characterAvatarPreset ?? null,
 						},
 					}))
 				)
@@ -822,7 +1011,88 @@ export function BoardPage({
 		}
 	}
 
+	function cancelInlineListNameEdit() {
+		setEditingListNameId(null)
+		setEditingListName('')
+	}
+
+	function startInlineListNameEdit(list: ListRow) {
+		setActiveListMenuId(null)
+		setEditList(null)
+		setEditingListNameId(list.id)
+		setEditingListName(list.name)
+	}
+
+	const saveInlineListName = useCallback(
+		async (listId: number) => {
+			if (!accessToken || inlineListNameSaveLock.current) return
+			const list = lists.find(row => row.id === listId)
+			if (!list) {
+				cancelInlineListNameEdit()
+				return
+			}
+			const name = editingListName.trim()
+			if (name.length < 3) {
+				setAlertText('Название: не менее 3 символов.')
+				setAlertOpen(true)
+				listNameInputRef.current?.focus()
+				return
+			}
+			if (name === list.name) {
+				cancelInlineListNameEdit()
+				return
+			}
+
+			const previousName = list.name
+			inlineListNameSaveLock.current = true
+			setLists(prev =>
+				prev.map(row => (row.id === listId ? { ...row, name } : row))
+			)
+			cancelInlineListNameEdit()
+
+			try {
+				await api(`/workspace/${workspaceId}/lists/${listId}`, {
+					method: 'PATCH',
+					accessToken,
+					json: { name }
+				})
+			} catch (e) {
+				setLists(prev =>
+					prev.map(row =>
+						row.id === listId ? { ...row, name: previousName } : row
+					)
+				)
+				setAlertText(formatError(e))
+				setAlertOpen(true)
+			} finally {
+				inlineListNameSaveLock.current = false
+			}
+		},
+		[accessToken, editingListName, lists, workspaceId]
+	)
+
+	useEffect(() => {
+		if (editingListNameId == null) return
+
+		const onPointerDown = (e: PointerEvent) => {
+			if (!(e.target instanceof Element)) return
+			if (
+				e.target.closest(`[data-list-name-edit="${editingListNameId}"]`)
+			) {
+				return
+			}
+			if (e.target.closest('.trello-list-menu-wrap')) return
+			void saveInlineListName(editingListNameId)
+			e.stopPropagation()
+		}
+
+		document.addEventListener('pointerdown', onPointerDown, true)
+		return () =>
+			document.removeEventListener('pointerdown', onPointerDown, true)
+	}, [editingListNameId, saveInlineListName])
+
 	function openEditList(list: ListRow) {
+		cancelInlineListNameEdit()
 		setEditList(list)
 		setEditName(list.name)
 		setEditColor(list.colorPreset || 'GRAY')
@@ -895,10 +1165,21 @@ export function BoardPage({
 		if (!accessToken || !editList) return
 		const name = editName.trim()
 		if (name.length < 3) return
+		const listId = editList.id
+		const previousName = editList.name
+		const previousColor = editList.colorPreset || 'GRAY'
 		setEditBusy(true)
 		setMsg(null)
+		setLists(prev =>
+			prev.map(row =>
+				row.id === listId
+					? { ...row, name, colorPreset: editColor }
+					: row
+			)
+		)
+		setEditList(null)
 		try {
-			await api(`/workspace/${workspaceId}/lists/${editList.id}`, {
+			await api(`/workspace/${workspaceId}/lists/${listId}`, {
 				method: 'PATCH',
 				accessToken,
 				json: {
@@ -906,9 +1187,18 @@ export function BoardPage({
 					colorPreset: editColor
 				}
 			})
-			setEditList(null)
-			await load()
 		} catch (e) {
+			setLists(prev =>
+				prev.map(row =>
+					row.id === listId
+						? {
+								...row,
+								name: previousName,
+								colorPreset: previousColor
+							}
+						: row
+				)
+			)
 			setMsg(formatError(e))
 		} finally {
 			setEditBusy(false)
@@ -918,7 +1208,12 @@ export function BoardPage({
 	function openCreateCard(listId: number) {
 		setCreateCardListId(listId)
 		setCreateCardTitle('')
-		setCreateCardDesc('')
+	}
+
+	function cancelCreateCard() {
+		if (createCardBusy) return
+		setCreateCardListId(null)
+		setCreateCardTitle('')
 	}
 
 	async function submitCreateCard() {
@@ -929,32 +1224,66 @@ export function BoardPage({
 		const position = nextCardPosition(listCards)
 		setCreateCardBusy(true)
 		try {
-			const body: {
-				title: string
-				position: number
-				description?: string
-			} = {
-				title,
-				position
-			}
-			const d = createCardDesc.trim()
-			if (d.length > 0) body.description = d
 			await api(
 				`/workspace/${workspaceId}/lists/${createCardListId}/cards`,
 				{
 					method: 'POST',
 					accessToken,
-					json: body
+					json: { title, position }
 				}
 			)
-			setCreateCardListId(null)
+			setCreateCardTitle('')
 			await loadCards()
+			requestAnimationFrame(() => {
+				const el = createCardTextareaRef.current
+				if (!el) return
+				el.focus()
+				adjustTextareaHeight(el)
+			})
 		} catch (e) {
 			setAlertText(formatError(e))
 			setAlertOpen(true)
 		} finally {
 			setCreateCardBusy(false)
 		}
+	}
+
+	async function archiveEditCard() {
+		if (!accessToken || !editCard) return
+		setEditCardBusy(true)
+		try {
+			await archiveCard(accessToken, workspaceId, editCard.id)
+			setCardsByListId(prev => ({
+				...prev,
+				[editCard.listId]: (prev[editCard.listId] ?? []).filter(
+					c => c.id !== editCard.id,
+				),
+			}))
+			setEditCard(null)
+		} catch (e) {
+			setAlertText(formatError(e))
+			setAlertOpen(true)
+		} finally {
+			setEditCardBusy(false)
+		}
+	}
+
+	function patchCardCoverOnBoard(
+		cardId: number,
+		listId: number,
+		patch: {
+			coverColorPreset?: string | null
+			coverDisplayMode?: CardCoverDisplayMode
+			coverImageUrl?: string | null
+		},
+	) {
+		const merge = (c: CardRow): CardRow =>
+			c.id === cardId ? { ...c, ...patch } : c
+		setCardsByListId(prev => ({
+			...prev,
+			[listId]: (prev[listId] ?? []).map(merge),
+		}))
+		setEditCard(prev => (prev && prev.id === cardId ? { ...prev, ...patch } : prev))
 	}
 
 	async function refreshEditCardFromBoard() {
@@ -971,6 +1300,18 @@ export function BoardPage({
 		} catch {
 			await loadCards()
 		}
+	}
+
+	function handleCardCoverChange(patch?: {
+		coverColorPreset?: string | null
+		coverDisplayMode?: CardCoverDisplayMode
+		coverImageUrl?: string | null
+	}) {
+		if (patch && editCard) {
+			patchCardCoverOnBoard(editCard.id, editCard.listId, patch)
+			return
+		}
+		void refreshEditCardFromBoard()
 	}
 
 	function openCardDetail(card: CardRow) {
@@ -1040,6 +1381,84 @@ export function BoardPage({
 			const next = { ...editCard, description }
 			setEditCard(next)
 			await loadCards()
+		} catch (e) {
+			setAlertText(formatError(e))
+			setAlertOpen(true)
+		} finally {
+			setEditCardBusy(false)
+		}
+	}
+
+	async function saveCardDates(due: string, reminder: string) {
+		if (!accessToken || !editCard) return
+		const dueDate = inputValueToIso(due)
+		const reminderMinutesBefore =
+			dueDate && reminder.trim() ? Number(reminder) : null
+		const prevDue = editCard.dueDate ?? null
+		const prevReminder = editCard.reminderMinutesBefore ?? null
+		const nextReminder =
+			reminderMinutesBefore != null && !Number.isNaN(reminderMinutesBefore)
+				? reminderMinutesBefore
+				: null
+		const prevDueMs = prevDue ? new Date(prevDue).getTime() : null
+		const nextDueMs = dueDate ? new Date(dueDate).getTime() : null
+		if (prevDueMs === nextDueMs && prevReminder === nextReminder) {
+			setEditCardDue(due)
+			setEditCardReminder(reminder)
+			return
+		}
+		setEditCardBusy(true)
+		try {
+			await api(`/workspace/${workspaceId}/cards/${editCard.id}`, {
+				method: 'PATCH',
+				accessToken,
+				json: {
+					dueDate,
+					reminderMinutesBefore: nextReminder,
+				},
+			})
+			const patch = {
+				dueDate,
+				reminderMinutesBefore: nextReminder,
+			}
+			setEditCard(prev => (prev ? { ...prev, ...patch } : prev))
+			setEditCardDue(due)
+			setEditCardReminder(reminder)
+			setCardsByListId(prev => ({
+				...prev,
+				[editCard.listId]: (prev[editCard.listId] ?? []).map(c =>
+					c.id === editCard.id ? { ...c, ...patch } : c,
+				),
+			}))
+		} catch (e) {
+			setAlertText(formatError(e))
+			setAlertOpen(true)
+		} finally {
+			setEditCardBusy(false)
+		}
+	}
+
+	async function removeCardDates() {
+		await saveCardDates('', '')
+	}
+
+	async function saveCardAssignee(assigneeId: number | null) {
+		if (!accessToken || !editCard) return
+		if (editCard.assigneeId === assigneeId) return
+		setEditCardBusy(true)
+		try {
+			await api(`/workspace/${workspaceId}/cards/${editCard.id}`, {
+				method: 'PATCH',
+				accessToken,
+				json: { assigneeId },
+			})
+			setEditCard(prev => (prev ? { ...prev, assigneeId } : prev))
+			setCardsByListId(prev => ({
+				...prev,
+				[editCard.listId]: (prev[editCard.listId] ?? []).map(c =>
+					c.id === editCard.id ? { ...c, assigneeId } : c,
+				),
+			}))
 		} catch (e) {
 			setAlertText(formatError(e))
 			setAlertOpen(true)
@@ -1121,26 +1540,15 @@ export function BoardPage({
 				}
 				if (
 					completionSavedButXpFailed &&
-					code === 'XP_EVENT_ALREADY_RECORDED'
+					(code === 'XP_EVENT_ALREADY_RECORDED' ||
+						code === 'DAILY_ACTIVITY_XP_LIMIT' ||
+						code === 'DAILY_TASK_XP_LIMIT' ||
+						code === 'DAILY_HABIT_XP_LIMIT')
 				) {
-					// Повторное закрытие — XP уже был; карточка сохранена, уведомление не нужно.
 					return
 				}
-				if (
-					completionSavedButXpFailed &&
-					isXpTaskSoftNoticeCode(code)
-				) {
-					window.clearTimeout(xpBottomNoticeTimerRef.current)
-					const id = Date.now()
-					setXpBottomNotice({ id, text: formatError(err) })
-					xpBottomNoticeTimerRef.current = window.setTimeout(
-						() => setXpBottomNotice(null),
-						4500
-					)
-				} else {
-					setAlertText(formatError(err))
-					setAlertOpen(true)
-				}
+				setAlertText(formatError(err))
+				setAlertOpen(true)
 			} finally {
 				setCompletionBusyId(null)
 			}
@@ -1154,41 +1562,6 @@ export function BoardPage({
 			workspaceId
 		]
 	)
-
-	async function submitEditCard() {
-		if (!accessToken || !editCard) return
-		const title = editCardTitle.trim()
-		if (title.length < 3) return
-		setEditCardBusy(true)
-		try {
-			const dueIso = inputValueToIsoOrNull(editCardDue)
-			const reminderMinutesBefore =
-				editCardReminder === '' ? null : Number(editCardReminder)
-			await api(`/workspace/${workspaceId}/cards/${editCard.id}`, {
-				method: 'PATCH',
-				accessToken,
-				json: {
-					title,
-					description: editCardDesc.trim() || null,
-					dueDate: dueIso,
-					assigneeId: editCardAssigneeId,
-					reminderMinutesBefore
-				}
-			})
-			await api(`/workspace/${workspaceId}/cards/${editCard.id}/labels`, {
-				method: 'PATCH',
-				accessToken,
-				json: { labelIds: editCardLabelIds }
-			})
-			setEditCard(null)
-			await loadCards()
-		} catch (e) {
-			setAlertText(formatError(e))
-			setAlertOpen(true)
-		} finally {
-			setEditCardBusy(false)
-		}
-	}
 
 	async function confirmDeleteCard() {
 		if (!accessToken || !deleteCardRow) return
@@ -1318,7 +1691,10 @@ export function BoardPage({
 										key={list.id}
 										draggableId={`${LIST_DRAG_PREFIX}${list.id}`}
 										index={listIndex}
-										isDragDisabled={moveBusy}
+										isDragDisabled={
+											moveBusy ||
+											editingListNameId === list.id
+										}
 									>
 										{(listDragProvided, listSnapshot) => (
 											<div
@@ -1342,14 +1718,62 @@ export function BoardPage({
 												}}
 											>
 												<div className='trello-list-header'>
-													<div
-														className='trello-list-header-row trello-list-header-row--drag-handle'
-														{...listDragProvided.dragHandleProps}
-														title='Перетащить колонку'
-													>
-														<span className='trello-list-header-title'>
-															{list.name}
-														</span>
+													<div className='trello-list-header-row'>
+														<div
+															className={[
+																'trello-list-header-drag-zone',
+																editingListNameId ===
+																list.id
+																	? ''
+																	: 'trello-list-header-row--drag-handle'
+															]
+																.filter(Boolean)
+																.join(' ')}
+															{...(editingListNameId ===
+															list.id
+																? {}
+																: listDragProvided.dragHandleProps)}
+															title={
+																editingListNameId ===
+																list.id
+																	? undefined
+																	: 'Перетащить колонку'
+															}
+														>
+															<ListHeaderName
+																list={list}
+																canEdit={
+																	canManageLists
+																}
+																editing={
+																	editingListNameId ===
+																	list.id
+																}
+																editName={
+																	editingListName
+																}
+																busy={false}
+																inputRef={
+																	listNameInputRef
+																}
+																onStartEdit={() =>
+																	startInlineListNameEdit(
+																		list
+																	)
+																}
+																onNameChange={
+																	setEditingListName
+																}
+																onSave={() =>
+																	void saveInlineListName(
+																		list.id
+																	)
+																}
+																onCancel={
+																	cancelInlineListNameEdit
+																}
+															/>
+														</div>
 														{canManageLists ? (
 															<div
 																className='trello-list-menu-wrap'
@@ -1441,9 +1865,41 @@ export function BoardPage({
 														chromeColor={listHeaderColor(
 															list.colorPreset
 														)}
-														onAddCard={() =>
-															openCreateCard(
-																list.id
+														addCardFooter={
+															createCardListId ===
+															list.id ? (
+																<InlineAddCardForm
+																	title={
+																		createCardTitle
+																	}
+																	busy={
+																		createCardBusy
+																	}
+																	textareaRef={
+																		createCardTextareaRef
+																	}
+																	onTitleChange={
+																		setCreateCardTitle
+																	}
+																	onSubmit={() =>
+																		void submitCreateCard()
+																	}
+																	onCancel={
+																		cancelCreateCard
+																	}
+																/>
+															) : (
+																<button
+																	type='button'
+																	className='trello-add-card-btn'
+																	onClick={() =>
+																		openCreateCard(
+																			list.id
+																		)
+																	}
+																>
+																	<span className='trello-add-card-btn-plus' aria-hidden>+</span><span className='trello-add-card-btn-label'>Добавить карточку</span>
+																</button>
 															)
 														}
 													>
@@ -1487,6 +1943,29 @@ export function BoardPage({
 																					style: dragStyle,
 																					...dragRest
 																				} = dragProvided.draggableProps
+																				const bannerCoverColor =
+																					card.coverColorPreset &&
+																					card.coverDisplayMode ===
+																						'BANNER' &&
+																					!card.coverImageUrl
+																						? listHeaderColor(
+																								card.coverColorPreset,
+																							)
+																						: null
+																				const fullCoverColor =
+																					card.coverColorPreset &&
+																					card.coverDisplayMode ===
+																						'FULL' &&
+																					!card.coverImageUrl
+																						? listHeaderColor(
+																								card.coverColorPreset,
+																							)
+																						: null
+																				const hasCoverStrip =
+																					Boolean(
+																						card.coverImageUrl ||
+																							bannerCoverColor,
+																					)
 																				return (
 																				<div
 																					ref={
@@ -1502,9 +1981,12 @@ export function BoardPage({
 																						card.isCompleted
 																							? 'trello-card--completed'
 																							: '',
-																						card.coverImageUrl
+																						hasCoverStrip
 																							? 'trello-card--has-cover'
-																							: ''
+																							: '',
+																						fullCoverColor
+																							? 'trello-card--full-color-cover'
+																							: '',
 																					]
 																						.filter(
 																							Boolean
@@ -1512,21 +1994,41 @@ export function BoardPage({
 																						.join(
 																							' '
 																						)}
-																					style={
-																						snapshot.isDragging
+																					style={{
+																						...(snapshot.isDragging
 																							? dragStyle
-																							: undefined
-																					}
+																							: {}),
+																						...(fullCoverColor
+																							? {
+																									backgroundColor:
+																										fullCoverColor,
+																								}
+																							: {}),
+																					}}
 																				>
 																					<div className='trello-card-inner'>
-																						{card.coverImageUrl ? (
+																						{hasCoverStrip ? (
 																							<div
-																								className='trello-card-cover-wrap'
+																								className={
+																									bannerCoverColor &&
+																									!card.coverImageUrl
+																										? 'trello-card-cover-wrap trello-card-cover-wrap--color'
+																										: 'trello-card-cover-wrap'
+																								}
+																								style={
+																									bannerCoverColor &&
+																									!card.coverImageUrl
+																										? {
+																												backgroundColor:
+																													bannerCoverColor,
+																											}
+																										: undefined
+																								}
 																								role='button'
 																								tabIndex={0}
 																								onClick={() =>
 																									openCardDetail(
-																										card
+																										card,
 																									)
 																								}
 																								onKeyDown={e => {
@@ -1538,18 +2040,20 @@ export function BoardPage({
 																									) {
 																										e.preventDefault()
 																										openCardDetail(
-																											card
+																											card,
 																										)
 																									}
 																								}}
 																							>
-																								<img
-																									className='trello-card-cover-img'
-																									src={
-																										card.coverImageUrl
-																									}
-																									alt=''
-																								/>
+																								{card.coverImageUrl ? (
+																									<img
+																										className='trello-card-cover-img'
+																										src={
+																											card.coverImageUrl
+																										}
+																										alt=''
+																									/>
+																								) : null}
 																							</div>
 																						) : null}
 																						<CardLabelStrip
@@ -1620,36 +2124,38 @@ export function BoardPage({
 																										) : null}
 																									</button>
 																								</div>
-																								<span className='trello-card-title-text'>
-																									{card.title}
-																								</span>
-																								{(card.attachmentCount ?? 0) > 0 ||
-																								(card.commentCount ?? 0) > 0 ? (
-																									<span className='trello-card-title-meta'>
-																										{(card.attachmentCount ?? 0) > 0 ? (
-																											<span
-																												className='trello-card-meta-indicator trello-card-attach-indicator'
-																												title='Вложения'
-																											>
-																												<IconAttach size={14} />
-																												<span className='trello-card-meta-count'>
-																													{card.attachmentCount}
-																												</span>
-																											</span>
-																										) : null}
-																										{(card.commentCount ?? 0) > 0 ? (
-																											<span
-																												className='trello-card-meta-indicator trello-card-comment-indicator'
-																												title='Комментарии'
-																											>
-																												<IconComment size={14} />
-																												<span className='trello-card-meta-count'>
-																													{card.commentCount}
-																												</span>
-																											</span>
-																										) : null}
+																								<div className='trello-card-title-main'>
+																									<span className='trello-card-title-text'>
+																										{card.title}
 																									</span>
-																								) : null}
+																									{(card.attachmentCount ?? 0) > 0 ||
+																									(card.commentCount ?? 0) > 0 ? (
+																										<span className='trello-card-title-meta'>
+																											{(card.attachmentCount ?? 0) > 0 ? (
+																												<span
+																													className='trello-card-meta-indicator trello-card-attach-indicator'
+																													title='Вложения'
+																												>
+																													<IconAttach size={14} />
+																													<span className='trello-card-meta-count'>
+																														{card.attachmentCount}
+																													</span>
+																												</span>
+																											) : null}
+																											{(card.commentCount ?? 0) > 0 ? (
+																												<span
+																													className='trello-card-meta-indicator trello-card-comment-indicator'
+																													title='Комментарии'
+																												>
+																													<IconComment size={14} />
+																													<span className='trello-card-meta-count'>
+																														{card.commentCount}
+																													</span>
+																												</span>
+																											) : null}
+																										</span>
+																									) : null}
+																								</div>
 																							</div>
 																						</div>
 																					</div>
@@ -1930,111 +2436,6 @@ export function BoardPage({
 				</div>
 			)}
 
-			{createCardListId != null && (
-				<div
-					className='trello-modal-backdrop'
-					role='presentation'
-					onClick={() => !createCardBusy && setCreateCardListId(null)}
-				>
-					<div
-						className='trello-modal trello-modal--board-form'
-						role='dialog'
-						aria-modal
-						onClick={e => e.stopPropagation()}
-					>
-						<div className='trello-modal-head'>
-							<h2 className='trello-modal-title'>
-								Новая карточка
-							</h2>
-							<button
-								type='button'
-								className='trello-modal-close'
-								onClick={() =>
-									!createCardBusy && setCreateCardListId(null)
-								}
-								aria-label='Закрыть'
-							>
-								×
-							</button>
-						</div>
-						<div className='trello-modal-body'>
-							<label className='trello-field'>
-								<span className='trello-label'>
-									Заголовок *
-								</span>
-								<input
-									className='trello-input'
-									value={createCardTitle}
-									onChange={e =>
-										setCreateCardTitle(e.target.value)
-									}
-									onKeyDown={e => {
-										if (e.key !== 'Enter') return
-										e.preventDefault()
-										if (
-											createCardBusy ||
-											createCardTitle.trim().length < 3
-										) {
-											return
-										}
-										void submitCreateCard()
-									}}
-									maxLength={50}
-									autoFocus
-								/>
-							</label>
-							<label className='trello-field'>
-								<span className='trello-label'>Описание</span>
-								<textarea
-									className='trello-textarea'
-									value={createCardDesc}
-									onChange={e =>
-										setCreateCardDesc(e.target.value)
-									}
-									onKeyDown={e => {
-										if (e.key !== 'Enter' || !(e.ctrlKey || e.metaKey)) {
-											return
-										}
-										e.preventDefault()
-										if (
-											createCardBusy ||
-											createCardTitle.trim().length < 3
-										) {
-											return
-										}
-										void submitCreateCard()
-									}}
-									rows={3}
-									maxLength={2000}
-								/>
-							</label>
-						</div>
-						<div className='trello-modal-foot'>
-							<button
-								type='button'
-								className='trello-btn trello-btn-ghost'
-								onClick={() =>
-									!createCardBusy && setCreateCardListId(null)
-								}
-							>
-								Отмена
-							</button>
-							<button
-								type='button'
-								className='trello-btn trello-btn-primary'
-								disabled={
-									createCardTitle.trim().length < 3 ||
-									createCardBusy
-								}
-								onClick={() => void submitCreateCard()}
-							>
-								{createCardBusy ? 'Создание…' : 'Создать'}
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
-
 			{editCard && (
 				<CardDetailModalTrello
 					card={{
@@ -2042,6 +2443,8 @@ export function BoardPage({
 						title: editCard.title,
 						isCompleted: editCard.isCompleted,
 						coverImageUrl: editCard.coverImageUrl,
+						coverColorPreset: editCard.coverColorPreset,
+						coverDisplayMode: editCard.coverDisplayMode,
 						attachmentCount: editCard.attachmentCount,
 						labels: editCard.labels,
 						createdAt: editCard.createdAt,
@@ -2053,13 +2456,13 @@ export function BoardPage({
 					currentUserName={currentUserName}
 					busy={editCardBusy}
 					onClose={() => !editCardBusy && setEditCard(null)}
-					onSave={() => void submitEditCard()}
 					onDelete={() => {
 						const row = editCard
 						setEditCard(null)
 						setDeleteCardRow(row)
 					}}
-					onCoverChange={() => void refreshEditCardFromBoard()}
+					onArchive={() => void archiveEditCard()}
+					onCoverChange={handleCardCoverChange}
 					onToggleComplete={(e) => {
 						if (!editCard) return
 						void toggleCardCompletion(editCard, e)
@@ -2086,11 +2489,14 @@ export function BoardPage({
 						setEditCardDesc(editCard.description ?? '')
 					}}
 					due={editCardDue}
-					onDueChange={setEditCardDue}
 					reminder={editCardReminder}
-					onReminderChange={setEditCardReminder}
+					onDatesSave={saveCardDates}
+					onDatesRemove={removeCardDates}
 					assigneeId={editCardAssigneeId}
-					onAssigneeChange={setEditCardAssigneeId}
+					onAssigneeChange={id => {
+						setEditCardAssigneeId(id)
+						void saveCardAssignee(id)
+					}}
 					labelIds={editCardLabelIds}
 					onLabelIdsChange={setEditCardLabelIds}
 					wsLabels={wsLabels}
@@ -2257,14 +2663,6 @@ export function BoardPage({
 				/>
 			) : null}
 
-			{xpBottomNotice ? (
-				<div className='trello-xp-snackbar-root' aria-live='polite'>
-					<div key={xpBottomNotice.id} className='trello-xp-snackbar'>
-						{xpBottomNotice.text}
-					</div>
-				</div>
-			) : null}
-
 			<AlertModal
 				open={alertOpen}
 				message={alertText}
@@ -2423,7 +2821,7 @@ export function BoardPage({
 					onClick={() => !editBusy && setEditList(null)}
 				>
 					<div
-						className='trello-modal'
+						className='trello-modal trello-modal--board-form'
 						role='dialog'
 						aria-modal
 						onClick={e => e.stopPropagation()}

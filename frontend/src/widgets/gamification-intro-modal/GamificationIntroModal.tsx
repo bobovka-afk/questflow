@@ -1,11 +1,6 @@
 import { useState } from 'react';
 import { SpaLink } from '@shared/lib/navigation';
-import { STREAK_LABEL } from '@entities/reward';
-import {
-  DAILY_TASK_XP_COMPLETIONS_MAX,
-  XP_DAILY_CHECKIN,
-  XP_PER_TASK_COMPLETED,
-} from '@entities/reward';
+import { DAILY_ACTIVITY_XP_MAX, XP_DAILY_CHECKIN } from '@entities/reward';
 import {
   gamificationIntroIllustrationUrl,
   INTRO_ILLUSTRATION_HEIGHT,
@@ -26,11 +21,13 @@ export function GamificationIntroModal(props: Props) {
 
   if (!props.open) return null;
 
+  const canDismiss = step === 'about';
+
   return (
     <div
       className="trello-modal-backdrop"
       role="presentation"
-      onClick={handleClose}
+      onClick={canDismiss ? handleClose : undefined}
     >
       <div
         className="trello-modal trello-gamification-intro-modal"
@@ -39,14 +36,16 @@ export function GamificationIntroModal(props: Props) {
         aria-labelledby="gamification-intro-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          type="button"
-          className="trello-modal-close trello-gamification-intro-close"
-          onClick={handleClose}
-          aria-label="Закрыть"
-        >
-          ×
-        </button>
+        {canDismiss ? (
+          <button
+            type="button"
+            className="trello-modal-close trello-gamification-intro-close"
+            onClick={handleClose}
+            aria-label="Закрыть"
+          >
+            ×
+          </button>
+        ) : null}
 
         <div className="trello-modal-body trello-gamification-intro-body">
           <section className="trello-gamification-intro-hero">
@@ -67,39 +66,66 @@ export function GamificationIntroModal(props: Props) {
               </h3>
               <section className="trello-gamification-intro-block">
                 <p className="trello-gamification-intro-text">
-                  <strong>Questflow</strong> — доски и карточки для команд и личных дел: задачи,
-                  сроки, исполнители и комментарии в одном месте. Создайте рабочее пространство,
-                  пригласите участников и ведите проекты так же удобно, как в привычных
-                  таск-трекерах.
+                  <strong>Questflow</strong> — задачи для себя и команды с встроенной геймификацией.
+                </p>
+                <p className="trello-gamification-intro-text">
+                  Ведите привычки, ежедневные дела и личные задачи в разделе «Привычки» или
+                  организуйте проекты на досках: колонки, карточки, сроки, исполнители и
+                  комментарии. За реальные действия растёт персонаж — опыт, квесты, сундуки и
+                  достижения.
                 </p>
               </section>
             </>
           ) : (
-            <section className="trello-gamification-intro-block trello-gamification-intro-block--gamification">
-              <h3 className="trello-gamification-intro-subtitle" id="gamification-intro-title">
-                Геймификация
+            <section className="trello-gamification-intro-rewards">
+              <h3 className="trello-gamification-intro-title" id="gamification-intro-title">
+                Награды за дела
               </h3>
-              <p className="trello-gamification-intro-text">
-                Поверх обычной работы с досками — лёгкий <strong>RPG</strong>-слой: персонаж с
-                уровнем, опытом, здоровьем и серией дней, как в ролевой игре. Прогресс виден
-                сразу, а регулярная активность поощряется наградами.
+              <p className="trello-gamification-intro-lead">
+                Создайте персонажа — и получайте XP за задачи на досках и в «Привычках», квесты и
+                косметику в профиле.
               </p>
-              <ul className="trello-gamification-intro-list">
-                <li>
-                  Закрывайте карточки — до <strong>{DAILY_TASK_XP_COMPLETIONS_MAX}</strong> раз в сутки по{' '}
-                  <strong>+{XP_PER_TASK_COMPLETED} XP</strong> (исполнителю или закрывшему).
-                </li>
-                <li>
-                  {STREAK_LABEL} за день — <strong>+{XP_DAILY_CHECKIN} XP</strong> при первой награде за
-                  сутки; длинная серия даёт бонусы XP.
-                </li>
-                <li>
-                  Квесты, сундуки и косметика без влияния на силу персонажа — только внешний вид и
-                  коллекция.
-                </li>
-                <li>Без персонажа награды не начисляются — создайте героя один раз.</li>
-                <li>Подробные правила — в профиле персонажа, блок «Как это работает».</li>
-              </ul>
+              <div className="trello-gamification-intro-steps">
+                <article className="trello-gamification-intro-step">
+                  <div className="trello-gamification-intro-step-badge" aria-hidden>
+                    1
+                  </div>
+                  <div>
+                    <div className="trello-gamification-intro-step-title">Делайте</div>
+                    <p className="trello-gamification-intro-step-text">
+                      Карточки, личные задачи, ежедневные, привычки «+». До{' '}
+                      <strong>{DAILY_ACTIVITY_XP_MAX} XP</strong>/сутки, активность{' '}
+                      <strong>+{XP_DAILY_CHECKIN} XP</strong>.
+                    </p>
+                  </div>
+                </article>
+                <article className="trello-gamification-intro-step">
+                  <div className="trello-gamification-intro-step-badge" aria-hidden>
+                    2
+                  </div>
+                  <div>
+                    <div className="trello-gamification-intro-step-title">Следите</div>
+                    <p className="trello-gamification-intro-step-text">
+                      Отслеживайте уровень, здоровье и серию активных дней — регулярность укрепляет
+                      прогресс.
+                    </p>
+                  </div>
+                </article>
+                <article className="trello-gamification-intro-step">
+                  <div className="trello-gamification-intro-step-badge" aria-hidden>
+                    3
+                  </div>
+                  <div>
+                    <div className="trello-gamification-intro-step-title">Собирайте</div>
+                    <p className="trello-gamification-intro-step-text">
+                      Квесты → сундуки → косметика.
+                    </p>
+                  </div>
+                </article>
+              </div>
+              <p className="trello-gamification-intro-footnote">
+                Все правила — <strong>Профиль → Персонаж → Правила</strong>.
+              </p>
             </section>
           )}
         </div>
@@ -114,18 +140,13 @@ export function GamificationIntroModal(props: Props) {
               Далее
             </button>
           ) : (
-            <>
-              <button type="button" className="trello-btn trello-btn-ghost" onClick={handleClose}>
-                Позже
-              </button>
-              <SpaLink
-                className="trello-btn trello-btn-primary"
-                to="/profile/character"
-                onClick={handleClose}
-              >
-                Создать персонажа
-              </SpaLink>
-            </>
+            <SpaLink
+              className="trello-btn trello-btn-primary trello-gamification-intro-create-btn"
+              to="/profile/character"
+              onClick={handleClose}
+            >
+              Создать персонажа
+            </SpaLink>
           )}
         </div>
       </div>

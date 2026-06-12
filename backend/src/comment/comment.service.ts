@@ -3,8 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import {
+  toUserBrief,
+  userBriefWithCharacterSelect,
+} from '../common/lib/user-brief';
 import { PrismaService } from '../prisma/prisma.service';
-import { QuestProgressService } from '../gamification/quest/quest-progress.service';
 import { WorkspaceRole } from '../generated/prisma/enums';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment-dto';
@@ -17,20 +20,21 @@ import { extractMentionedUserIds } from '../workspace/lib/mention-parse';
 export class CommentService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly questProgressService: QuestProgressService,
     private readonly notificationService: NotificationService,
   ) {}
 
   async getComments(cardId: number): Promise<CommentWithUser[]> {
-    return this.prisma.comment.findMany({
+    const rows = await this.prisma.comment.findMany({
       where: { cardId },
       orderBy: { createdAt: 'asc' },
       include: {
-        user: {
-          select: { id: true, name: true, avatarPath: true },
-        },
+        user: { select: userBriefWithCharacterSelect },
       },
     });
+    return rows.map((row) => ({
+      ...row,
+      user: toUserBrief(row.user),
+    }));
   }
 
   async createComment(
@@ -66,9 +70,7 @@ export class CommentService {
         body: dto.body,
       },
       include: {
-        user: {
-          select: { id: true, name: true, avatarPath: true },
-        },
+        user: { select: userBriefWithCharacterSelect },
       },
     });
 
@@ -104,9 +106,10 @@ export class CommentService {
       }
     }
 
-    await this.questProgressService.recordCommentCreated(userId);
-
-    return comment;
+    return {
+      ...comment,
+      user: toUserBrief(comment.user),
+    };
   }
 
   async updateComment(
@@ -122,15 +125,17 @@ export class CommentService {
       });
     }
 
-    return this.prisma.comment.update({
+    const updated = await this.prisma.comment.update({
       where: { id: commentId },
       data: { body: dto.body },
       include: {
-        user: {
-          select: { id: true, name: true, avatarPath: true },
-        },
+        user: { select: userBriefWithCharacterSelect },
       },
     });
+    return {
+      ...updated,
+      user: toUserBrief(updated.user),
+    };
   }
 
   async deleteComment(

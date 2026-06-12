@@ -31,7 +31,6 @@ describe('QuestProgressService', () => {
       count: jest.fn(),
     };
     prisma.character = { findUnique: jest.fn() };
-    prisma.userWorkspaceQuestDay = { upsert: jest.fn(), findMany: jest.fn() };
     prisma.userQuestXpDay = { upsert: jest.fn(), count: jest.fn() };
     prisma.userChest = { findUnique: jest.fn(), create: jest.fn() };
     prisma.$transaction = jest.fn((fn: (tx: unknown) => unknown) =>
@@ -58,7 +57,6 @@ describe('QuestProgressService', () => {
 
   it('increments CARDS_COMPLETED daily template', async () => {
     prisma.character!.findUnique!.mockResolvedValue({ id: 1 });
-    prisma.userWorkspaceQuestDay!.upsert!.mockResolvedValue({});
     prisma.questTemplate!.findMany!.mockResolvedValue([
       {
         id: 1,
@@ -74,8 +72,6 @@ describe('QuestProgressService', () => {
     prisma.userQuestProgress!.upsert!.mockResolvedValue({});
     prisma.userChest!.findUnique!.mockResolvedValue(null);
     prisma.userChest!.create!.mockResolvedValue({ id: 10 });
-    prisma.questTemplate!.findFirst!.mockResolvedValue(null);
-    prisma.userWorkspaceQuestDay!.findMany!.mockResolvedValue([]);
 
     const result = await service.recordCardCompleted(1, {
       cardId: 5,

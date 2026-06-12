@@ -17,6 +17,15 @@ export function RailIconWorkspaces({ className }: IconProps) {
   );
 }
 
+/** P2 — звезда / личные дела */
+export function RailIconPersonal({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+      <path d="M8 1.5l1.8 3.7 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6L8 1.5z" />
+    </svg>
+  );
+}
+
 /** C3 — портрет в рамке + полоска HP */
 export function RailIconCharacter({ className }: IconProps) {
   return (

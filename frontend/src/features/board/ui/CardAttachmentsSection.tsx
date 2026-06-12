@@ -130,7 +130,11 @@ export function CardAttachmentsSection({
     }
   }
 
-  if (uiHidden) {
+  const fileRows = rows.filter((r) => r.kind === 'FILE' || r.isImage);
+  const linkRows = rows.filter((r) => r.kind === 'LINK');
+  const allFiles = [...fileRows, ...linkRows];
+
+  if (uiHidden || (isModal && (loading || allFiles.length === 0))) {
     return (
       <div className="trello-card-attachments trello-card-attachments--picker-only" aria-hidden>
         <input
@@ -144,10 +148,6 @@ export function CardAttachmentsSection({
       </div>
     );
   }
-
-  const fileRows = rows.filter((r) => r.kind === 'FILE' || r.isImage);
-  const linkRows = rows.filter((r) => r.kind === 'LINK');
-  const allFiles = [...fileRows, ...linkRows];
 
   return (
     <section

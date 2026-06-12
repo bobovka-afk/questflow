@@ -29,7 +29,7 @@ export function MemberPermissionsModal({
   return (
     <div className="trello-modal-backdrop" role="presentation" onClick={() => !saving && onClose()}>
       <div
-        className="trello-modal"
+        className="trello-modal trello-modal--board-form"
         role="dialog"
         aria-modal
         onClick={(e) => e.stopPropagation()}

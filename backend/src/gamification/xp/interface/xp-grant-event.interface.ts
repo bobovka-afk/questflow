@@ -5,4 +5,7 @@ export interface XpGrantEventInput {
   xpAmount: number;
   cardId: number | null;
   dayKey: Date | null;
+  personalTodoId?: number | null;
+  personalDailyId?: number | null;
+  personalHabitId?: number | null;
 }

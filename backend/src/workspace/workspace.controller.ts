@@ -16,6 +16,7 @@ import { UseGuards } from '@nestjs/common';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { PaginationDto } from './dto/pagination.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
+import { ReorderUserWorkspaceDto } from './dto/reorder-user-workspace.dto';
 import { WorkspaceAccessGuard } from '../common/guards/workspace-access.guard';
 import { WorkspaceRoleGuard } from '../common/guards/workspace-role.guard';
 import { WorkspaceRoles } from '../common/decorators/workspace-roles.decorator';
@@ -67,6 +68,19 @@ export class WorkspaceController {
     @Query() paginationDto: PaginationDto,
   ): Promise<UserWorkspaceRow[]> {
     return this.workspaceService.getUserWorkspaces(req.user.id, paginationDto);
+  }
+
+  @Patch('reorder-user-workspace')
+  @ApiOperation({ summary: 'Reorder a workspace in the current user list' })
+  @ApiBody({ type: ReorderUserWorkspaceDto })
+  @ApiResponse({ status: 200, description: 'Workspace order updated.' })
+  @ApiResponse({ status: 401, description: "code: 'UNAUTHORIZED'" })
+  @ApiResponse({ status: 404, description: "code: 'WORKSPACE_MEMBER_NOT_FOUND'" })
+  async reorderUserWorkspace(
+    @Req() req: AuthedRequest,
+    @Body() dto: ReorderUserWorkspaceDto,
+  ): Promise<{ ok: boolean }> {
+    return this.workspaceService.reorderUserWorkspace(req.user.id, dto);
   }
 
   @UseGuards(WorkspaceAccessGuard)

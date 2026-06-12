@@ -1,12 +1,40 @@
 
 .trello-character-stat-pill--mana .trello-character-stat-bar-fill--mana {
-  background: linear-gradient(90deg, #5b7cff, #8b5cf6);
+  background: linear-gradient(90deg, #3070e0, #60a0ff);
 }
 
 .trello-party-panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.trello-party-panel--active-raid {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  gap: 0;
+}
+
+.trello-party-panel--active-raid > .trello-party-section:not(.trello-party-section--fill) {
+  flex-shrink: 0;
+  padding: 12px 12px 0;
+}
+
+.trello-party-section--fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.trello-party-panel--active-raid .trello-party-section--fill > .trello-party-section-title {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 12px 16px 8px;
 }
 
 .trello-party-section-title {
@@ -31,6 +59,389 @@
 .theme-dark .trello-party-raid-card {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Dashboard — активный рейд (вариант E) */
+.trello-party-raid-card--dashboard {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 16px 16px;
+  border-radius: 0;
+}
+
+.trello-party-panel--active-raid .trello-party-raid-card--dashboard {
+  flex: 1 1 auto;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.trello-party-raid-dash-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+
+.trello-party-raid-card--dashboard .trello-party-raid-dash-hero {
+  margin-bottom: 10px;
+}
+
+.trello-party-raid-dash-hero .trello-party-raid-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.trello-party-raid-dash-hero .trello-party-raid-status {
+  margin-top: -2px;
+}
+
+.trello-party-raid-dash-reward {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  opacity: 0.88;
+  max-width: 280px;
+}
+
+.trello-party-raid-dash-reward-label {
+  font-weight: 700;
+  opacity: 0.95;
+}
+
+.trello-party-boss-icon--raid-hero {
+  width: min(192px, 40vw);
+  height: min(192px, 40vw);
+  border-radius: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.trello-party-raid-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.trello-party-raid-card--dashboard .trello-party-raid-stats {
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+  width: min(100%, 640px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.trello-party-raid-stat {
+  padding: 10px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(92, 74, 50, 0.14);
+  background: rgba(92, 74, 50, 0.06);
+  text-align: center;
+}
+
+.trello-party-raid-card--dashboard .trello-party-raid-stat {
+  padding: 14px 10px;
+  border-radius: 10px;
+}
+
+.theme-dark .trello-party-raid-stat {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.trello-party-raid-stat-val {
+  display: block;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.trello-party-raid-card--dashboard .trello-party-raid-stat-val {
+  font-size: 1.28rem;
+}
+
+.trello-party-raid-stat-label {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.72;
+}
+
+.trello-party-raid-card--dashboard .trello-party-raid-stat-label {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.trello-party-raid-stat--hp .trello-party-raid-stat-val {
+  color: #f87171;
+}
+
+.trello-party-raid-stat--mana .trello-party-raid-stat-val {
+  color: #60a0ff;
+}
+
+.trello-party-raid-dash-invite-meta {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  opacity: 0.85;
+  text-align: center;
+}
+
+.trello-party-raid-party-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+  gap: 10px 14px;
+  overflow: visible;
+  padding-bottom: 4px;
+  margin-bottom: 12px;
+}
+
+.trello-party-raid-party-bar--dashboard {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-bottom: 0;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  align-items: flex-start;
+  gap: 16px 28px;
+  padding: 8px 12px 4px;
+}
+
+.trello-party-raid-party-column {
+  flex: 0 0 auto;
+  width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.trello-party-raid-party-column--invited {
+  opacity: 0.72;
+}
+
+.trello-party-raid-party-column .trello-party-raid-party-labels {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  text-align: center;
+}
+
+.trello-party-raid-card--dashboard .trello-party-raid-party-bar {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-bottom: 0;
+}
+
+.trello-party-raid-party-member {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 64px;
+  max-width: 80px;
+  text-align: center;
+  position: relative;
+  padding-bottom: 4px;
+}
+
+.trello-party-raid-party-member--invited {
+  opacity: 0.72;
+}
+
+.trello-party-raid-avatar-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.trello-party-raid-party-bar--dashboard .trello-party-raid-avatar-wrap {
+  width: 96px;
+  height: 96px;
+}
+
+.trello-party-raid-party-avatar.trello-social-friend-avatar {
+  width: 44px;
+  height: 44px;
+  border: 2px solid rgba(92, 74, 50, 0.18);
+}
+
+.trello-party-raid-party-bar--dashboard .trello-party-raid-party-avatar.trello-social-friend-avatar {
+  width: 96px;
+  height: 96px;
+  border-width: 3px;
+}
+
+.theme-dark .trello-party-raid-party-avatar.trello-social-friend-avatar {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.trello-party-raid-party-member--leader .trello-party-raid-party-avatar.trello-social-friend-avatar,
+.trello-party-raid-party-column--leader .trello-party-raid-party-avatar.trello-social-friend-avatar {
+  border-color: rgba(209, 160, 84, 0.55);
+}
+
+.trello-party-raid-avatar-wrap--confirm .trello-party-raid-party-avatar.trello-social-friend-avatar {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.35);
+}
+
+.trello-party-raid-avatar-kick {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.72);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.trello-party-raid-avatar-wrap:hover .trello-party-raid-avatar-kick,
+.trello-party-raid-avatar-wrap:focus-within .trello-party-raid-avatar-kick {
+  opacity: 1;
+}
+
+.trello-party-raid-avatar-wrap--confirm .trello-party-raid-avatar-kick {
+  display: none;
+}
+
+@media (hover: none) {
+  .trello-party-raid-avatar-kick {
+    opacity: 0.88;
+  }
+}
+
+.trello-party-raid-kick-modal {
+  width: min(400px, calc(100vw - 32px));
+  max-width: min(400px, calc(100vw - 32px));
+}
+
+.trello-party-kick-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 24px 22px 20px;
+}
+
+.trello-party-kick-modal-avatar.trello-social-friend-avatar {
+  width: 72px;
+  height: 72px;
+  border: 3px solid rgba(239, 68, 68, 0.55);
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
+}
+
+.trello-party-kick-modal-avatar .trello-social-friend-avatar-fallback {
+  font-size: 22px;
+}
+
+.trello-party-kick-modal-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.trello-party-kick-modal-desc {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  opacity: 0.88;
+  max-width: 320px;
+}
+
+.trello-party-kick-modal-foot {
+  gap: 10px;
+  padding: 12px 22px 20px;
+}
+
+.trello-party-kick-modal-foot .trello-btn {
+  min-width: 120px;
+}
+
+.trello-party-raid-party-name {
+  font-size: 11px;
+  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trello-party-raid-party-bar--dashboard .trello-party-raid-party-name {
+  font-size: 13px;
+  max-width: 96px;
+}
+
+.trello-party-raid-party-tag {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(209, 160, 84, 0.95);
+}
+
+.trello-party-raid-party-bar--dashboard .trello-party-raid-party-tag {
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.trello-party-raid-party-dmg {
+  font-size: 10px;
+  opacity: 0.75;
+}
+
+.trello-party-raid-party-vote {
+  font: inherit;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.trello-party-raid-actions--dashboard {
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: auto;
+  flex-shrink: 0;
+  padding-top: 12px;
+}
+
+.trello-party-raid-attack-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
 }
 
 .trello-party-raid-head {
@@ -123,6 +534,301 @@
   margin-top: 12px;
 }
 
+.trello-party-gather-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.trello-party-gather-row--centered {
+  align-items: center;
+  text-align: center;
+}
+
+.trello-party-gather-hint {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.trello-party-team-modal {
+  width: min(480px, calc(100vw - 32px));
+  max-width: min(480px, calc(100vw - 32px));
+}
+
+.trello-party-team-modal--slots {
+  width: min(580px, calc(100vw - 24px));
+  max-width: min(580px, calc(100vw - 24px));
+}
+
+.trello-party-team-modal--slots .trello-modal-body {
+  padding: 18px 22px;
+}
+
+.trello-party-team-modal--slots .trello-modal-head {
+  padding: 16px 22px;
+}
+
+.trello-party-team-modal--slots .trello-modal-title {
+  font-size: 1.15rem;
+}
+
+.trello-party-team-boss {
+  margin: 0 0 14px;
+  font-size: 1rem;
+}
+
+.trello-party-team-slots {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.trello-party-team-slot {
+  aspect-ratio: 1;
+  min-height: 72px;
+  border-radius: 10px;
+  border: 2px dashed rgba(92, 74, 50, 0.22);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 6px;
+  background: rgba(92, 74, 50, 0.06);
+  text-align: center;
+}
+
+.theme-dark .trello-party-team-slot {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.trello-party-team-slot--leader {
+  border-style: solid;
+  border-color: rgba(209, 160, 84, 0.55);
+  background: rgba(209, 160, 84, 0.08);
+}
+
+.trello-party-team-slot--filled {
+  border-style: solid;
+  border-color: rgba(12, 102, 228, 0.55);
+  background: rgba(12, 102, 228, 0.08);
+}
+
+.theme-dark .trello-party-team-slot--leader {
+  border-color: rgba(209, 160, 84, 0.45);
+  background: rgba(209, 160, 84, 0.1);
+}
+
+.theme-dark .trello-party-team-slot--filled {
+  border-color: rgba(87, 157, 255, 0.5);
+  background: rgba(87, 157, 255, 0.12);
+}
+
+.trello-party-team-slot-avatar.trello-social-friend-avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.trello-party-team-slot-avatar .trello-social-friend-avatar-fallback {
+  font-size: 13px;
+}
+
+.trello-party-team-slot-label {
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trello-party-team-slot--filled .trello-party-team-slot-label {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+
+.trello-party-team-divider {
+  height: 1px;
+  background: rgba(92, 74, 50, 0.14);
+  margin: 0 0 12px;
+}
+
+.theme-dark .trello-party-team-divider {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.trello-party-team-search {
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(92, 74, 50, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+}
+
+.theme-dark .trello-party-team-search {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.trello-party-team-search::placeholder {
+  opacity: 0.65;
+}
+
+.trello-party-friend-pick--slots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(42vh, 240px);
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.trello-party-friend-pick--modal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(50vh, 320px);
+  overflow-y: auto;
+}
+
+.trello-party-friend-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trello-party-friend-pick-row:hover:not(:disabled) {
+  background: rgba(92, 74, 50, 0.08);
+}
+
+.theme-dark .trello-party-friend-pick-row:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.trello-party-friend-pick-item--selected .trello-party-friend-pick-row {
+  background: rgba(12, 102, 228, 0.1);
+}
+
+.theme-dark .trello-party-friend-pick-item--selected .trello-party-friend-pick-row {
+  background: rgba(87, 157, 255, 0.15);
+}
+
+.trello-party-friend-pick-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trello-party-friend-pick-empty {
+  padding: 8px 10px;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.trello-party-team-add-btn {
+  flex-shrink: 0;
+  min-width: 32px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(12, 102, 228, 0.35);
+  background: transparent;
+  color: var(--trello-primary, #0c66e4);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.trello-party-friend-pick-item--selected .trello-party-team-add-btn {
+  background: var(--trello-primary, #0c66e4);
+  border-color: var(--trello-primary, #0c66e4);
+  color: #fff;
+}
+
+.theme-dark .trello-party-team-add-btn {
+  border-color: rgba(87, 157, 255, 0.45);
+  color: var(--trello-primary, #579dff);
+}
+
+.theme-dark .trello-party-friend-pick-item--selected .trello-party-team-add-btn {
+  background: var(--trello-primary, #579dff);
+  border-color: var(--trello-primary, #579dff);
+  color: #0f172a;
+}
+
+.trello-party-team-foot {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 14px 22px 20px;
+}
+
+.trello-party-team-foot-note {
+  margin: 0;
+  width: 100%;
+  font-size: 12px;
+  text-align: center;
+  opacity: 0.75;
+}
+
+.trello-party-team-foot-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.trello-party-team-foot-actions .trello-btn {
+  min-width: 160px;
+}
+
+.trello-party-friend-pick-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(92, 74, 50, 0.14);
+  background: rgba(92, 74, 50, 0.06);
+  cursor: pointer;
+}
+
+.theme-dark .trello-party-friend-pick-label {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.trello-party-friend-pick-label input {
+  flex-shrink: 0;
+}
+
 .trello-party-create {
   display: flex;
   flex-direction: column;
@@ -133,6 +839,167 @@
   margin: 0;
   font-size: 0.95rem;
   font-weight: 700;
+}
+
+.trello-party-boss-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trello-party-boss-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.trello-party-boss-tab {
+  flex: 1 1 0;
+  min-width: max(120px, calc(33% - 6px));
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(92, 74, 50, 0.22);
+  background: rgba(255, 255, 255, 0.72);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #42526e;
+  cursor: pointer;
+  text-align: center;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.trello-party-boss-tab:hover {
+  border-color: rgba(92, 74, 50, 0.4);
+}
+
+.trello-party-boss-tab--active {
+  color: #f4f5f7;
+  border-color: #5b7cff;
+  box-shadow: 0 4px 12px rgba(38, 22, 8, 0.14);
+}
+
+.trello-party-boss-tab--active[data-boss-tier='common'] {
+  background: linear-gradient(180deg, #3d2a1a, #241810);
+  border-color: #c0682a;
+}
+
+.trello-party-boss-tab--active[data-boss-tier='rare'] {
+  background: linear-gradient(180deg, #1e2848, #121828);
+  border-color: #5b7cff;
+}
+
+.trello-party-boss-tab--active[data-boss-tier='epic'] {
+  background: linear-gradient(180deg, #2a1840, #140c20);
+  border-color: #9b59b6;
+}
+
+.trello-party-boss-preview {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 14px;
+  border: 2px solid #5b7cff;
+  background: linear-gradient(135deg, #faf8ff 0%, #f7ecd3 55%, #ebdbb7 100%);
+}
+
+.trello-party-boss-preview[data-boss-tier='common'] {
+  border-color: #c0682a;
+  background: linear-gradient(135deg, #fff8f0 0%, #f7ecd3 55%, #ebdbb7 100%);
+}
+
+.trello-party-boss-preview[data-boss-tier='rare'] {
+  border-color: #5b7cff;
+}
+
+.trello-party-boss-preview[data-boss-tier='epic'] {
+  border-color: #9b59b6;
+  background: linear-gradient(135deg, #faf5ff 0%, #f7ecd3 55%, #ebdbb7 100%);
+}
+
+.trello-party-boss-preview-art {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background: linear-gradient(180deg, #2a2118, #1a1410);
+}
+
+.trello-party-boss-preview[data-boss-tier='common'] .trello-party-boss-preview-art {
+  background: linear-gradient(180deg, #3d2a1a, #241810);
+}
+
+.trello-party-boss-preview[data-boss-tier='rare'] .trello-party-boss-preview-art {
+  background: linear-gradient(180deg, #1e2848, #121828);
+}
+
+.trello-party-boss-preview[data-boss-tier='epic'] .trello-party-boss-preview-art {
+  background: linear-gradient(180deg, #2a1840, #140c20);
+}
+
+.trello-party-boss-icon--preview {
+  width: min(100%, 148px);
+  height: auto;
+  max-height: 148px;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+}
+
+.trello-party-boss-preview-copy {
+  min-width: 0;
+}
+
+.trello-party-boss-preview-title {
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #172b4d;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.trello-party-boss-preview-desc {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #42526e;
+}
+
+.trello-party-boss-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #fff;
+  background: #5b7cff;
+}
+
+.trello-party-boss-tier-badge[data-boss-tier='common'] {
+  background: #c0682a;
+}
+
+.trello-party-boss-tier-badge[data-boss-tier='epic'] {
+  background: #9b59b6;
+}
+
+.trello-party-boss-loot {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #172b4d;
 }
 
 .trello-party-boss-grid {
@@ -177,17 +1044,20 @@
 
 .trello-party-boss-card[data-boss-tier='common'] .trello-party-boss-card-visual {
   background: linear-gradient(180deg, #3d2a1a 0%, #241810 100%);
-  box-shadow: inset 0 -24px 32px rgba(192, 96, 32, 0.12);
+  box-shadow: var(--qf-shadow-control);
+
 }
 
 .trello-party-boss-card[data-boss-tier='rare'] .trello-party-boss-card-visual {
   background: linear-gradient(180deg, #1e2848 0%, #121828 100%);
-  box-shadow: inset 0 -24px 32px rgba(91, 124, 255, 0.14);
+  box-shadow: var(--qf-shadow-control);
+
 }
 
 .trello-party-boss-card[data-boss-tier='epic'] .trello-party-boss-card-visual {
   background: linear-gradient(180deg, #2a1840 0%, #140c20 100%);
-  box-shadow: inset 0 -24px 32px rgba(155, 89, 182, 0.16);
+  box-shadow: var(--qf-shadow-control);
+
 }
 
 .trello-party-boss-icon {
@@ -265,7 +1135,64 @@
   border-color: #7c9cff;
 }
 
+.theme-dark .trello-party-create-subtitle {
+  color: #f4f5f7;
+}
+
+.theme-dark .trello-party-boss-tab {
+  border-color: rgba(209, 160, 84, 0.28);
+  background: rgba(48, 36, 22, 0.85);
+  color: #d0d8e4;
+}
+
+.theme-dark .trello-party-boss-tab:hover {
+  border-color: rgba(209, 160, 84, 0.45);
+  color: #f4f5f7;
+}
+
+.theme-dark .trello-party-boss-preview {
+  background: linear-gradient(135deg, #2f2217 0%, #252018 55%, #1e1812 100%);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+.theme-dark .trello-party-boss-preview[data-boss-tier='common'] {
+  border-color: #c0682a;
+  background: linear-gradient(135deg, #3a2818 0%, #2a2018 55%, #1e1812 100%);
+}
+
+.theme-dark .trello-party-boss-preview[data-boss-tier='rare'] {
+  border-color: #5b7cff;
+  background: linear-gradient(135deg, #1a2238 0%, #1e1812 55%, #141018 100%);
+}
+
+.theme-dark .trello-party-boss-preview[data-boss-tier='epic'] {
+  border-color: #9b59b6;
+  background: linear-gradient(135deg, #2a1838 0%, #221828 55%, #181018 100%);
+}
+
+.theme-dark .trello-party-boss-preview-title,
+.theme-dark .trello-party-boss-loot {
+  color: #f4f5f7;
+}
+
+.theme-dark .trello-party-boss-preview-desc {
+  color: #b6c2cf;
+}
+
+.theme-dark .trello-party-gather-hint {
+  color: #b6c2cf;
+}
+
 @media (max-width: 720px) {
+  .trello-party-boss-preview {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .trello-party-boss-preview-title {
+    justify-content: center;
+  }
+
   .trello-party-boss-grid {
     grid-template-columns: 1fr;
   }
@@ -300,7 +1227,7 @@
 }
 
 .trello-btn-sm {
-  min-height: 28px;
-  padding: 4px 10px;
-  font-size: 0.78rem;
+  min-height: var(--qf-btn-height-sm);
+  padding: var(--qf-btn-pad-y-sm) var(--qf-btn-pad-x-sm);
+  font-size: var(--qf-btn-font-sm);
 }

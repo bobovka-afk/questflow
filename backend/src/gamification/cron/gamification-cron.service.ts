@@ -10,6 +10,8 @@ import { resolveGameDayTimeZone } from '../lib/resolve-game-day-timezone';
 import {
   CHARACTER_GRACE_PERIOD_MS,
   HP_INACTIVITY_PENALTY,
+  HP_MISSED_DAILIES_DAILY_CAP,
+  HP_MISSED_DAILY_PENALTY,
 } from '../config/rewards';
 import { getYesterdayGameDayKey } from '../core/game-day';
 import { wasUserActiveOnGameDay } from '../core/inactivity';
@@ -55,15 +57,16 @@ export class GamificationCronService implements OnModuleInit {
   async runMidnightGamificationJobs(): Promise<void> {
     await this.resetDailyTaskXpCounts();
     await this.applyInactivityHpPenalty();
+    await this.processMissedPersonalDailies();
   }
 
   async resetDailyTaskXpCounts(): Promise<{ count: number }> {
     const result = await this.prisma.character.updateMany({
-      where: { dailyTaskXpCount: { gt: 0 } },
-      data: { dailyTaskXpCount: 0 },
+      where: { dailyActivityXpEarned: { gt: 0 } },
+      data: { dailyActivityXpEarned: 0 },
     });
     this.logger.log(
-      `Reset dailyTaskXpCount for ${result.count} character(s)`,
+      `Reset dailyActivityXpEarned for ${result.count} character(s)`,
     );
     return { count: result.count };
   }
@@ -160,5 +163,78 @@ export class GamificationCronService implements OnModuleInit {
       }
       throw error;
     }
+  }
+
+  async processMissedPersonalDailies(): Promise<{ penalized: number }> {
+    const timeZone = this.getGameDayTimeZone();
+    const yesterdayKey = getYesterdayGameDayKey(timeZone);
+    const yesterdayStr = yesterdayKey.toISOString().slice(0, 10);
+
+    const dailies = await this.prisma.personalDaily.findMany({
+      where: { archivedAt: null },
+      select: {
+        id: true,
+        userId: true,
+        lastCompletedDayKey: true,
+        user: { select: { character: { select: { id: true, health: true } } } },
+      },
+    });
+
+    let penalized = 0;
+    const hpByUser = new Map<number, number>();
+    const healthByUser = new Map<number, number>();
+
+    for (const daily of dailies) {
+      const completed =
+        daily.lastCompletedDayKey?.toISOString().slice(0, 10) === yesterdayStr;
+      if (completed) {
+        continue;
+      }
+      const character = daily.user.character;
+      if (!character || character.health <= 0) {
+        continue;
+      }
+      if (!healthByUser.has(daily.userId)) {
+        healthByUser.set(daily.userId, character.health);
+      }
+
+      const currentPenalty = hpByUser.get(daily.userId) ?? 0;
+      if (currentPenalty >= HP_MISSED_DAILIES_DAILY_CAP) {
+        continue;
+      }
+
+      try {
+        const currentHealth = healthByUser.get(daily.userId)!;
+        const nextHealth = Math.max(0, currentHealth - HP_MISSED_DAILY_PENALTY);
+        await this.prisma.$transaction(async (tx) => {
+          await tx.personalDailyMissLog.create({
+            data: {
+              userId: daily.userId,
+              personalDailyId: daily.id,
+              dayKey: yesterdayKey,
+              hpDelta: -HP_MISSED_DAILY_PENALTY,
+            },
+          });
+          await tx.character.update({
+            where: { id: character.id },
+            data: { health: nextHealth },
+          });
+        });
+        healthByUser.set(daily.userId, nextHealth);
+        hpByUser.set(daily.userId, currentPenalty + HP_MISSED_DAILY_PENALTY);
+        penalized++;
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    this.logger.log(`Missed personal dailies penalty: ${penalized} daily(ies)`);
+    return { penalized };
   }
 }

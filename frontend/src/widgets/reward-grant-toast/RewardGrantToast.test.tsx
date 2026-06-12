@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { CheckinRewardToast, TaskRewardToast } from './RewardGrantToast';
 
 describe('RewardGrantToast', () => {
-  it('renders checkin reward with summed xp and milestones', () => {
+  it('renders checkin hero with streak label, xp and milestones', () => {
     render(
       <CheckinRewardToast
         toastId={1}
@@ -20,12 +20,12 @@ describe('RewardGrantToast', () => {
       />,
     );
 
-    expect(screen.getByText('300')).toBeInTheDocument();
+    expect(screen.getByText('7-й день подряд')).toBeInTheDocument();
+    expect(screen.getByText(/\+300 XP/)).toBeInTheDocument();
     expect(screen.getByText(/Порог серии/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Серия: 7/)).toBeInTheDocument();
   });
 
-  it('renders task reward with hp gain', () => {
+  it('renders task hero with xp and hp', () => {
     render(
       <TaskRewardToast
         toastId={2}
@@ -42,7 +42,8 @@ describe('RewardGrantToast', () => {
       />,
     );
 
-    expect(screen.getByText('100')).toBeInTheDocument();
-    expect(screen.getByText(/Здоровье/i)).toBeInTheDocument();
+    expect(screen.getByText('За закрытие карточки')).toBeInTheDocument();
+    expect(screen.getByText(/\+100 XP/)).toBeInTheDocument();
+    expect(screen.getByText(/\+5 HP/)).toBeInTheDocument();
   });
 });

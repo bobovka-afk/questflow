@@ -1,7 +1,7 @@
 import {
   CHARACTER_GRACE_PERIOD_MS,
   CHARACTER_HEALTH_MAX,
-  DAILY_TASK_XP_COMPLETIONS_MAX,
+  DAILY_ACTIVITY_XP_MAX,
   HP_GAIN_PER_XP_EVENT,
   HP_INACTIVITY_PENALTY,
   XP_DAILY_CHECKIN,
@@ -9,10 +9,10 @@ import {
 } from '../rewards';
 
 describe('rewards', () => {
-  it('defines task XP and daily limit', () => {
+  it('defines task XP and daily activity limit', () => {
     expect(XP_PER_TASK_COMPLETED).toBe(100);
     expect(XP_DAILY_CHECKIN).toBe(100);
-    expect(DAILY_TASK_XP_COMPLETIONS_MAX).toBe(5);
+    expect(DAILY_ACTIVITY_XP_MAX).toBe(500);
   });
 
   it('defines HP reward caps for XP events', () => {

@@ -1,14 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { api, formatApiError } from '@shared/api';
-import {
-  CHARACTER_ROLES,
-  type CharacterRole,
-  type GenderCharacter,
-  characterPortraitUrl,
-  isQuestAvatarPreset,
-  presetForRole,
-} from '@entities/character';
 import { cosmeticAssetUrl } from '@entities/character/lib/cosmetics';
 import { ChestIcon } from '@widgets/chest/icon/ChestIcon';
 import { ChestLootOddsButton } from '@widgets/chest/loot-odds/ChestLootOddsButton';
@@ -41,11 +33,9 @@ import {
   type QuestPeriodGroup,
   type QuestProgressItem,
   type ChestTier,
-  type CosmeticType,
   type UserChestDto,
 } from '@entities/quest';
 import { GamificationGuide } from '@widgets/gamification-guide/GamificationGuide';
-import { CharacterPortraitWithFrame } from '@widgets/character-portrait/CharacterPortraitWithFrame';
 
 type ChestModalState =
   | { phase: 'tapping'; tier: ChestTier; chestId: number; frameIndex: number }
@@ -58,15 +48,10 @@ function chestItemNameRu(tier: ChestTier): string {
 }
 
 function chestRewardPreviewUrl(result: OpenChestResult): string | null {
-  if (result.cosmeticType === 'AVATAR_PRESET') {
-    return characterPortraitUrl(result.cosmeticKey);
-  }
   return cosmeticAssetUrl(result.cosmeticKey);
 }
 
 const STORAGE_SLOTS_PER_PAGE = 12;
-/** 6×2 grid minus 2×2 portrait preview = 8 item slots per page */
-const STORAGE_COSMETICS_SLOTS_PER_PAGE = 8;
 
 function getStorageTotalPages(
   itemCount: number,
@@ -136,13 +121,6 @@ function StoragePagedGrid(props: {
   );
 }
 
-function roleFromAvatarPreset(preset: string): CharacterRole {
-  const base = preset.replace(/_MAN$|_WOMAN$/i, '').replace(/^QUEST_/, '').toUpperCase();
-  return (CHARACTER_ROLES as readonly string[]).includes(base)
-    ? (base as CharacterRole)
-    : 'DRUID';
-}
-
 function resolveItemEquipped(
   item: InventoryItemDto,
   portrait?: CharacterPortraitPreview,
@@ -158,12 +136,6 @@ function resolveItemEquipped(
   if (
     item.cosmeticItem.type === 'PROFILE_BACKGROUND' &&
     item.cosmeticItem.key === portrait.profileBackgroundKey
-  ) {
-    return true;
-  }
-  if (
-    item.cosmeticItem.type === 'AVATAR_PRESET' &&
-    item.cosmeticItem.key === portrait.avatarPreset
   ) {
     return true;
   }
@@ -203,12 +175,10 @@ type CharacterPortraitPreview = {
 
 type Props = {
   accessToken: string;
-  characterGender?: GenderCharacter;
   characterPortrait?: CharacterPortraitPreview;
   activeTab: ProfileCharacterTabKey;
   tabOpenSignal?: number;
   onCharacterRefresh?: () => Promise<void>;
-  onInventoryExit?: () => void;
 };
 
 export type ProfileCharacterTabKey =
@@ -220,6 +190,22 @@ export type ProfileCharacterTabKey =
 
 type StorageInnerTabKey = 'chests' | 'cosmetics' | 'items';
 
+const GAMIFICATION_CONTENT_TABS: ProfileCharacterTabKey[] = [
+  'inventory',
+  'quests',
+  'shop',
+  'achievements',
+  'rules',
+];
+
+function isGamificationContentTab(tab: ProfileCharacterTabKey): tab is ProfileCharacterTabKey {
+  return (GAMIFICATION_CONTENT_TABS as readonly string[]).includes(tab);
+}
+
+function gamificationTabPanelClass(layoutMod: string): string {
+  return ['trello-character-rpg-tab-stage-panel', layoutMod].filter(Boolean).join(' ');
+}
+
 function QuestRow(props: {
   quest: QuestProgressItem;
   onOpenChest: (chestId: number, tier: ChestTier) => void;
@@ -228,21 +214,21 @@ function QuestRow(props: {
   const { quest } = props;
   const pct = quest.target > 0 ? Math.min(100, Math.round((quest.current / quest.target) * 100)) : 0;
   const chest = quest.chest;
+  const rewardTier = chest?.tier ?? quest.rewardChestTier;
   const canOpen = chest && !chest.openedAt;
+
+  const questText = quest.descriptionRu?.trim() || quest.titleRu;
 
   return (
     <li className="trello-character-quest-row">
       <div className="trello-character-quest-row-head">
-        <span className="trello-character-quest-title">{quest.titleRu}</span>
+        <p className="trello-character-quest-desc trello-character-quest-desc--lead">{questText}</p>
         {quest.completed && (
           <span className="trello-character-quest-done-badge" aria-label="Выполнено">
             ✓
           </span>
         )}
       </div>
-      {quest.descriptionRu && (
-        <p className="trello-character-quest-desc">{quest.descriptionRu}</p>
-      )}
       <div className="trello-character-quest-progress">
         <div
           className="trello-character-quest-progress-fill"
@@ -253,48 +239,52 @@ function QuestRow(props: {
           {Math.min(quest.current, quest.target)} / {quest.target}
         </span>
       </div>
-      {chest && (
-        <div
-          className={
-            chest.openedAt
-              ? 'trello-character-quest-reward trello-character-quest-reward--claimed'
-              : 'trello-character-quest-reward'
-          }
-          data-chest-tier={chest.tier.toLowerCase()}
-        >
-          <div className="trello-character-quest-reward-visual" aria-hidden>
-            <div className="trello-character-chest-slot-visual">
-              <ChestIcon tier={chest.tier} />
-            </div>
-          </div>
-          <div className="trello-character-quest-reward-meta">
-            {chest.openedAt ? (
-              <span className="trello-character-quest-reward-claimed" role="status">
-                <span className="trello-character-quest-done-badge" aria-hidden>
-                  ✓
-                </span>
-                Награда получена
-              </span>
-            ) : (
-              <>
-                <span className="trello-character-quest-chest-label">
-                  {CHEST_TIER_LABEL_RU[chest.tier]} сундук · ждёт открытия
-                </span>
-                {canOpen && (
-                  <button
-                    type="button"
-                    className="trello-btn trello-btn-primary trello-btn-sm"
-                    disabled={props.openingChestId === chest.id}
-                    onClick={() => props.onOpenChest(chest.id, chest.tier)}
-                  >
-                    {props.openingChestId === chest.id ? 'Открываем…' : 'Открыть'}
-                  </button>
-                )}
-              </>
-            )}
+      <div
+        className={[
+          'trello-character-quest-reward',
+          chest?.openedAt ? 'trello-character-quest-reward--claimed' : '',
+          !chest ? 'trello-character-quest-reward--pending' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        data-chest-tier={rewardTier.toLowerCase()}
+      >
+        <div className="trello-character-quest-reward-visual" aria-hidden>
+          <div className="trello-character-chest-slot-visual">
+            <ChestIcon tier={rewardTier} />
           </div>
         </div>
-      )}
+        <div className="trello-character-quest-reward-meta">
+          {chest?.openedAt ? (
+            <span className="trello-character-quest-reward-claimed" role="status">
+              <span className="trello-character-quest-done-badge" aria-hidden>
+                ✓
+              </span>
+              Награда получена
+            </span>
+          ) : chest ? (
+            <>
+              <span className="trello-character-quest-chest-label">
+                {CHEST_TIER_LABEL_RU[chest.tier]} сундук · ждёт открытия
+              </span>
+              {canOpen && (
+                <button
+                  type="button"
+                  className="trello-btn trello-btn-primary trello-btn-sm"
+                  disabled={props.openingChestId === chest.id}
+                  onClick={() => props.onOpenChest(chest.id, chest.tier)}
+                >
+                  {props.openingChestId === chest.id ? 'Открываем…' : 'Открыть'}
+                </button>
+              )}
+            </>
+          ) : (
+            <span className="trello-character-quest-chest-label">
+              Награда: {CHEST_TIER_LABEL_RU[quest.rewardChestTier]} сундук
+            </span>
+          )}
+        </div>
+      </div>
     </li>
   );
 }
@@ -302,16 +292,14 @@ function QuestRow(props: {
 function QuestGroup(props: {
   title: string;
   group: QuestPeriodGroup;
+  rowCount: number;
   onOpenChest: (chestId: number, tier: ChestTier) => void;
   openingChestId: number | null;
 }) {
-  if (props.group.quests.length === 0) return null;
+  const placeholders = Math.max(0, props.rowCount - props.group.quests.length);
   return (
     <div className="trello-character-quest-group trello-character-quest-column">
-      <h3 className="trello-character-quest-group-title">
-        {props.title}
-        <span className="trello-character-quest-period-key">{props.group.periodKey}</span>
-      </h3>
+      <h3 className="trello-character-quest-group-title">{props.title}</h3>
       <ul className="trello-character-quest-list">
         {props.group.quests.map((q) => (
           <QuestRow
@@ -319,6 +307,13 @@ function QuestGroup(props: {
             quest={q}
             onOpenChest={props.onOpenChest}
             openingChestId={props.openingChestId}
+          />
+        ))}
+        {Array.from({ length: placeholders }, (_, index) => (
+          <li
+            key={`quest-spacer-${index}`}
+            className="trello-character-quest-row trello-character-quest-row--spacer"
+            aria-hidden
           />
         ))}
       </ul>
@@ -329,6 +324,7 @@ function QuestGroup(props: {
 function AchievementRow({ item }: { item: AchievementProgressItem }) {
   const pct =
     item.target > 0 ? Math.min(100, Math.round((item.current / item.target) * 100)) : 0;
+  const progressPct = item.unlocked ? 100 : pct;
   return (
     <li
       className={
@@ -337,6 +333,10 @@ function AchievementRow({ item }: { item: AchievementProgressItem }) {
           : 'trello-character-achievement-row'
       }
     >
+      <div className="trello-character-achievement-head">
+        <span className="trello-character-achievement-title">{item.titleRu}</span>
+        {item.unlocked ? <span className="trello-character-quest-done-badge">✓</span> : null}
+      </div>
       <div className="trello-character-achievement-visual">
         <img
           src={achievementIconUrl(item.key)}
@@ -349,32 +349,26 @@ function AchievementRow({ item }: { item: AchievementProgressItem }) {
         />
       </div>
       <div className="trello-character-achievement-body">
-        <div className="trello-character-achievement-head">
-          <span className="trello-character-achievement-title">{item.titleRu}</span>
-          {item.unlocked && <span className="trello-character-quest-done-badge">✓</span>}
+        {item.descriptionRu ? (
+          <p className="trello-character-achievement-desc">{item.descriptionRu}</p>
+        ) : null}
+        <div className="trello-character-quest-progress trello-character-quest-progress--sm">
+          <div
+            className="trello-character-quest-progress-fill"
+            style={{ width: `${progressPct}%` }}
+            aria-hidden
+          />
+          <span className="trello-character-quest-progress-label">
+            {Math.min(item.current, item.target)} / {item.target}
+          </span>
         </div>
-        {item.descriptionRu && (
-          <p className="trello-character-quest-desc">{item.descriptionRu}</p>
-        )}
-        {item.rewardDust > 0 && (
-          <p className="trello-character-achievement-reward">
-            +{item.rewardDust}{' '}
-            <DustIcon size={DUST_ICON_SIZE_SM} />
-            {' '}пыли за получение
-          </p>
-        )}
-        {!item.unlocked && (
-          <div className="trello-character-quest-progress trello-character-quest-progress--sm">
-            <div
-              className="trello-character-quest-progress-fill"
-              style={{ width: `${pct}%` }}
-              aria-hidden
-            />
-            <span className="trello-character-quest-progress-label">
-              {Math.min(item.current, item.target)} / {item.target}
-            </span>
+        {item.rewardDust > 0 ? (
+          <div className="trello-character-achievement-reward">
+            <span className="trello-character-achievement-reward-label">Награда</span>
+            <span className="trello-character-achievement-reward-value">{item.rewardDust}</span>
+            <DustIcon size={DUST_ICON_SIZE_SM} className="trello-character-achievement-reward-icon" />
           </div>
-        )}
+        ) : null}
       </div>
     </li>
   );
@@ -394,12 +388,10 @@ export function ProfileCharacterQuestsPanel(props: Props) {
     result: OpenChestResult | null;
     error: string | null;
   }>({ result: null, error: null });
-  const [popupTab, setPopupTab] = useState<'inventory' | null>(null);
   const [storageInnerTab, setStorageInnerTab] = useState<StorageInnerTabKey>('chests');
   const [storageChestPage, setStorageChestPage] = useState(0);
   const [storageCosmeticsPage, setStorageCosmeticsPage] = useState(0);
   const [storageItemsPage, setStorageItemsPage] = useState(0);
-  const [cosmeticPreviewItem, setCosmeticPreviewItem] = useState<InventoryItemDto | null>(null);
   const onCharacterRefreshRef = useRef(props.onCharacterRefresh);
   onCharacterRefreshRef.current = props.onCharacterRefresh;
   const reloadInflightRef = useRef<Promise<void> | null>(null);
@@ -455,17 +447,13 @@ export function ProfileCharacterQuestsPanel(props: Props) {
   reloadRef.current = reload;
 
   useEffect(() => {
-    if (props.activeTab !== 'inventory') {
-      setPopupTab(null);
-      dataLoadedForKeyRef.current = null;
-      return;
+    if (props.activeTab === 'inventory') {
+      setStorageInnerTab('chests');
     }
-    setPopupTab('inventory');
-    setStorageInnerTab('chests');
   }, [props.activeTab, props.tabOpenSignal]);
 
   useEffect(() => {
-    const loadKey = `${props.activeTab}:${props.tabOpenSignal ?? 0}`;
+    const loadKey = String(props.tabOpenSignal ?? 0);
     if (dataLoadedForKeyRef.current === loadKey) return;
     dataLoadedForKeyRef.current = loadKey;
 
@@ -480,19 +468,13 @@ export function ProfileCharacterQuestsPanel(props: Props) {
     return () => {
       cancelled = true;
     };
-  }, [props.activeTab, props.tabOpenSignal]);
+  }, [props.tabOpenSignal]);
 
-  const unlockedAchievementsCount = achievements?.achievements.filter((a) => a.unlocked).length ?? 0;
   const unopenedChests = useMemo(
     () => sortChestsByCreatedAtAsc(userChests.filter((chest) => !chest.openedAt)),
     [userChests],
   );
-  const isPopupOnlyTab = props.activeTab === 'inventory';
-
-  function closeStorage() {
-    setPopupTab(null);
-    props.onInventoryExit?.();
-  }
+  const activeContentTab = isGamificationContentTab(props.activeTab) ? props.activeTab : 'quests';
 
   const inventoryWithoutBadges = useMemo(
     () => inventory.filter((i) => !isTitleBadgeCosmetic(i.cosmeticItem.type)),
@@ -514,40 +496,19 @@ export function ProfileCharacterQuestsPanel(props: Props) {
     [inventoryWithoutBadges],
   );
 
+  const questRowCount = useMemo(() => {
+    if (!quests) return 0;
+    return Math.max(
+      quests.daily.quests.length,
+      quests.weekly.quests.length,
+      quests.monthly.quests.length,
+    );
+  }, [quests]);
+
   useEffect(() => {
-    setStorageChestPage(0);
     setStorageCosmeticsPage(0);
     setStorageItemsPage(0);
-    setCosmeticPreviewItem(null);
   }, [storageInnerTab]);
-
-  const equippedCosmeticKey = useCallback(
-    (type: CosmeticType) =>
-      equippableInventory.find(
-        (i) => resolveItemEquipped(i, props.characterPortrait) && i.cosmeticItem.type === type,
-      )?.cosmeticItem.key ?? null,
-    [equippableInventory, props.characterPortrait],
-  );
-
-  const portraitPreviewFrameKey = useMemo(() => {
-    if (cosmeticPreviewItem?.cosmeticItem.type === 'PORTRAIT_FRAME') {
-      return cosmeticPreviewItem.cosmeticItem.key;
-    }
-    return (
-      equippedCosmeticKey('PORTRAIT_FRAME') ?? props.characterPortrait?.frameKey ?? null
-    );
-  }, [cosmeticPreviewItem, equippedCosmeticKey, props.characterPortrait?.frameKey]);
-
-  const portraitPreviewBackgroundKey = useMemo(() => {
-    if (cosmeticPreviewItem?.cosmeticItem.type === 'PROFILE_BACKGROUND') {
-      return cosmeticPreviewItem.cosmeticItem.key;
-    }
-    return (
-      equippedCosmeticKey('PROFILE_BACKGROUND') ??
-      props.characterPortrait?.profileBackgroundKey ??
-      null
-    );
-  }, [cosmeticPreviewItem, equippedCosmeticKey, props.characterPortrait?.profileBackgroundKey]);
 
   useEffect(() => {
     setStorageChestPage((page) => Math.min(page, getStorageTotalPages(unopenedChests.length) - 1));
@@ -555,10 +516,7 @@ export function ProfileCharacterQuestsPanel(props: Props) {
 
   useEffect(() => {
     setStorageCosmeticsPage((page) =>
-      Math.min(
-        page,
-        getStorageTotalPages(equippableInventory.length, STORAGE_COSMETICS_SLOTS_PER_PAGE) - 1,
-      ),
+      Math.min(page, getStorageTotalPages(equippableInventory.length) - 1),
     );
   }, [equippableInventory.length]);
 
@@ -657,24 +615,6 @@ export function ProfileCharacterQuestsPanel(props: Props) {
     }
   }
 
-  async function handleApplyQuestAvatar(avatarPreset: string) {
-    setBusy(true);
-    setLoadError(null);
-    try {
-      await api('/character/me', {
-        method: 'PATCH',
-        accessToken: props.accessToken,
-        json: { avatarPreset },
-      });
-      await reload();
-      await onCharacterRefreshRef.current?.();
-    } catch (e) {
-      setLoadError(formatApiError(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function handleEquip(inventoryItemId: number) {
     setBusy(true);
     setLoadError(null);
@@ -696,32 +636,13 @@ export function ProfileCharacterQuestsPanel(props: Props) {
   async function handleCosmeticSlotActivate(item: InventoryItemDto) {
     const equipped = resolveItemEquipped(item, props.characterPortrait);
     if (equipped) {
-      setCosmeticPreviewItem(null);
       await handleUnequip(item.id);
       return;
     }
-    setCosmeticPreviewItem(item);
     await handleEquip(item.id);
   }
 
-  async function handleOtherItemActivate(item: InventoryItemDto) {
-    if (item.cosmeticItem.type !== 'AVATAR_PRESET' || !isQuestAvatarPreset(item.cosmeticItem.key)) {
-      return;
-    }
-    const equipped = resolveItemEquipped(item, props.characterPortrait);
-    if (equipped) {
-      const gender = props.characterGender ?? 'MALE';
-      const basePreset = presetForRole(gender, roleFromAvatarPreset(item.cosmeticItem.key));
-      await handleApplyQuestAvatar(basePreset);
-      return;
-    }
-    await handleApplyQuestAvatar(item.cosmeticItem.key);
-  }
-
   function storageItemPreviewUrl(item: InventoryItemDto): string | null {
-    if (item.cosmeticItem.type === 'AVATAR_PRESET') {
-      return characterPortraitUrl(item.cosmeticItem.key);
-    }
     return cosmeticAssetUrl(item.cosmeticItem.key);
   }
 
@@ -744,145 +665,65 @@ export function ProfileCharacterQuestsPanel(props: Props) {
   }
 
   return (
-    <section
-      className="trello-character-quests-section"
-      aria-labelledby={isPopupOnlyTab ? undefined : 'character-quests-heading'}
-    >
-      {!isPopupOnlyTab && (
-        <h3 id="character-quests-heading" className="trello-character-rpg-panel-title">
-          Арсенал и прогресс
-        </h3>
-      )}
-
+    <section className="trello-character-quests-section trello-character-quests-section--tabbed">
       <div className="trello-character-quests-body trello-character-rpg-tab-panel">
         {loadError && <div className="trello-banner trello-banner-error">{loadError}</div>}
-        {!quests && !loadError && !isPopupOnlyTab && <p className="trello-muted">Загрузка данных персонажа…</p>}
 
-        {props.activeTab === 'shop' && (
-          <>
-            {!dustShop && !loadError && <p className="trello-muted">Загрузка магазина…</p>}
-            {dustShop && (
-              <>
-                <p className="trello-character-dust-shop-balance" aria-live="polite">
-                  <span className="trello-character-dust-shop-balance-content">
-                    <span>Баланс:</span>
-                    <strong className="trello-character-dust-shop-balance-value">{dustShop.balance}</strong>
-                    <DustIcon size={DUST_ICON_SIZE_SHOP} />
-                  </span>
-                </p>
-                <div className="trello-character-dust-shop-grid">
-                  {dustShop.options.map((option) => (
-                    <div key={option.tier} className="trello-character-dust-shop-card">
-                      <div
-                        className="trello-character-shop-chest-visual trello-character-chest-slot-wrap"
-                        data-chest-tier={option.tier.toLowerCase()}
-                      >
-                        <div className="trello-character-chest-slot-visual" aria-hidden>
-                          <ChestIcon tier={option.tier} />
-                        </div>
-                        <ChestLootOddsButton tier={option.tier} />
-                      </div>
-                      <span className="trello-character-dust-shop-title">{chestItemNameRu(option.tier)}</span>
-                      <button
-                        type="button"
-                        className="trello-btn trello-btn-primary trello-btn-sm trello-character-shop-buy-btn"
-                        disabled={busy || !option.canAfford}
-                        onClick={() => void handlePurchaseChest(option.tier)}
-                      >
-                        <span className="trello-character-shop-buy-content">
-                          <span>Купить</span>
-                          <span className="trello-character-shop-buy-price">{option.cost}</span>
-                          <DustIcon size={DUST_ICON_SIZE_SHOP} />
-                        </span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </>
+        <div className="trello-character-rpg-tab-stage trello-character-rpg-tab-stage--inner">
+          {activeContentTab === 'quests' ? (
+          <div
+            className={gamificationTabPanelClass('trello-character-quests-body--columns')}
+            role="tabpanel"
+            id="character-tabpanel-quests"
+            aria-labelledby="character-tab-quests"
+          >
+            {!quests && !loadError && (
+              <p className="trello-muted">Загрузка данных персонажа…</p>
             )}
-          </>
-        )}
-
-        {props.activeTab === 'quests' && quests && (
-          <div className="trello-character-quests-columns">
-            <QuestGroup
-              title="Сегодня"
-              group={quests.daily}
-              onOpenChest={(id, tier) => void handleOpenChest(id, tier)}
-              openingChestId={openingChestId}
-            />
-            <QuestGroup
-              title="На неделю"
-              group={quests.weekly}
-              onOpenChest={(id, tier) => void handleOpenChest(id, tier)}
-              openingChestId={openingChestId}
-            />
-            <QuestGroup
-              title="За месяц"
-              group={quests.monthly}
-              onOpenChest={(id, tier) => void handleOpenChest(id, tier)}
-              openingChestId={openingChestId}
-            />
-          </div>
-        )}
-
-        {props.activeTab === 'achievements' && achievements && (
-          <>
-            <p className="trello-character-rpg-overview-subtitle">
-              Достижения ({unlockedAchievementsCount}/{achievements.achievements.length})
-            </p>
-            <ul className="trello-character-achievement-list trello-character-achievement-list--columns">
-              {achievements.achievements.map((a) => (
-                <AchievementRow key={a.key} item={a} />
-              ))}
-            </ul>
-          </>
-        )}
-
-        {props.activeTab === 'rules' && (
-          <div className="trello-character-rules-panel">
-            <GamificationGuide />
-          </div>
-        )}
-      </div>
-
-      {popupTab === 'inventory' &&
-        createPortal(
-          <div className="trello-modal-backdrop" role="presentation" onClick={closeStorage}>
-            <div
-              className={[
-                'trello-modal',
-                'trello-character-loot-popup',
-                'trello-character-loot-popup--static',
-                'trello-character-loot-popup--storage',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              role="dialog"
-              aria-modal
-              aria-labelledby="character-loot-popup-title"
-              onClick={(e) => e.stopPropagation()}
-              onTouchMove={(e) => e.stopPropagation()}
-            >
-              <div className="trello-modal-head trello-character-loot-popup-head--centered">
-                <h2
-                  id="character-loot-popup-title"
-                  className="trello-modal-title trello-character-loot-popup-title--hero"
-                >
-                  Хранилище
-                </h2>
-                <button
-                  type="button"
-                  className="trello-modal-close"
-                  onClick={closeStorage}
-                  aria-label="Закрыть"
-                >
-                  ×
-                </button>
+            {quests && questRowCount > 0 && (
+              <div
+                className="trello-character-quests-columns"
+                style={{ '--quest-row-count': questRowCount } as React.CSSProperties}
+              >
+                <QuestGroup
+                  title="Ежедневные"
+                  group={quests.daily}
+                  rowCount={questRowCount}
+                  onOpenChest={(id, tier) => void handleOpenChest(id, tier)}
+                  openingChestId={openingChestId}
+                />
+                <QuestGroup
+                  title="Еженедельные"
+                  group={quests.weekly}
+                  rowCount={questRowCount}
+                  onOpenChest={(id, tier) => void handleOpenChest(id, tier)}
+                  openingChestId={openingChestId}
+                />
+                <QuestGroup
+                  title="Ежемесячные"
+                  group={quests.monthly}
+                  rowCount={questRowCount}
+                  onOpenChest={(id, tier) => void handleOpenChest(id, tier)}
+                  openingChestId={openingChestId}
+                />
               </div>
-              <div className="trello-modal-body trello-character-storage-modal-body">
-                <>
-                    <div
+            )}
+          </div>
+          ) : null}
+
+          {activeContentTab === 'inventory' ? (
+          <div
+            className={gamificationTabPanelClass('trello-character-quests-body--storage')}
+            role="tabpanel"
+            id="character-tabpanel-inventory"
+            aria-labelledby="character-tab-inventory"
+          >
+            {!quests && !loadError && (
+              <p className="trello-muted">Загрузка хранилища…</p>
+            )}
+            {quests && (
+              <div className="trello-character-storage-panel">
+<div
                       className="trello-character-storage-inner-tabs"
                       role="tablist"
                       aria-label="Разделы хранилища"
@@ -970,40 +811,26 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                           .join(' ')}
                         aria-hidden={storageInnerTab !== 'cosmetics'}
                       >
-                        {props.characterPortrait ? (() => {
+                        {(() => {
                       const pageItems = sliceStoragePage(
                         equippableInventory,
                         storageCosmeticsPage,
-                        STORAGE_COSMETICS_SLOTS_PER_PAGE,
                       );
-                      const emptyCount = STORAGE_COSMETICS_SLOTS_PER_PAGE - pageItems.length;
+                      const emptyCount = STORAGE_SLOTS_PER_PAGE - pageItems.length;
                       return (
                         <StoragePagedGrid
                           page={storageCosmeticsPage}
                           itemCount={equippableInventory.length}
                           onPageChange={setStorageCosmeticsPage}
-                          slotsPerPage={STORAGE_COSMETICS_SLOTS_PER_PAGE}
                           gridClassName="trello-character-inventory-grid--storage trello-character-inventory-grid--storage-cosmetics"
                           ariaLabel="Косметика в хранилище"
                         >
-                          <li
-                            className="trello-character-inventory-grid-item trello-character-storage-grid-portrait"
-                            aria-label="Предпросмотр персонажа"
-                          >
-                            <div className="trello-character-storage-preview-portrait">
-                              <CharacterPortraitWithFrame
-                                avatarPreset={props.characterPortrait.avatarPreset}
-                                frameKey={portraitPreviewFrameKey}
-                                profileBackgroundKey={portraitPreviewBackgroundKey}
-                              />
-                            </div>
-                          </li>
                           {pageItems.map((item) => {
                                 const previewUrl = storageItemPreviewUrl(item);
                                 const equipped = resolveItemEquipped(item, props.characterPortrait);
                                 return (
                                   <li
-                                    key={`popup-cosmetic-${item.id}`}
+                                    key={`storage-cosmetic-${item.id}`}
                                     className="trello-character-inventory-grid-item"
                                   >
                                     <button
@@ -1042,11 +869,7 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                           {renderEmptyStorageSlots(emptyCount, `cosmetic-${storageCosmeticsPage}`)}
                         </StoragePagedGrid>
                       );
-                    })() : (
-                      <p className="trello-muted trello-character-storage-cosmetics-loading">
-                        Загрузка предпросмотра…
-                      </p>
-                    )}
+                    })()}
                       </div>
                       <div
                         className={[
@@ -1071,58 +894,24 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                         >
                           {pageItems.map((item) => {
                             const previewUrl = storageItemPreviewUrl(item);
-                            const equipped = resolveItemEquipped(item, props.characterPortrait);
-                            const canActivate =
-                              item.cosmeticItem.type === 'AVATAR_PRESET' &&
-                              isQuestAvatarPreset(item.cosmeticItem.key);
                             return (
-                              <li key={`popup-item-${item.id}`} className="trello-character-inventory-grid-item">
-                                {canActivate ? (
-                                  <button
-                                    type="button"
-                                    className={
-                                      equipped
-                                        ? 'trello-character-inventory-slot trello-character-inventory-slot--clickable trello-character-cosmetic-storage-slot trello-character-cosmetic-storage-slot--equipped'
-                                        : 'trello-character-inventory-slot trello-character-inventory-slot--clickable trello-character-cosmetic-storage-slot'
-                                    }
-                                    disabled={busy}
-                                    aria-pressed={equipped}
-                                    aria-label={`${item.cosmeticItem.nameRu}. ${equipped ? 'Надето' : 'Не надето'}`}
-                                    onClick={() => void handleOtherItemActivate(item)}
-                                  >
-                                    {previewUrl ? (
-                                      <img
-                                        src={previewUrl}
-                                        alt=""
-                                        className="trello-character-storage-slot-visual"
-                                      />
-                                    ) : (
-                                      <span className="trello-character-storage-slot-fallback" aria-hidden>
-                                        {item.cosmeticItem.nameRu.slice(0, 1)}
-                                      </span>
-                                    )}
-                                    <span className="trello-character-inventory-slot-title">
-                                      {item.cosmeticItem.nameRu}
+                              <li key={`storage-item-${item.id}`} className="trello-character-inventory-grid-item">
+                                <div className="trello-character-inventory-slot trello-character-inventory-slot--clickable trello-character-cosmetic-storage-slot">
+                                  {previewUrl ? (
+                                    <img
+                                      src={previewUrl}
+                                      alt=""
+                                      className="trello-character-storage-slot-visual"
+                                    />
+                                  ) : (
+                                    <span className="trello-character-storage-slot-fallback" aria-hidden>
+                                      {item.cosmeticItem.nameRu.slice(0, 1)}
                                     </span>
-                                  </button>
-                                ) : (
-                                  <div className="trello-character-inventory-slot trello-character-inventory-slot--clickable trello-character-cosmetic-storage-slot">
-                                    {previewUrl ? (
-                                      <img
-                                        src={previewUrl}
-                                        alt=""
-                                        className="trello-character-storage-slot-visual"
-                                      />
-                                    ) : (
-                                      <span className="trello-character-storage-slot-fallback" aria-hidden>
-                                        {item.cosmeticItem.nameRu.slice(0, 1)}
-                                      </span>
-                                    )}
-                                    <span className="trello-character-inventory-slot-title">
-                                      {item.cosmeticItem.nameRu}
-                                    </span>
-                                  </div>
-                                )}
+                                  )}
+                                  <span className="trello-character-inventory-slot-title">
+                                    {item.cosmeticItem.nameRu}
+                                  </span>
+                                </div>
                               </li>
                             );
                           })}
@@ -1132,12 +921,99 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                     })()}
                       </div>
                     </div>
-                </>
               </div>
+            )}
+          </div>
+          ) : null}
+
+          {activeContentTab === 'shop' ? (
+          <div
+            className={gamificationTabPanelClass('trello-character-quests-body--shop')}
+            role="tabpanel"
+            id="character-tabpanel-shop"
+            aria-labelledby="character-tab-shop"
+          >
+            {!dustShop && !loadError && <p className="trello-muted">Загрузка магазина…</p>}
+            {dustShop && (
+              <div className="trello-character-dust-shop">
+                <p className="trello-character-dust-shop-balance" aria-live="polite">
+                  <span className="trello-character-dust-shop-balance-content">
+                    <span>Баланс:</span>
+                    <strong className="trello-character-dust-shop-balance-value">{dustShop.balance}</strong>
+                    <DustIcon size={DUST_ICON_SIZE_SHOP} />
+                  </span>
+                </p>
+                <div className="trello-character-dust-shop-grid">
+                  {dustShop.options.map((option) => (
+                    <div key={option.tier} className="trello-character-dust-shop-card">
+                      <div
+                        className="trello-character-shop-chest-visual trello-character-chest-slot-wrap"
+                        data-chest-tier={option.tier.toLowerCase()}
+                      >
+                        <div className="trello-character-chest-slot-visual" aria-hidden>
+                          <ChestIcon tier={option.tier} />
+                        </div>
+                        <ChestLootOddsButton tier={option.tier} />
+                      </div>
+                      <span className="trello-character-dust-shop-title">{chestItemNameRu(option.tier)}</span>
+                      <button
+                        type="button"
+                        className="trello-btn trello-btn-primary trello-btn-sm trello-character-shop-buy-btn"
+                        disabled={busy || !option.canAfford}
+                        onClick={() => void handlePurchaseChest(option.tier)}
+                      >
+                        <span className="trello-character-shop-buy-content">
+                          <span>Купить</span>
+                          <span className="trello-character-shop-buy-price">{option.cost}</span>
+                          <DustIcon size={DUST_ICON_SIZE_SHOP} />
+                        </span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          ) : null}
+
+          {activeContentTab === 'achievements' ? (
+          <div
+            className={gamificationTabPanelClass('trello-character-quests-body--achievements')}
+            role="tabpanel"
+            id="character-tabpanel-achievements"
+            aria-labelledby="character-tab-achievements"
+          >
+            <div className="trello-character-achievements-panel">
+              {!achievements && !loadError && (
+                <p className="trello-muted">Загрузка достижений…</p>
+              )}
+              {achievements && (
+                <ul className="trello-character-achievement-list trello-character-achievement-list--columns">
+                  {achievements.achievements.map((a) => (
+                    <AchievementRow key={a.key} item={a} />
+                  ))}
+                </ul>
+              )}
             </div>
-          </div>,
-          document.body,
-        )}
+          </div>
+          ) : null}
+
+          {activeContentTab === 'rules' ? (
+          <div
+            className={gamificationTabPanelClass('trello-character-quests-body--rules')}
+            role="tabpanel"
+            id="character-tabpanel-rules"
+            aria-labelledby="character-tab-rules"
+          >
+            <div className="trello-character-rules-panel">
+              <GamificationGuide />
+            </div>
+          </div>
+          ) : null}
+        </div>
+      </div>
+
+
 
       {chestModal &&
         createPortal(
@@ -1235,11 +1111,10 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                   {(() => {
                     const result = chestModal.result;
                     const canWear =
-                      (result.inventoryItemId &&
-                        cosmeticTypeCanEquip(result.cosmeticType)) ||
-                      (!result.alreadyOwned &&
-                        result.cosmeticType === 'AVATAR_PRESET' &&
-                        isQuestAvatarPreset(result.cosmeticKey));
+                      Boolean(
+                        result.inventoryItemId &&
+                          cosmeticTypeCanEquip(result.cosmeticType),
+                      );
                     return (
                       <>
                         {canWear && (
@@ -1248,15 +1123,8 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                             className="trello-btn trello-btn-primary"
                             disabled={busy}
                             onClick={() => {
-                              if (
-                                result.inventoryItemId &&
-                                cosmeticTypeCanEquip(result.cosmeticType)
-                              ) {
+                              if (result.inventoryItemId) {
                                 void handleEquip(result.inventoryItemId).then(() =>
-                                  setChestModal(null),
-                                );
-                              } else {
-                                void handleApplyQuestAvatar(result.cosmeticKey).then(() =>
                                   setChestModal(null),
                                 );
                               }
@@ -1271,7 +1139,7 @@ export function ProfileCharacterQuestsPanel(props: Props) {
                           disabled={busy}
                           onClick={() => setChestModal(null)}
                         >
-                          Позже
+                          {result.alreadyOwned ? 'Закрыть' : 'Позже'}
                         </button>
                       </>
                     );

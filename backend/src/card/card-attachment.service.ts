@@ -7,8 +7,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { File as MulterFile } from 'multer';
 import sharp from 'sharp';
-import { CardAttachmentKind } from '../generated/prisma/enums';
+import { CardAttachmentKind, CardCoverDisplayMode } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  toUserBrief,
+  type UserWithCharacterBriefPayload,
+  userBriefWithCharacterSelect,
+} from '../common/lib/user-brief';
 import { UPLOAD_DIRS, buildUploadFilename } from '../uploads/local-uploads';
 import {
   commitUpload,
@@ -67,7 +72,7 @@ export class CardAttachmentService {
       where: { cardId },
       orderBy: { createdAt: 'desc' },
       include: {
-        uploader: { select: { id: true, name: true, avatarPath: true } },
+        uploader: { select: userBriefWithCharacterSelect },
       },
     });
     return rows.map((row) =>
@@ -177,7 +182,7 @@ export class CardAttachmentService {
         storagePath: storageUrl,
         previewPath: previewUrl,
       },
-      include: { uploader: { select: { id: true, name: true, avatarPath: true } } },
+      include: { uploader: { select: userBriefWithCharacterSelect } },
     });
 
     return this.toView(row, card?.coverAttachmentId ?? null);
@@ -212,7 +217,7 @@ export class CardAttachmentService {
         fileName: linkDisplayName(url, fileName),
         externalUrl: url,
       },
-      include: { uploader: { select: { id: true, name: true, avatarPath: true } } },
+      include: { uploader: { select: userBriefWithCharacterSelect } },
     });
 
     return this.toView(row, card?.coverAttachmentId ?? null);
@@ -269,7 +274,11 @@ export class CardAttachmentService {
     }
     await this.prisma.card.update({
       where: { id: cardId },
-      data: { coverAttachmentId: attachmentId },
+      data: {
+        coverAttachmentId: attachmentId,
+        coverColorPreset: null,
+        coverDisplayMode: CardCoverDisplayMode.BANNER,
+      },
     });
   }
 
@@ -299,7 +308,7 @@ export class CardAttachmentService {
       previewPath: string | null;
       externalUrl: string | null;
       createdAt: Date;
-      uploader: { id: number; name: string; avatarPath: string | null };
+      uploader: UserWithCharacterBriefPayload;
     },
     coverAttachmentId: number | null,
   ): CardAttachmentView {
@@ -328,7 +337,7 @@ export class CardAttachmentService {
       isImage: isImageMime(row.mimeType),
       isVideoLink,
       isCover: coverAttachmentId === row.id,
-      uploader: row.uploader,
+      uploader: toUserBrief(row.uploader),
       createdAt: row.createdAt.toISOString(),
     };
   }

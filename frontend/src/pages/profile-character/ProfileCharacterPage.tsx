@@ -20,13 +20,12 @@ import {
   type StreakProfileFeedback,
 } from '@entities/character/lib/characterStreakSnapshot';
 import { CharacterCreateForm } from '@features/character-create/ui/CharacterCreateForm';
-import { SpaLink } from '@shared/lib/navigation';
-import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 import { ProfileCharacterQuestsPanel, type ProfileCharacterTabKey } from '@widgets/profile-character-quests/ProfileCharacterQuestsPanel';
 import { FriendsPanel } from '@widgets/social-friends/FriendsPanel';
 import { MessagesPanel } from '@widgets/social-messages/MessagesPanel';
 import { RaidPanel } from '@widgets/party-raid/RaidPanel';
-import { useSocialInboxSummary } from '@entities/social';
+import { usePartyInviteCount } from '@entities/party';
+import { useSocialInboxSummary, type SocialUserSummary } from '@entities/social';
 import { CharacterPortraitWithFrame } from '@widgets/character-portrait/CharacterPortraitWithFrame';
 import { CharacterStatsPanel } from '@widgets/character-stats/CharacterStatsPanel';
 
@@ -42,14 +41,69 @@ function roleFromPreset(preset: string): CharacterRole {
     : 'DRUID';
 }
 
-type PanelTabKey = ProfileCharacterTabKey | 'character' | 'friends' | 'messages' | 'raid';
+type PanelTabKey = ProfileCharacterTabKey | 'friends' | 'messages' | 'raid';
+
+const PANEL_TAB_KEYS: PanelTabKey[] = [
+  'quests',
+  'friends',
+  'messages',
+  'raid',
+  'inventory',
+  'shop',
+  'achievements',
+  'rules',
+];
+
+function isPanelTabKey(value: string): value is PanelTabKey {
+  return (PANEL_TAB_KEYS as readonly string[]).includes(value);
+}
+
+function readInitialPanelTab(): PanelTabKey {
+  if (typeof window === 'undefined') return 'quests';
+  const params = new URLSearchParams(window.location.search);
+  const withUser = params.get('with');
+  if (withUser && /^\d+$/.test(withUser)) return 'messages';
+  const partyRaid = params.get('partyRaid');
+  if (partyRaid && /^\d+$/.test(partyRaid)) return 'raid';
+  const tab = params.get('tab');
+  if (tab && isPanelTabKey(tab)) return tab;
+  return 'quests';
+}
+
+function readInitialMessagePeerUserId(): number | null {
+  if (typeof window === 'undefined') return null;
+  const withUser = new URLSearchParams(window.location.search).get('with');
+  if (withUser && /^\d+$/.test(withUser)) return Number(withUser);
+  return null;
+}
+
+function syncProfileCharacterTabUrl(tab: PanelTabKey, peerUserId?: number | null) {
+  const params = new URLSearchParams(window.location.search);
+  params.delete('partyRaid');
+  if (tab === 'quests') {
+    params.delete('tab');
+  } else {
+    params.set('tab', tab);
+  }
+  if (tab === 'messages' && peerUserId != null) {
+    params.set('with', String(peerUserId));
+  } else {
+    params.delete('with');
+  }
+  const qs = params.toString();
+  window.history.replaceState(
+    null,
+    '',
+    `${window.location.pathname}${qs ? `?${qs}` : ''}`,
+  );
+}
 
 function buildPanelTabs(
   activePanelTab: PanelTabKey,
   inboxSummary: { incomingFriendRequests: number; unreadMessages: number },
+  pendingRaidInvites: number,
 ): { key: PanelTabKey; label: string; badge: number }[] {
   return [
-    { key: 'character', label: 'Персонаж', badge: 0 },
     { key: 'quests', label: 'Задания', badge: 0 },
     {
       key: 'friends',
@@ -61,12 +115,22 @@ function buildPanelTabs(
       label: 'Сообщения',
       badge: inboxSummary.unreadMessages,
     },
-    { key: 'raid', label: 'Рейд', badge: 0 },
+    { key: 'raid', label: 'Рейд', badge: pendingRaidInvites },
     { key: 'inventory', label: 'Хранилище', badge: 0 },
     { key: 'shop', label: 'Магазин', badge: 0 },
     { key: 'achievements', label: 'Достижения', badge: 0 },
     { key: 'rules', label: 'Правила', badge: 0 },
   ];
+}
+
+function CharacterPageHeader() {
+  return (
+    <header className="px-topbar">
+      <div className="px-topbar-left">
+        <h1 className="px-topbar-title">Персонаж</h1>
+      </div>
+    </header>
+  );
 }
 
 export function ProfileCharacterPage(props: Props) {
@@ -90,11 +154,19 @@ export function ProfileCharacterPage(props: Props) {
   > | null>(null);
 
   const [loadKey, setLoadKey] = useState(0);
-  const [activePanelTab, setActivePanelTab] = useState<PanelTabKey>('character');
+  const [activePanelTab, setActivePanelTab] = useState<PanelTabKey>(readInitialPanelTab);
   const [tabOpenSignal, setTabOpenSignal] = useState(0);
-  const [messagePeerUserId, setMessagePeerUserId] = useState<number | null>(null);
+  const [messagePeerUserId, setMessagePeerUserId] = useState<number | null>(
+    readInitialMessagePeerUserId,
+  );
+  const [messagePeerHint, setMessagePeerHint] = useState<SocialUserSummary | null>(null);
 
   const { summary: inboxSummary, refresh: refreshInbox } = useSocialInboxSummary(
+    props.accessToken,
+    loadPhase === 'ready',
+  );
+
+  const { count: pendingRaidInvites, refresh: refreshPartyInvites } = usePartyInviteCount(
     props.accessToken,
     loadPhase === 'ready',
   );
@@ -103,19 +175,14 @@ export function ProfileCharacterPage(props: Props) {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const withUser = params.get('with');
-    const tab = params.get('tab');
-    if (withUser && /^\d+$/.test(withUser)) {
-      setActivePanelTab('messages');
-      setMessagePeerUserId(Number(withUser));
-    } else if (tab === 'messages') {
-      setActivePanelTab('messages');
-    }
     const partyRaid = params.get('partyRaid');
     if (partyRaid && /^\d+$/.test(partyRaid)) {
-      setActivePanelTab('raid');
       setPartyInviteToast('Приглашение в рейд — откройте вкладку «Рейд» и примите или отклоните.');
+      void refreshPartyInvites();
       params.delete('partyRaid');
+      if (!params.get('tab')) {
+        params.set('tab', 'raid');
+      }
       const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}`;
       window.history.replaceState(null, '', next);
     }
@@ -206,8 +273,8 @@ export function ProfileCharacterPage(props: Props) {
   }, [character]);
 
   const panelTabs = useMemo(
-    () => buildPanelTabs(activePanelTab, inboxSummary),
-    [activePanelTab, inboxSummary],
+    () => buildPanelTabs(activePanelTab, inboxSummary, pendingRaidInvites),
+    [activePanelTab, inboxSummary, pendingRaidInvites],
   );
 
   const onCharacterUpdatedRef = useRef(props.onCharacterUpdated);
@@ -245,22 +312,25 @@ export function ProfileCharacterPage(props: Props) {
     }
     setActivePanelTab(nextTab);
     setTabOpenSignal((prev) => prev + 1);
+    syncProfileCharacterTabUrl(nextTab, nextTab === 'messages' ? messagePeerUserId : null);
     void refreshInbox();
+    if (nextTab === 'raid') {
+      void refreshPartyInvites();
+    }
   }
 
   function renderPanelContent() {
     if (!character) return null;
-    if (activePanelTab === 'character') {
-      return <CharacterStatsPanel character={character} xpToward={xpToward} variant="detail" />;
-    }
     if (activePanelTab === 'friends') {
       return (
         <FriendsPanel
           accessToken={props.accessToken}
           onInboxChange={refreshInbox}
-          onMessagePeer={(userId) => {
-            setMessagePeerUserId(userId);
+          onMessagePeer={(user) => {
+            setMessagePeerUserId(user.userId);
+            setMessagePeerHint(user);
             setActivePanelTab('messages');
+            syncProfileCharacterTabUrl('messages', user.userId);
             refreshInbox();
           }}
         />
@@ -272,6 +342,7 @@ export function ProfileCharacterPage(props: Props) {
           accessToken={props.accessToken}
           currentUserId={character.userId}
           initialPeerUserId={messagePeerUserId}
+          initialPeer={messagePeerHint}
           visible={activePanelTab === 'messages'}
           onInboxChange={refreshInbox}
         />
@@ -282,20 +353,27 @@ export function ProfileCharacterPage(props: Props) {
         <RaidPanel
           accessToken={props.accessToken}
           currentUserId={character.userId}
+          leaderUser={{
+            userId: character.userId,
+            name: character.name,
+            avatarPath: null,
+            characterName: character.name,
+            characterAvatarPreset: character.avatarPreset,
+            friendCode: character.friendCode ?? null,
+          }}
           manaCurrent={character.manaCurrent ?? 0}
           onRefreshCharacter={refreshCharacter}
+          onPendingInvitesChange={refreshPartyInvites}
         />
       );
     }
     return (
       <ProfileCharacterQuestsPanel
         accessToken={props.accessToken}
-        characterGender={character.gender}
         characterPortrait={characterPortrait}
         activeTab={activePanelTab as ProfileCharacterTabKey}
         tabOpenSignal={tabOpenSignal}
         onCharacterRefresh={refreshCharacter}
-        onInventoryExit={() => setActivePanelTab('character')}
       />
     );
   }
@@ -366,25 +444,9 @@ export function ProfileCharacterPage(props: Props) {
 
   if (loadPhase === 'missing') {
     return (
-      <div className="trello-app-shell">
-        <div className="trello-boards-main">
-          <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
-            <div className="trello-topbar-stripe-left">
-              <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-                <AppLogo />
-                <span className="trello-top-left-brand-text">Questflow</span>
-              </SpaLink>
-              <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/workspaces">
-                Назад
-              </SpaLink>
-            </div>
-            <h1 className="trello-topbar-stripe-center">Создайте своего персонажа</h1>
-            <div className="trello-topbar-actions">
-              <SpaLink className="trello-btn trello-btn-ghost" to="/settings">
-                Настройки
-              </SpaLink>
-            </div>
-          </header>
+      <div className="px-page profile-character-page">
+        <CharacterPageHeader />
+        <div className="px-content profile-character-page-content">
           <CharacterCreateForm
             accessToken={props.accessToken}
             onCreated={handleCharacterCreated}
@@ -397,21 +459,9 @@ export function ProfileCharacterPage(props: Props) {
 
   if (loadPhase === 'error' && loadError) {
     return (
-      <div className="trello-app-shell">
-        <div className="trello-boards-main">
-          <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
-            <div className="trello-topbar-stripe-left">
-              <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-                <AppLogo />
-                <span className="trello-top-left-brand-text">Questflow</span>
-              </SpaLink>
-              <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/workspaces">
-                Назад
-              </SpaLink>
-            </div>
-            <h1 className="trello-topbar-stripe-center">Персонаж</h1>
-            <div className="trello-topbar-actions" />
-          </header>
+      <div className="px-page profile-character-page">
+        <CharacterPageHeader />
+        <div className="px-content profile-character-page-content">
           <div className="trello-banner trello-banner-error">{loadError}</div>
           <div className="trello-panel" style={{ maxWidth: 480, margin: '16px auto 0' }}>
             <button
@@ -429,42 +479,22 @@ export function ProfileCharacterPage(props: Props) {
 
   if (loadPhase === 'loading' || !character) {
     return (
-      <div className="trello-app-shell">
-        <div className="trello-boards-main trello-character-loading">Загрузка персонажа…</div>
+      <div className="px-page profile-character-page">
+        <CharacterPageHeader />
+        <div className="px-content profile-character-page-content trello-character-loading">
+          Загрузка персонажа…
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="trello-app-shell">
-      <div className="trello-boards-main">
-        <header className="trello-boards-topbar trello-topbar-stripe-3col trello-boards-topbar--sticky">
-          <div className="trello-topbar-stripe-left">
-            <SpaLink className="trello-top-left-brand trello-top-left-brand--stripe" to="/workspaces">
-              <AppLogo />
-              <span className="trello-top-left-brand-text">Questflow</span>
-            </SpaLink>
-            <SpaLink className="trello-btn trello-btn-topbar-nav trello-topbar-back-btn" to="/workspaces">
-              Назад
-            </SpaLink>
-          </div>
-          <h1
-            className="trello-topbar-stripe-center trello-topbar-stripe-center--ellipsis"
-            title={character.name}
-          >
-            {character.name}
-          </h1>
-          <div className="trello-topbar-actions">
-            <SpaLink className="trello-btn trello-btn-ghost" to="/settings">
-              Настройки
-            </SpaLink>
-          </div>
-        </header>
-
-        {msg && <div className="trello-banner trello-banner-error">{msg}</div>}
-
-        <section className="trello-character-profile trello-character-profile--rpg trello-character-profile--rpg-snes">
-          <div className="trello-character-rpg-shell trello-character-rpg-shell--snes">
+    <div className="px-page profile-character-page">
+      <CharacterPageHeader />
+      <div className="px-content profile-character-page-content">
+        {msg ? <div className="trello-banner trello-banner-error">{msg}</div> : null}
+        <section className="trello-character-profile trello-character-profile--rpg trello-character-profile--rpg-modern">
+          <div className="trello-character-rpg-shell trello-character-rpg-shell--modern">
             {partyInviteToast ? (
               <p className="trello-character-party-invite-toast" role="status">
                 {partyInviteToast}
@@ -478,7 +508,7 @@ export function ProfileCharacterPage(props: Props) {
               </p>
             ) : null}
 
-            <div className="trello-character-rpg-layout-snes">
+            <div className="trello-character-rpg-layout-jrpg">
               <aside className="trello-character-rpg-hero-col" aria-label="Персонаж">
                 <div className="trello-character-profile-portrait-wrap trello-character-profile-portrait-wrap--square">
                   <CharacterPortraitWithFrame
@@ -504,16 +534,15 @@ export function ProfileCharacterPage(props: Props) {
                 <CharacterStatsPanel
                   character={character}
                   xpToward={xpToward}
-                  variant="sidebar"
+                  variant="full"
                 />
               </aside>
 
-              <div className="trello-character-rpg-workspace">
+              <div className="trello-character-rpg-workspace trello-character-rpg-workspace--jrpg">
                 <nav
-                  className="trello-character-rpg-tabs trello-character-rpg-tabs--vertical"
+                  className="trello-character-rpg-tabs trello-character-rpg-tabs--horizontal"
                   role="tablist"
                   aria-label="Разделы персонажа"
-                  aria-orientation="vertical"
                 >
                   {panelTabs.map((tab) => (
                     <button

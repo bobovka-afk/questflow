@@ -1,5 +1,7 @@
 import { api, API_URL } from '@shared/api';
 
+import type { ActivityUserBrief } from '@entities/user';
+
 export type CardAttachmentRow = {
   id: number;
   cardId: number;
@@ -12,7 +14,7 @@ export type CardAttachmentRow = {
   isImage: boolean;
   isVideoLink: boolean;
   isCover: boolean;
-  uploader: { id: number; name: string; avatarPath?: string | null };
+  uploader: ActivityUserBrief;
   createdAt: string;
 };
 

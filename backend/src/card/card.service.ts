@@ -16,7 +16,11 @@ import { MoveCardDto } from './dto/move-card.dto';
 import { SetCardCompletionDto } from './dto/set-card-completion.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
 import type { Card } from '../generated/prisma/client';
-import { XpEventType } from '../generated/prisma/enums';
+import {
+  CardCoverDisplayMode,
+  ListColorPreset,
+  XpEventType,
+} from '../generated/prisma/enums';
 import { XP_PER_TASK_COMPLETED } from '../gamification/config/rewards';
 import { NotificationService } from '../notification/notification.service';
 import { UserNotificationType } from '../generated/prisma/enums';
@@ -35,7 +39,7 @@ export class CardService {
 
   async getCards(listId: number) {
     const cards = await this.prisma.card.findMany({
-      where: { listId },
+      where: { listId, archivedAt: null },
       orderBy: { position: 'asc' },
       include: {
         labels: {
@@ -63,9 +67,62 @@ export class CardService {
       coverImageUrl: this.cardAttachmentService.coverPreviewUrl(
         c.coverAttachment,
       ),
+      coverColorPreset: c.coverColorPreset,
+      coverDisplayMode: c.coverDisplayMode,
       coverAttachment: undefined,
       _count: undefined,
     }));
+  }
+
+  async setColorCover(
+    cardId: number,
+    colorPreset: ListColorPreset | null,
+    displayMode: CardCoverDisplayMode,
+  ): Promise<{ ok: boolean }> {
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      select: { id: true },
+    });
+    if (!card) {
+      throw new NotFoundException({
+        code: 'CARD_NOT_FOUND',
+        message: 'Card not found',
+      });
+    }
+
+    const mode =
+      colorPreset == null ? CardCoverDisplayMode.NONE : displayMode;
+
+    await this.prisma.card.update({
+      where: { id: cardId },
+      data: {
+        coverColorPreset: colorPreset,
+        coverDisplayMode: mode,
+        ...(colorPreset != null ? { coverAttachmentId: null } : {}),
+      },
+    });
+
+    return { ok: true };
+  }
+
+  async archiveCard(cardId: number): Promise<{ ok: boolean }> {
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      select: { id: true },
+    });
+    if (!card) {
+      throw new NotFoundException({
+        code: 'CARD_NOT_FOUND',
+        message: 'Card not found',
+      });
+    }
+
+    await this.prisma.card.update({
+      where: { id: cardId },
+      data: { archivedAt: new Date() },
+    });
+
+    return { ok: true };
   }
 
   async createCard(listId: number, dto: CreateCardDto): Promise<Card> {

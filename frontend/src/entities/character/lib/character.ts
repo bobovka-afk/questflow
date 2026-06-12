@@ -51,12 +51,6 @@ export function presetForRole(
   return gender === 'MALE' ? `${role}_MAN` : `${role}_WOMAN`;
 }
 
-const QUEST_AVATAR_PORTRAIT_FILES: Record<string, string> = {
-  QUEST_MAGE_MAN: 'quest_mage_man.png',
-  QUEST_MAGE_WOMAN: 'quest_mage_woman.png',
-};
-
-/** Прозрачные male-портреты (clear_man); preset → путь под uploads/. */
 const AVATAR_PRESET_UPLOAD_OVERRIDES: Record<string, string> = {
   DRUID_MAN: 'character-avatars/clear_man/druid_man.png',
   DRUID_WOMAN: 'character-avatars/clear_girl/druid_girl.png',
@@ -72,19 +66,11 @@ const AVATAR_PRESET_UPLOAD_OVERRIDES: Record<string, string> = {
   WARRIOR_WOMAN: 'character-avatars/clear_girl/warrior_girl.png',
 };
 
-export function isQuestAvatarPreset(preset: string): boolean {
-  return preset in QUEST_AVATAR_PORTRAIT_FILES;
-}
-
-/** Static portrait under /uploads/character-avatars/… or quest cosmetics. */
+/** Static portrait under /uploads/character-avatars/… */
 export function characterPortraitUrl(avatarPreset: string): string {
   const uploadOverride = AVATAR_PRESET_UPLOAD_OVERRIDES[avatarPreset];
   if (uploadOverride) {
     return `${API_URL}/uploads/${uploadOverride}`;
-  }
-  const questFile = QUEST_AVATAR_PORTRAIT_FILES[avatarPreset];
-  if (questFile) {
-    return `${API_URL}/uploads/cosmetics/portraits/${questFile}`;
   }
   const role = avatarPreset.replace(/_MAN$|_WOMAN$/i, '').toLowerCase();
   if (avatarPreset.endsWith('_MAN')) {
@@ -98,6 +84,7 @@ export function routeNeedsCharacterGate(route: string): boolean {
   return (
     route === '/workspaces' ||
     route.startsWith('/workspaces/') ||
+    route.startsWith('/personal') ||
     route.startsWith('/profile') ||
     route.startsWith('/invites') ||
     route.startsWith('/dashboard')

@@ -70,7 +70,7 @@ export function WorkspaceSearchModal({ accessToken, workspaceId, open, onClose }
   return (
     <div className="trello-modal-backdrop" role="presentation" onClick={onClose}>
       <div
-        className="trello-modal trello-search-modal"
+        className="trello-modal trello-modal--board-form trello-search-modal"
         role="dialog"
         aria-modal
         aria-label="Поиск по рабочему пространству"

@@ -6,7 +6,6 @@ export {
   isRateLimitError,
   isRateLimitMessage,
   isXpGrantErrorCode,
-  isXpTaskSoftNoticeCode,
   setAccessTokenRefreshedHandler,
   setSessionExpiredHandler,
   tryRefreshAccessToken,

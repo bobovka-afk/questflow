@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { buildChestLootOdds } from './chestLootOdds';
+import {
+  buildChestLootOdds,
+  CHEST_LOOT_ODDS_MODAL_SIZE_PX,
+  countChestLootOddsBlocks,
+  estimateChestLootOddsModalSize,
+} from './chestLootOdds';
 
 describe('buildChestLootOdds', () => {
   it('splits 80/20 for common chest', () => {
     const odds = buildChestLootOdds('COMMON');
     const higher = odds.sections.find((s) => s.poolPercent === 20);
     const same = odds.sections.find((s) => s.poolPercent === 80);
-    expect(higher?.rows).toHaveLength(3);
+    expect(higher?.rows).toHaveLength(2);
     expect(higher?.rows.every((r) => r.cosmeticTier === 'RARE')).toBe(true);
     expect(higher?.rows.some((r) => r.cosmeticTier === 'EPIC')).toBe(false);
     expect(same?.rows.length).toBe(5);
@@ -29,5 +34,20 @@ describe('buildChestLootOdds', () => {
     expect(odds.sections).toHaveLength(1);
     expect(odds.sections[0].rows).toHaveLength(1);
     expect(odds.sections[0].rows[0].percent).toBe(100);
+  });
+
+  it('uses one modal size for every chest tier', () => {
+    const common = buildChestLootOdds('COMMON');
+    const rare = buildChestLootOdds('RARE');
+    const epic = buildChestLootOdds('EPIC');
+    expect(countChestLootOddsBlocks(common.flatRows)).toBe(10);
+    expect(CHEST_LOOT_ODDS_MODAL_SIZE_PX).toBe(estimateChestLootOddsModalSize(common.flatRows));
+    expect(CHEST_LOOT_ODDS_MODAL_SIZE_PX).toBeGreaterThan(
+      estimateChestLootOddsModalSize(rare.flatRows),
+    );
+    expect(CHEST_LOOT_ODDS_MODAL_SIZE_PX).toBeGreaterThan(
+      estimateChestLootOddsModalSize(epic.flatRows),
+    );
+    expect(CHEST_LOOT_ODDS_MODAL_SIZE_PX).toBeGreaterThanOrEqual(600);
   });
 });

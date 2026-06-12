@@ -122,8 +122,10 @@ export function NotificationsPage({ accessToken }: Props) {
 
   return (
     <div className="px-page px-notifications-page">
-      <header className="px-notifications-head">
-        <h1 className="px-notifications-title">Уведомления</h1>
+      <header className="px-topbar">
+        <div className="px-topbar-left">
+          <h1 className="px-topbar-title">Уведомления</h1>
+        </div>
       </header>
 
       {!loading && rows.length > 0 ? (

@@ -86,17 +86,47 @@ export type NotificationDisplay = {
   reason: string;
 };
 
-function xpSourceLabel(source: unknown): string {
+function xpSourceShortLabel(source: unknown): string {
   switch (source) {
     case 'TASK_COMPLETED':
-      return 'За выполненную задачу';
+      return 'закрытие карточки';
+    case 'PERSONAL_TODO_COMPLETED':
+      return 'личное дело';
+    case 'PERSONAL_DAILY_COMPLETED':
+      return 'ежедневную задачу';
+    case 'HABIT_POSITIVE':
+      return 'привычку';
     case 'DAILY_CHECKIN':
-      return 'За ежедневный чекин';
+      return 'активный день';
     case 'CHECKIN_STREAK':
-      return 'За серию чекинов';
+      return 'порог серии';
     default:
-      return 'За активность в Questflow';
+      return 'игровую активность';
   }
+}
+
+function xpGainReason(payload: Record<string, unknown>): string {
+  const xpAmount = payload.xpAmount;
+  const rawSources = payload.sources;
+  const sources = Array.isArray(rawSources)
+    ? rawSources.filter((item): item is string => typeof item === 'string')
+    : [];
+  const effectiveSources =
+    sources.length > 0
+      ? sources
+      : typeof payload.source === 'string'
+        ? [payload.source]
+        : [];
+
+  if (effectiveSources.length === 0) {
+    return `${String(xpAmount ?? '?')} XP`;
+  }
+
+  const labels = effectiveSources.map(xpSourceShortLabel);
+  if (labels.length === 1) {
+    return `${String(xpAmount ?? '?')} XP · За ${labels[0]}`;
+  }
+  return `${String(xpAmount ?? '?')} XP · За ${labels.join(', ')}`;
 }
 
 export function notificationDisplay(row: NotificationRow): NotificationDisplay {
@@ -130,7 +160,7 @@ export function notificationDisplay(row: NotificationRow): NotificationDisplay {
     case 'XP_GAIN':
       return {
         action: 'Получен опыт',
-        reason: `${String(p.xpAmount ?? '?')} XP · ${xpSourceLabel(p.source)}`,
+        reason: xpGainReason(p),
       };
     case 'PARTY_RAID_INVITE':
       return {

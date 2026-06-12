@@ -1,5 +1,6 @@
 import { CharacterCreateForm } from '@features/character-create/ui/CharacterCreateForm';
 import { type CharacterDto } from '@entities/character';
+import { api } from '@shared/api/api';
 import { navigate } from '@shared/lib/navigation-core';
 import { AppLogo } from '@shared/ui/app-logo/AppLogo';
 
@@ -9,9 +10,17 @@ type Props = {
 };
 
 export function CharacterSetupPage(props: Props) {
-  function handleCreated(c: CharacterDto) {
+  async function handleCreated(c: CharacterDto) {
     props.onCharacterCreated(c);
-    navigate('/workspaces');
+    try {
+      const workspaces = await api<unknown[]>(
+        '/workspace/get-user-workspaces?limit=1&offset=0',
+        { method: 'GET', accessToken: props.accessToken },
+      );
+      navigate(Array.isArray(workspaces) && workspaces.length > 0 ? '/workspaces' : '/personal');
+    } catch {
+      navigate('/personal');
+    }
   }
 
   return (

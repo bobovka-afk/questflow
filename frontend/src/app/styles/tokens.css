@@ -18,7 +18,7 @@
   --px-tile-3: #b87840;
   --px-green: #4a8a50;
   --px-rail-edge: #c8b898;
-  --px-rail-width: 76px;
+  --px-rail-width: 56px;
   --px-topbar-bg: color-mix(in srgb, var(--px-bg) 80%, var(--px-border));
   --px-btn-edge: #c8b898;
   --px-logo-bg: #c9a030;
@@ -67,6 +67,37 @@
   --qf-panel-border: rgba(15, 23, 42, 0.1);
   --qf-panel-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
   --qf-topbar-toolbar-gutter: 124px;
+
+  /* Modern UI (Yandex Cloud–like) */
+  --qf-radius-xs: 6px;
+  --qf-radius-sm: 8px;
+  --qf-radius-md: 10px;
+  --qf-radius-lg: 14px;
+  --qf-radius-xl: 18px;
+  --qf-control-border: rgba(15, 23, 42, 0.12);
+  --qf-control-bg: rgba(255, 255, 255, 0.72);
+  --qf-shadow-control: 0 2px 8px rgba(15, 23, 42, 0.08);
+  --qf-shadow-panel: 0 8px 28px rgba(15, 23, 42, 0.1);
+
+  /* Компактные кнопки (Trello-like toolbar / фильтры) */
+  --qf-btn-height-sm: 28px;
+  --qf-btn-height-md: 32px;
+  --qf-btn-font-sm: 12px;
+  --qf-btn-font-md: 14px;
+  --qf-btn-pad-y-sm: 4px;
+  --qf-btn-pad-x-sm: 10px;
+  --qf-btn-pad-y-md: 6px;
+  --qf-btn-pad-x-md: 12px;
+
+  /* App topbar (settings / character reference) */
+  --qf-app-topbar-pad-y: 12px;
+  --qf-app-topbar-pad-x: 20px;
+  --qf-app-topbar-title-size: 18px;
+  --qf-app-topbar-title-weight: 600;
+  --qf-app-topbar-gap: 12px;
+
+  --qf-card-complete-green: #61bd4f;
+  --qf-card-complete-check: #ffffff;
 }
 
 html.theme-dark {
@@ -102,7 +133,15 @@ html.theme-dark {
 
   --qf-panel-bg: #222830;
   --qf-panel-bg-muted: #1a2028;
-  --qf-panel-border: #000;
+  --qf-panel-border: rgba(255, 255, 255, 0.1);
   --qf-panel-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
   --qf-topbar-toolbar-gutter: 124px;
+
+  --qf-control-border: rgba(255, 255, 255, 0.12);
+  --qf-control-bg: rgba(34, 40, 48, 0.92);
+  --qf-shadow-control: 0 2px 10px rgba(0, 0, 0, 0.25);
+  --qf-shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.28);
+
+  --qf-card-complete-green: #4bce97;
+  --qf-card-complete-check: #ffffff;
 }

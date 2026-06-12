@@ -1,7 +1,7 @@
 export interface CharacterXpStats {
   currentXp: number;
   level: number;
-  dailyTaskXpCount: number;
+  dailyActivityXpEarned: number;
   health: number;
   manaCurrent: number;
   checkinStreak: number;

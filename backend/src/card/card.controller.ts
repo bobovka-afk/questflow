@@ -31,6 +31,8 @@ import { WorkspaceLabelService } from '../workspace/workspace-label.service';
 import { CardAttachmentService } from './card-attachment.service';
 import { AddCardAttachmentLinkDto } from './dto/add-card-attachment-link.dto';
 import { SetCardCoverDto } from './dto/set-card-cover.dto';
+import { SetCardColorCoverDto } from './dto/set-card-color-cover.dto';
+import { CardCoverDisplayMode } from '../generated/prisma/enums';
 import { CARD_ATTACHMENT_MAX_BYTES } from './config/card-attachment-limits';
 import type { CardAttachmentView } from './interface/card-attachment.interface';
 import {
@@ -218,6 +220,30 @@ export class CardController {
       attachmentId,
     );
     return { ok: true };
+  }
+
+  @Patch('cards/:cardId/cover-color')
+  @ApiOperation({ summary: 'Set or clear card color cover' })
+  async setCardColorCover(
+    @Param('cardId', ParseIntPipe) cardId: number,
+    @Body() body: SetCardColorCoverDto,
+  ): Promise<{ ok: boolean }> {
+    const colorPreset =
+      body.colorPreset === undefined ? null : body.colorPreset;
+    const displayMode =
+      body.displayMode ??
+      (colorPreset != null
+        ? CardCoverDisplayMode.BANNER
+        : CardCoverDisplayMode.NONE);
+    return this.cardService.setColorCover(cardId, colorPreset, displayMode);
+  }
+
+  @Patch('cards/:cardId/archive')
+  @ApiOperation({ summary: 'Archive card (hide from board)' })
+  async archiveCard(
+    @Param('cardId', ParseIntPipe) cardId: number,
+  ): Promise<{ ok: boolean }> {
+    return this.cardService.archiveCard(cardId);
   }
 
   @Patch('cards/:cardId/cover')

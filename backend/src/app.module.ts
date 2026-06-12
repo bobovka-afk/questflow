@@ -21,6 +21,7 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
 import { SocialModule } from './social/social.module';
 import { PartyModule } from './party/party.module';
 import { NotificationModule } from './notification/notification.module';
+import { PersonalModule } from './personal/personal.module';
 
 
 @Module({
@@ -96,6 +97,7 @@ import { NotificationModule } from './notification/notification.module';
     RedisModule,
     CharacterModule,
     GamificationModule,
+    PersonalModule,
     UserSettingsModule,
     SocialModule,
     PartyModule,

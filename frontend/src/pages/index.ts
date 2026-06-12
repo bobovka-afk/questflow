@@ -16,4 +16,5 @@ export { UserCharacterPage } from './user-character/UserCharacterPage';
 export { WorkspaceActivityPage } from './workspace-activity/WorkspaceActivityPage';
 export { WorkspaceBoardsPage } from './workspace-boards/WorkspaceBoardsPage';
 export { WorkspaceMembersPage } from './workspace-members/WorkspaceMembersPage';
+export { PersonalPage } from './personal/PersonalPage';
 export { WorkspacesPage } from './workspaces/WorkspacesPage';

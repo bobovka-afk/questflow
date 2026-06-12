@@ -84,6 +84,34 @@ describe('notificationDisplay', () => {
     });
     expect(display.action).toBe('Получен опыт');
     expect(display.reason).toContain('25 XP');
-    expect(display.reason).toContain('За выполненную задачу');
+    expect(display.reason).toContain('За закрытие карточки');
+  });
+
+  it('formats xp gain with multiple sources', () => {
+    const display = notificationDisplay({
+      ...row('XP_GAIN'),
+      payload: {
+        xpAmount: 125,
+        source: 'HABIT_POSITIVE',
+        sources: ['HABIT_POSITIVE', 'DAILY_CHECKIN'],
+      },
+    });
+    expect(display.reason).toBe('125 XP · За привычку, активный день');
+  });
+
+  it('formats personal todo xp', () => {
+    const display = notificationDisplay({
+      ...row('XP_GAIN'),
+      payload: { xpAmount: 100, source: 'PERSONAL_TODO_COMPLETED' },
+    });
+    expect(display.reason).toBe('100 XP · За личное дело');
+  });
+
+  it('formats personal daily xp', () => {
+    const display = notificationDisplay({
+      ...row('XP_GAIN'),
+      payload: { xpAmount: 100, source: 'PERSONAL_DAILY_COMPLETED' },
+    });
+    expect(display.reason).toBe('100 XP · За ежедневную задачу');
   });
 });

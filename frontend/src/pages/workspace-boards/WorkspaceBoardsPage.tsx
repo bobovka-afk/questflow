@@ -49,6 +49,15 @@ function nextBoardPosition(rows: BoardRow[]): number {
 
 const TILE_VARIANTS = ['px-tile--1', 'px-tile--2', 'px-tile--3'] as const;
 
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden>
+      <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
   const [boards, setBoards] = useState<BoardRow[]>([]);
   const [workspaceTitle, setWorkspaceTitle] = useState<string>('');
@@ -256,22 +265,29 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
           <span className="px-breadcrumb">Пространства /</span>
           <h1 className="px-topbar-title">{workspaceTitle || '…'}</h1>
         </div>
-        <div className="px-topbar-actions">
-          {accessToken ? (
-            <button
-              type="button"
-              className="px-btn px-btn--ghost"
-              onClick={() => setSearchOpen(true)}
-              title="Поиск (⌘K / Ctrl+K)"
-            >
-              Поиск ⌘K
-            </button>
-          ) : null}
-        </div>
       </header>
 
       {accessToken ? (
         <div className="px-toolbar">
+          <button
+            type="button"
+            className="px-btn px-btn--primary"
+            onClick={() => {
+              setCreateOpen(true);
+              setMsg(null);
+            }}
+          >
+            + Доска
+          </button>
+          <button
+            type="button"
+            className="px-btn px-btn--ghost px-btn--with-icon"
+            onClick={() => setSearchOpen(true)}
+            title="Поиск (⌘K / Ctrl+K)"
+          >
+            <SearchIcon className="px-btn__ico" />
+            Поиск
+          </button>
           {canArchive ? (
             <button
               type="button"
@@ -281,16 +297,6 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
               Архив
             </button>
           ) : null}
-          <button
-            type="button"
-            className="px-btn px-btn--primary px-toolbar-end"
-            onClick={() => {
-              setCreateOpen(true);
-              setMsg(null);
-            }}
-          >
-            + Доска
-          </button>
         </div>
       ) : null}
 
@@ -413,7 +419,7 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
           onClick={() => !createBusy && setCreateOpen(false)}
         >
           <div
-            className="trello-modal"
+            className="trello-modal trello-modal--board-form"
             role="dialog"
             aria-modal
             onClick={(e) => e.stopPropagation()}
@@ -468,7 +474,7 @@ export function WorkspaceBoardsPage({ accessToken, workspaceId }: Props) {
           onClick={() => !editBusy && setEditBoard(null)}
         >
           <div
-            className="trello-modal"
+            className="trello-modal trello-modal--board-form"
             role="dialog"
             aria-modal
             onClick={(e) => e.stopPropagation()}

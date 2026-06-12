@@ -4,6 +4,8 @@ export const BOSS_ICON_SIZE = 64;
 export const BOSS_ICON_SIZE_SM = 48;
 /** Boss picker grid — large portrait for readability */
 export const BOSS_ICON_SIZE_PICK = 128;
+/** Active raid dashboard — hero portrait */
+export const BOSS_ICON_SIZE_RAID = 192;
 
 const BOSS_ICON_FILE_BY_KEY: Record<string, string> = {
   rust_king: 'rust_king.png',

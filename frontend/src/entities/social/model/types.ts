@@ -8,6 +8,7 @@ export type SocialUserSummary = {
   name: string;
   avatarPath: string | null;
   characterName: string | null;
+  characterAvatarPreset: string | null;
   friendCode: number | null;
   isOnline?: boolean;
   lastSeenAt?: string | null;
@@ -53,6 +54,7 @@ export type MessageReadReceipt = {
 };
 
 export type UserRelationView = {
+  user: SocialUserSummary;
   isFriend: boolean;
   canMessage: boolean;
   incomingRequestId: number | null;

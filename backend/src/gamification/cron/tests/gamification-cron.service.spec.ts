@@ -96,7 +96,7 @@ describe('GamificationCronService', () => {
   });
 
   describe('resetDailyTaskXpCounts', () => {
-    it('zeroes dailyTaskXpCount only for characters above zero', async () => {
+    it('zeroes dailyActivityXpEarned only for characters above zero', async () => {
       prisma.character!.updateMany!.mockResolvedValue({ count: 3 });
 
       await expect(service.resetDailyTaskXpCounts()).resolves.toEqual({
@@ -104,8 +104,8 @@ describe('GamificationCronService', () => {
       });
 
       expect(prisma.character!.updateMany).toHaveBeenCalledWith({
-        where: { dailyTaskXpCount: { gt: 0 } },
-        data: { dailyTaskXpCount: 0 },
+        where: { dailyActivityXpEarned: { gt: 0 } },
+        data: { dailyActivityXpEarned: 0 },
       });
     });
 

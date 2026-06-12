@@ -11,18 +11,19 @@ import {
   MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CARD_TITLE_MAX_LENGTH } from '../constants';
 
 export class CreateCardDto {
   @ApiProperty({
     example: 'Implement workspace archive',
     description: 'Card title',
     minLength: 3,
-    maxLength: 50,
+    maxLength: CARD_TITLE_MAX_LENGTH,
   })
   @IsString()
   @IsNotEmpty()
   @MinLength(3)
-  @MaxLength(50)
+  @MaxLength(CARD_TITLE_MAX_LENGTH)
   title: string;
 
   @ApiPropertyOptional({

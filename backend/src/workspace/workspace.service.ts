@@ -10,8 +10,10 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { PaginationDto } from './dto/pagination.dto';
+import { ReorderUserWorkspaceDto } from './dto/reorder-user-workspace.dto';
 import { WorkspaceRole } from '../generated/prisma/enums';
 import { resolveMemberPermissions } from './lib/member-permissions';
+import { nextWorkspaceMemberSortOrder } from './lib/member-sort-order';
 import type {
     WorkspaceCreated,
     WorkspaceIdRef,
@@ -33,6 +35,7 @@ export class WorkspaceService {
         userId: number,
     ): Promise<WorkspaceCreated> {
         const workspace = await this.prisma.$transaction(async (tx) => {
+            const sortOrder = await nextWorkspaceMemberSortOrder(tx, userId);
             const created = await tx.workspace.create({
                 data: {
                     name: dto.name,
@@ -41,6 +44,7 @@ export class WorkspaceService {
                         create: {
                             userId: userId,
                             role: WorkspaceRole.OWNER,
+                            sortOrder,
                         },
                     },
                 },
@@ -120,11 +124,7 @@ export class WorkspaceService {
                     },
                 },
             },
-            orderBy: {
-                workspace: {
-                    updatedAt: 'desc',
-                },
-            },
+            orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
             take: paginationDto.limit,
             skip: paginationDto.offset,
         });
@@ -217,6 +217,51 @@ export class WorkspaceService {
             });
         }
         return workspace;
+    }
+
+    async reorderUserWorkspace(
+        userId: number,
+        dto: ReorderUserWorkspaceDto,
+    ): Promise<{ ok: boolean }> {
+        await this.prisma.$transaction(async (tx) => {
+            const member = await tx.workspaceMember.findFirst({
+                where: { id: dto.memberId, userId },
+                select: { id: true },
+            });
+            if (!member) {
+                throw new NotFoundException({
+                    code: 'WORKSPACE_MEMBER_NOT_FOUND',
+                    message: 'Workspace membership not found',
+                });
+            }
+
+            const members = await tx.workspaceMember.findMany({
+                where: { userId },
+                orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+                select: { id: true },
+            });
+
+            const ids = members.map((row) => row.id);
+            const withoutMoved = ids.filter((id) => id !== dto.memberId);
+            const insertAt = Math.min(
+                Math.max(0, dto.position),
+                withoutMoved.length,
+            );
+            const newOrder = [
+                ...withoutMoved.slice(0, insertAt),
+                dto.memberId,
+                ...withoutMoved.slice(insertAt),
+            ];
+
+            for (let i = 0; i < newOrder.length; i++) {
+                await tx.workspaceMember.update({
+                    where: { id: newOrder[i] },
+                    data: { sortOrder: i },
+                });
+            }
+        });
+
+        return { ok: true };
     }
 
 }

@@ -7,8 +7,8 @@ export function WorkspaceOnboardingBanner({ onCreateBoard }: Props) {
     <div className="trello-ws-onboarding">
       <h2 className="trello-ws-onboarding-title">Начните с первой доски</h2>
       <ol className="trello-ws-onboarding-steps">
-        <li>Создайте доску (можно из шаблона)</li>
-        <li>Добавьте колонки или используйте готовые из шаблона</li>
+        <li>Создайте доску</li>
+        <li>Добавьте колонки</li>
         <li>Создайте карточку и назначьте исполнителя</li>
       </ol>
       <button type="button" className="trello-btn trello-btn-primary" onClick={onCreateBoard}>

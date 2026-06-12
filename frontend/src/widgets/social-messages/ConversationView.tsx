@@ -13,6 +13,7 @@ import {
 } from '@entities/social';
 import { applyMessageReceipts } from '@entities/social/lib/applyMessageReceipts';
 import { MessageReadTicks } from './MessageReadTicks';
+import { ChatEmojiPicker } from './ChatEmojiPicker';
 
 type Props = {
   accessToken: string;
@@ -54,6 +55,7 @@ export function ConversationView({
   const [sendError, setSendError] = useState<string | null>(null);
   const [canSend, setCanSend] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const onInboxChangeRef = useRef(onInboxChange);
   const onPeerReadRef = useRef(onPeerRead);
   const acknowledgeInFlightRef = useRef(false);
@@ -177,6 +179,21 @@ export function ConversationView({
     }
   }
 
+  function insertEmoji(emoji: string) {
+    const el = inputRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    const next = el.value.slice(0, start) + emoji + el.value.slice(end);
+    if (next.length > 2000) return;
+    setDraft(next);
+    const cursor = start + emoji.length;
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(cursor, cursor);
+    });
+  }
+
   const sendBlockedHint =
     'Писать можно только друзьям или коллегам из одного workspace. Историю переписки можно просматривать.';
 
@@ -217,14 +234,18 @@ export function ConversationView({
       </div>
       {canSend ? (
         <form className="trello-social-compose" onSubmit={(e) => void handleSend(e)}>
-          <input
-            className="trello-input"
-            placeholder="Сообщение…"
-            value={draft}
-            maxLength={2000}
-            disabled={sending}
-            onChange={(e) => setDraft(e.target.value)}
-          />
+          <div className="trello-social-compose-field">
+            <ChatEmojiPicker disabled={sending} onPick={insertEmoji} />
+            <input
+              ref={inputRef}
+              className="trello-input"
+              placeholder="Сообщение…"
+              value={draft}
+              maxLength={2000}
+              disabled={sending}
+              onChange={(e) => setDraft(e.target.value)}
+            />
+          </div>
           <button
             type="submit"
             className="trello-btn trello-btn-primary trello-btn-sm"

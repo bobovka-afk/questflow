@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import {
   buildChestLootOdds,
+  CHEST_LOOT_ODDS_MODAL_SIZE_PX,
   CHEST_LOOT_ODDS_ROWS_PER_PAGE,
   formatLootOddsPercent,
 } from '@entities/chest/lib/chestLootOdds';
@@ -30,6 +31,11 @@ export function ChestLootOddsModal(props: Props) {
         aria-labelledby="chest-loot-odds-title"
         onClick={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
+        style={
+          {
+            '--chest-loot-odds-size': `min(${CHEST_LOOT_ODDS_MODAL_SIZE_PX}px, 92vw, 90vh)`,
+          } as CSSProperties
+        }
       >
         <div className="trello-modal-head trello-character-loot-popup-head--centered">
           <h2 id="chest-loot-odds-title" className="trello-modal-title trello-character-loot-popup-title--hero">
@@ -83,29 +89,31 @@ export function ChestLootOddsModal(props: Props) {
 
           {pageRows.length === 0 && <p className="trello-muted">Нет данных о луте.</p>}
 
-          <nav className="trello-character-storage-pager" aria-label="Страницы списка шансов">
-            <button
-              type="button"
-              className="trello-character-storage-pager-btn"
-              disabled={safePage <= 0}
-              onClick={() => setPage(safePage - 1)}
-              aria-label="Предыдущая страница"
-            >
-              ←
-            </button>
-            <span className="trello-character-storage-pager-label">
-              {safePage + 1} / {totalPages}
-            </span>
-            <button
-              type="button"
-              className="trello-character-storage-pager-btn"
-              disabled={safePage >= totalPages - 1}
-              onClick={() => setPage(safePage + 1)}
-              aria-label="Следующая страница"
-            >
-              →
-            </button>
-          </nav>
+          {totalPages > 1 && (
+            <nav className="trello-character-storage-pager" aria-label="Страницы списка шансов">
+              <button
+                type="button"
+                className="trello-character-storage-pager-btn"
+                disabled={safePage <= 0}
+                onClick={() => setPage(safePage - 1)}
+                aria-label="Предыдущая страница"
+              >
+                ←
+              </button>
+              <span className="trello-character-storage-pager-label">
+                {safePage + 1} / {totalPages}
+              </span>
+              <button
+                type="button"
+                className="trello-character-storage-pager-btn"
+                disabled={safePage >= totalPages - 1}
+                onClick={() => setPage(safePage + 1)}
+                aria-label="Следующая страница"
+              >
+                →
+              </button>
+            </nav>
+          )}
         </div>
       </div>
     </div>,

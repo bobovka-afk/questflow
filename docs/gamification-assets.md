@@ -345,18 +345,9 @@ frame:   trello-character-profile-portrait-frame
 
 ---
 
-## Блок 9. Квестовые образы (`AVATAR_PRESET` из сундука) — последний блок
+## Блок 9. Квестовые образы (`QUEST_MAGE_*`) — снято с продукта
 
-Отдельный портрет, не входящий в 12 стартовых. В БД: `QUEST_MAGE_MAN` / `QUEST_MAGE_WOMAN` (Rare). Экипировка через `PATCH /character/me` + проверка владения на бэкенде.
-
-| key (БД) | Файл | Tier | Размер | Описание |
-|----------|------|------|--------|----------|
-| `QUEST_MAGE_MAN` | `cosmetics/portraits/quest_mage_man.png` | Rare | **1024×1024 px** (целевой; в сиде мог быть 400×400) | Мужской маг: тот же ракурс, что `mage-man.png`, но другой костюм — явно «награда», не стартовый скин |
-| `QUEST_MAGE_WOMAN` | `cosmetics/portraits/quest_mage_woman.png` | Rare | 1024×1024 | Женский аналог; в луте rare-сундука подставляется по полу персонажа |
-
-**Важно:** в БД два ключа; при открытии rare-сундука сервер выдаёт `QUEST_MAGE_WOMAN` женским персонажам и `QUEST_MAGE_MAN` — мужским.
-
-**Требования к композиции:** как блок 1 — квадрат, прозрачный фон предпочтителен (работа с `PROFILE_BACKGROUND`).
+Ранее планировался отдельный портрет из rare-сундука. **Удалено:** нет ассетов, записи `CosmeticItem` и инвентарь очищены миграцией `20260612210000_remove_quest_mage_cosmetic`. Enum `CharacterAvatarPreset` в PostgreSQL сохранён; новые персонажи с `QUEST_*` не принимаются.
 
 ---
 
@@ -440,7 +431,6 @@ frame:   trello-character-profile-portrait-frame
 - [ ] Dust читаем на 32 px.
 - [ ] Spritesheet сундука: кадры не «прыгают» по центру (один pivot).
 - [ ] Сундуки различимы в 24 px (Common / Rare / Epic).
-- [ ] `QUEST_MAGE_*` визуально отличается от стартового `mage-man` / `mage-woman`.
 - [ ] Единый стиль со всеми 12 существующими портретами.
 
 ---

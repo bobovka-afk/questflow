@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { CharacterDto } from '@entities/character';
 import { CHARACTER_HEALTH_MAX, MANA_MAX } from '@entities/reward';
 import { healthStatIconUrl, levelStatIconUrl, manaStatIconUrl, xpToastIconUrl } from '@shared/assets/uiAssets';
@@ -13,27 +14,60 @@ type XpToward = {
 type Props = {
   character: CharacterDto;
   xpToward: XpToward;
-  /** full — все статы; sidebar — HP под портретом; detail — 2×2 (уровень/мана, опыт/пыль) */
-  variant?: 'full' | 'sidebar' | 'detail';
+  /** full — уровень, опыт, здоровье, мана, пыль; sidebar — HP; detail — 2×2; compact — 4 в ряд; dashboard — 2×2, короткие подписи */
+  variant?: 'full' | 'sidebar' | 'detail' | 'compact' | 'dashboard';
 };
 
 function statVisible(
-  variant: 'full' | 'sidebar' | 'detail',
+  variant: 'full' | 'sidebar' | 'detail' | 'compact' | 'dashboard',
   stat: 'level' | 'xp' | 'health' | 'mana' | 'dust',
 ): boolean {
   if (variant === 'full') return true;
   if (variant === 'sidebar') return stat === 'health';
-  return stat === 'level' || stat === 'xp' || stat === 'mana' || stat === 'dust';
+  if (variant === 'compact' || variant === 'dashboard') return stat !== 'dust';
+  return stat === 'level' || stat === 'xp' || stat === 'health' || stat === 'mana';
+}
+
+function useCompactLabels(variant: Props['variant']): boolean {
+  return variant === 'compact' || variant === 'dashboard';
+}
+function StatLabel({
+  compact,
+  iconUrl,
+  icon,
+  label,
+}: {
+  compact: boolean;
+  iconUrl?: string;
+  icon?: ReactNode;
+  label: string;
+}) {
+  if (compact) {
+    return <span className="trello-character-stat-label">{label}</span>;
+  }
+  return (
+    <div className="trello-character-stat-label-row">
+      <span className="trello-character-stat-icon-wrap" aria-hidden>
+        {icon ?? (
+          <img src={iconUrl} alt="" className="trello-character-stat-icon" loading="lazy" />
+        )}
+      </span>
+      <span className="trello-character-stat-label">{label}</span>
+    </div>
+  );
 }
 
 export function CharacterStatsPanel({ character, xpToward, variant = 'full' }: Props) {
   const exhausted = character.health <= 0;
+  const compact = useCompactLabels(variant);
   const rowClass =
     variant === 'sidebar'
       ? 'trello-character-stat-row trello-character-stat-row--sidebar'
-      : variant === 'detail'
+      : variant === 'detail' || variant === 'dashboard'
         ? 'trello-character-stat-row trello-character-stat-row--detail'
-        : 'trello-character-stat-row';
+        : variant === 'compact'
+          ? 'trello-character-stat-row trello-character-stat-row--compact'
+          : 'trello-character-stat-row';
 
   return (
     <div
@@ -43,19 +77,10 @@ export function CharacterStatsPanel({ character, xpToward, variant = 'full' }: P
           : 'trello-character-stats-panel'
       }
     >
-      {exhausted ? (
-        <p className="trello-character-exhausted-banner" role="status">
-          Персонаж истощён — доски и карточки доступны; завтра возможен штраф HP за
-          неактивность, если не будет XP за день.
-        </p>
-      ) : null}
       <div className={rowClass}>
         {statVisible(variant, 'level') ? (
         <div className="trello-character-stat-pill trello-character-stat-pill--level">
-          <div className="trello-character-stat-label-row">
-            <span className="trello-character-stat-label">УРОВЕНЬ</span>
-            <img src={levelStatIconUrl()} alt="" className="trello-character-stat-icon" loading="lazy" />
-          </div>
+          <StatLabel compact={compact} iconUrl={levelStatIconUrl()} label={compact ? 'Уровень' : 'УРОВЕНЬ'} />
           <div
             className="trello-character-stat-meter"
             role="img"
@@ -70,12 +95,67 @@ export function CharacterStatsPanel({ character, xpToward, variant = 'full' }: P
           </div>
         </div>
         ) : null}
+        {statVisible(variant, 'xp') ? (
+        <div className="trello-character-stat-pill trello-character-stat-pill--xp">
+          <StatLabel compact={compact} iconUrl={xpToastIconUrl()} label={compact ? 'Опыт' : 'ОПЫТ'} />
+          <div
+            className="trello-character-stat-meter"
+            role="img"
+            aria-label={
+              xpToward.atMaxLevel
+                ? 'Опыт: максимальный уровень'
+                : `Опыт ${xpToward.into ?? 0} из ${xpToward.needed ?? 0}`
+            }
+          >
+            <div
+              className="trello-character-stat-bar-fill trello-character-stat-bar-fill--xp"
+              style={{ width: `${xpToward.pct}%` }}
+              aria-hidden
+            />
+            <span className="trello-character-stat-meter-value trello-character-stat-meter-value--xp">
+              {xpToward.atMaxLevel ? (
+                <>Макс. уровень</>
+              ) : compact ? (
+                <>
+                  {xpToward.into ?? 0}/{xpToward.needed ?? 0}
+                </>
+              ) : (
+                <>
+                  {xpToward.into ?? 0} / {xpToward.needed ?? 0}
+                </>
+              )}
+            </span>
+          </div>
+        </div>
+        ) : null}
+        {statVisible(variant, 'health') ? (
+        <div
+          className={
+            exhausted
+              ? 'trello-character-stat-pill trello-character-stat-pill--health trello-character-stat-pill--health-exhausted'
+              : 'trello-character-stat-pill trello-character-stat-pill--health'
+          }
+        >
+          <StatLabel compact={compact} iconUrl={healthStatIconUrl()} label={compact ? 'Здоровье' : 'ЗДОРОВЬЕ'} />
+          <div
+            className="trello-character-stat-meter"
+            role="img"
+            aria-label={`Здоровье ${character.health}`}
+          >
+            <div
+              className="trello-character-stat-bar-fill trello-character-stat-bar-fill--health"
+              style={{
+                width: `${Math.min(100, Math.round((character.health / CHARACTER_HEALTH_MAX) * 100))}%`,
+              }}
+              aria-hidden
+            />
+            <span className="trello-character-stat-meter-value">{character.health}</span>
+          </div>
+        </div>
+        ) : null}
         {statVisible(variant, 'mana') ? (
         <div className="trello-character-stat-pill trello-character-stat-pill--mana">
-          <div className="trello-character-stat-label-row">
-            <span className="trello-character-stat-label">МАНА</span>
-            <img src={manaStatIconUrl()} alt="" className="trello-character-stat-icon" loading="lazy" />
-          </div>
+          <StatLabel compact={compact} iconUrl={manaStatIconUrl()} label={compact ? 'Мана' : 'МАНА'} />
           <div
             className="trello-character-stat-meter"
             role="img"
@@ -94,73 +174,19 @@ export function CharacterStatsPanel({ character, xpToward, variant = 'full' }: P
           </div>
         </div>
         ) : null}
-        {statVisible(variant, 'xp') ? (
-        <div className="trello-character-stat-pill trello-character-stat-pill--xp">
-          <div className="trello-character-stat-label-row">
-            <span className="trello-character-stat-label">ОПЫТ</span>
-            <img src={xpToastIconUrl()} alt="" className="trello-character-stat-icon" loading="lazy" />
-          </div>
-          <div
-            className="trello-character-stat-meter"
-            role="img"
-            aria-label={
-              xpToward.atMaxLevel
-                ? 'Опыт: максимальный уровень'
-                : `Опыт ${xpToward.into ?? 0} из ${xpToward.needed ?? 0}`
-            }
-          >
-            <div
-              className="trello-character-stat-bar-fill trello-character-stat-bar-fill--xp"
-              style={{ width: `${xpToward.pct}%` }}
-              aria-hidden
-            />
-            <span className="trello-character-stat-meter-value trello-character-stat-meter-value--xp">
-              {xpToward.atMaxLevel ? (
-                <>Макс. уровень</>
-              ) : (
-                <>
-                  {xpToward.into ?? 0} / {xpToward.needed ?? 0}
-                </>
-              )}
-            </span>
-          </div>
-        </div>
-        ) : null}
-        {statVisible(variant, 'health') ? (
-        <div
-          className={
-            exhausted
-              ? 'trello-character-stat-pill trello-character-stat-pill--health trello-character-stat-pill--health-exhausted'
-              : 'trello-character-stat-pill trello-character-stat-pill--health'
-          }
-        >
-          <div className="trello-character-stat-label-row">
-            <span className="trello-character-stat-label">ЗДОРОВЬЕ</span>
-            <img src={healthStatIconUrl()} alt="" className="trello-character-stat-icon" loading="lazy" />
-          </div>
-          <div
-            className="trello-character-stat-meter"
-            role="img"
-            aria-label={`Здоровье ${character.health}`}
-          >
-            <div
-              className="trello-character-stat-bar-fill trello-character-stat-bar-fill--health"
-              style={{
-                width: `${Math.min(100, Math.round((character.health / CHARACTER_HEALTH_MAX) * 100))}%`,
-              }}
-              aria-hidden
-            />
-            <span className="trello-character-stat-meter-value">{character.health}</span>
-          </div>
-        </div>
-        ) : null}
         {statVisible(variant, 'dust') ? (
         <div className="trello-character-stat-pill trello-character-stat-pill--dust">
           <div className="trello-character-stat-label-row">
+            <span className="trello-character-stat-icon-wrap" aria-hidden>
+              <DustIcon className="trello-character-stat-icon" />
+            </span>
             <span className="trello-character-stat-label">ПЫЛЬ</span>
-            <DustIcon size={40} className="trello-character-stat-icon" />
           </div>
-          <div className="trello-character-stat-meter trello-character-stat-meter--dust" role="img" aria-label={`Пыль ${character.dust}`}>
+          <div
+            className="trello-character-stat-meter trello-character-stat-meter--dust"
+            role="img"
+            aria-label={`Пыль ${character.dust}`}
+          >
             <span className="trello-character-stat-meter-value trello-character-stat-meter-value--dust">
               {character.dust}
             </span>

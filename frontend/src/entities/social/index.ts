@@ -30,6 +30,10 @@ export {
   unblockUser,
 } from './api/socialApi';
 export { formatFriendCode, parseFriendCodeInput } from './lib/formatFriendCode';
+export {
+  SocialUserCharacterAvatar,
+  socialUserDisplayName,
+} from './ui/SocialUserCharacterAvatar';
 export { useMessagePolling } from './lib/useMessagePolling';
 export { useMessageDelivery } from './lib/useMessageDelivery';
 export { useSocialInboxSummary } from './lib/useSocialInboxSummary';

@@ -13,6 +13,8 @@ type Props = {
   relation: UserRelationView | null;
   onRelationChange: (relation: UserRelationView) => void;
   onError?: (message: string | null) => void;
+  /** foot — кнопки в панели профиля чужого персонажа */
+  appearance?: 'default' | 'foot';
 };
 
 export function SocialUserBlockButton({
@@ -21,12 +23,21 @@ export function SocialUserBlockButton({
   relation,
   onRelationChange,
   onError,
+  appearance = 'default',
 }: Props) {
   const [busy, setBusy] = useState(false);
+  const foot = appearance === 'foot';
+  const btnClass = foot
+    ? 'trello-character-profile-foot-action'
+    : 'trello-btn trello-btn-ghost trello-btn-sm';
+  const dangerClass = foot
+    ? 'trello-character-profile-foot-action trello-character-profile-foot-action--danger'
+    : 'trello-btn trello-btn-danger-ghost trello-btn-sm';
 
   if (relation == null) return null;
 
   if (relation.blockedByThem && !relation.blockedByMe) {
+    if (foot) return null;
     return (
       <span className="trello-cell-meta">Этот пользователь ограничил взаимодействие с вами</span>
     );
@@ -65,7 +76,7 @@ export function SocialUserBlockButton({
     return (
       <button
         type="button"
-        className="trello-btn trello-btn-ghost trello-btn-sm"
+        className={btnClass}
         disabled={busy}
         onClick={() => void handleUnblock()}
       >
@@ -77,10 +88,15 @@ export function SocialUserBlockButton({
   return (
     <button
       type="button"
-      className="trello-btn trello-btn-danger-ghost trello-btn-sm"
+      className={dangerClass}
       disabled={busy}
       onClick={() => void handleBlock()}
     >
+      {foot ? (
+        <span className="trello-character-profile-foot-action-icon" aria-hidden>
+          ⊘
+        </span>
+      ) : null}
       {busy ? '…' : 'Заблокировать'}
     </button>
   );

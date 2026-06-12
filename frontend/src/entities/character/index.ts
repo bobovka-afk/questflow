@@ -2,7 +2,6 @@ export {
   CHARACTER_ROLES,
   ROLE_LABEL_RU,
   characterPortraitUrl,
-  isQuestAvatarPreset,
   presetForRole,
   routeNeedsCharacterGate,
   type CharacterDto,

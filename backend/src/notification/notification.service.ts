@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
 import { UserNotificationType } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
+import type { XpGainNotificationPayload } from '../gamification/xp/xp-gain-notification-payload';
 import {
   isInAppNotificationEnabled,
   mergeNotificationSettings,
@@ -41,7 +42,7 @@ export class NotificationService {
 
   async notifyXpGain(
     userId: number,
-    payload: { xpAmount: number; source?: string },
+    payload: XpGainNotificationPayload,
   ): Promise<void> {
     const row = await this.prisma.userSettings.findUnique({
       where: { userId },

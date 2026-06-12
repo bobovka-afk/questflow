@@ -550,7 +550,7 @@ export function WorkspaceMembersPage({ accessToken, workspaceId }: Props) {
             role="presentation"
             onClick={() => !createBusy && setCreateOpen(false)}
           >
-            <div className="trello-modal" role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+            <div className="trello-modal trello-modal--board-form" role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
               <div className="trello-modal-head">
                 <h2 className="trello-modal-title">Отправить приглашение</h2>
                 <button

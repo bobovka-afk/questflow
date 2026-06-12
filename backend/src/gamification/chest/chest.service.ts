@@ -183,7 +183,10 @@ export class ChestService {
   async listInventory(userId: number) {
     const [items, character] = await Promise.all([
       this.prisma.inventoryItem.findMany({
-        where: { userId },
+        where: {
+          userId,
+          cosmeticItem: { type: { not: 'AVATAR_PRESET' } },
+        },
         include: { cosmeticItem: true },
         orderBy: { obtainedAt: 'desc' },
       }),
@@ -192,7 +195,6 @@ export class ChestService {
         select: {
           equippedPortraitFrameKey: true,
           equippedProfileBackgroundKey: true,
-          avatarPreset: true,
         },
       }),
     ]);
@@ -204,9 +206,7 @@ export class ChestService {
         (item.cosmeticItem.type === 'PORTRAIT_FRAME' &&
           item.cosmeticItem.key === character?.equippedPortraitFrameKey) ||
         (item.cosmeticItem.type === 'PROFILE_BACKGROUND' &&
-          item.cosmeticItem.key === character?.equippedProfileBackgroundKey) ||
-        (item.cosmeticItem.type === 'AVATAR_PRESET' &&
-          item.cosmeticItem.key === character?.avatarPreset),
+          item.cosmeticItem.key === character?.equippedProfileBackgroundKey),
     }));
   }
 

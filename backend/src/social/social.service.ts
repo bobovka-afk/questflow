@@ -37,7 +37,11 @@ const userWithCharacterSelect = {
   avatarPath: true,
   lastActiveAt: true,
   character: {
-    select: { name: true, friendCode: true },
+    select: {
+      name: true,
+      friendCode: true,
+      avatarPreset: true,
+    },
   },
 } satisfies Prisma.UserSelect;
 
@@ -314,8 +318,21 @@ export class SocialService {
   }
 
   async getUserRelation(viewerId: number, targetUserId: number): Promise<UserRelationView> {
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: userWithCharacterSelect,
+    });
+    if (!target) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+    const user = this.toSocialUserSummary(target);
+
     if (viewerId === targetUserId) {
       return {
+        user,
         isFriend: false,
         canMessage: false,
         incomingRequestId: null,
@@ -349,6 +366,7 @@ export class SocialService {
     }
 
     return {
+      user,
       isFriend,
       canMessage,
       incomingRequestId,
@@ -609,6 +627,7 @@ export class SocialService {
       name: user.name,
       avatarPath: user.avatarPath,
       characterName: user.character?.name ?? null,
+      characterAvatarPreset: user.character?.avatarPreset ?? null,
       friendCode: user.character?.friendCode ?? null,
     };
   }

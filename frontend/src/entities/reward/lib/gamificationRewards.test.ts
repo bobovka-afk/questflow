@@ -66,6 +66,19 @@ describe('gamificationRewards', () => {
     }
   });
 
+  it('shows only task toast when streak exists but no new check-in this event', () => {
+    const rewards = makeRewards({
+      taskXp: 100,
+      hpGained: 5,
+      checkinStreak: 3,
+      previousCheckinStreak: 3,
+      streakIncreased: false,
+      checkinXp: 0,
+    });
+    const steps = buildRewardToastSteps(rewards);
+    expect(steps.map((s) => s.kind)).toEqual(['task']);
+  });
+
   it('computes total xp and toast visibility', () => {
     const rewards = makeRewards({
       taskXp: 100,

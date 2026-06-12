@@ -18,15 +18,34 @@
 | Phase | Состояние |
 |-------|-----------|
 | 0 | **Done** — персонаж, XP за карточку, уровни, HP+5, UI |
-| 0.5 | **Done** — cron сброс `dailyTaskXpCount`, `rewards.ts`, константы в сервисах |
+| 0.5 | **Done** — cron сброс `dailyActivityXpEarned`, `rewards.ts`, константы в сервисах |
 | 1 | **Done** |
 | 2 | **Done** — **2a** квесты + **2b** сундуки (сундук **за каждый** квест; карточки → assignee ?? actor) |
 | 3 | **Done** — пыль (дубликаты + магазин 3 сундуков), achievements |
 | 4 | **In progress** — гайд «Как это работает» + intro ([`GamificationGuide.tsx`](../frontend/src/widgets/gamification-guide/GamificationGuide.tsx)); E2E и backlog (уведомления / battle pass / лидерборд) — [roadmap](gamification-roadmap.md#phase-4--e2e-и-гайд-по-игре-финал-v1) |
 | 4.social | **Done (MVP)** — друзья по `friendCode` (#1492), заявки accept/decline, DM 1:1 (REST + poll 5 с в открытом чате), коллеги из общего workspace могут писать без дружбы |
 | 5.party | **In progress** — рейд-боссы для пати друзей (2–8), мана за XP-карточки, урон в % HP, kick лидером / голосованием |
+| 6.personal | **Done (v1)** — `/personal`: привычки / ежедневные / задачи, XP/HP, квесты, cron пропусков dailies; см. [solo-habits-roadmap.md](solo-habits-roadmap.md) |
+| 6.ws-order | **Done** — `WorkspaceMember.sortOrder`, DnD на `/workspaces`; API `PATCH /workspace/reorder-user-workspace` |
 
-**Суточный сброс:** cron `resetDailyTaskXpCounts` в `GamificationCronService` (00:00 `GAME_DAY_TZ`). Числа наград — `backend/src/gamification/config/rewards.ts`.
+**Суточный сброс:** cron `resetDailyTaskXpCounts` в `GamificationCronService` (00:00 `GAME_DAY_TZ`) обнуляет `dailyActivityXpEarned`. Числа наград — `backend/src/gamification/config/rewards.ts`.
+
+**Каталог квестов и achievements:** [gamification-roadmap.md § Квесты](gamification-roadmap.md#квесты--полный-каталог-активные-шаблоны).
+
+---
+
+## Разделы приложения (кратко)
+
+| Раздел | Маршрут | Backend / ключевые модули |
+|--------|---------|---------------------------|
+| Привычки (solo) | `/personal` | `personal/*`, `personal-reward.service.ts` |
+| Воркспейсы | `/workspaces` | `workspace/*`, reorder `sortOrder` |
+| Доска | `/workspaces/:ws/boards/:board` | `card`, `list`, `board` |
+| Персонаж | `/profile/character` | `character`, `gamification/quest`, `chest` |
+| Сообщения | `/messages` | `social/*` |
+| Рейд | UI на профиле / пати | `party/*` |
+
+Rail: вкладка **«Привычки»** → `/personal` (между «Доски» и «Персонаж»). Полная таблица — [gamification-roadmap.md § Разделы](gamification-roadmap.md#разделы-приложения-маршруты).
 
 ---
 
@@ -36,7 +55,15 @@
 |-----------|----------|---------|----------|
 | XP за карточку | 100 | `gamification/config/rewards.ts` → `XP_PER_TASK_COMPLETED` | `lib/xpRewards.ts` |
 | Дневной чекин | 100 | `XP_DAILY_CHECKIN` | `XP_DAILY_CHECKIN` |
-| Лимит XP-тасков / сутки | 5 | `DAILY_TASK_XP_COMPLETIONS_MAX` в `character.service` | `DAILY_TASK_XP_COMPLETIONS_MAX` |
+| Лимит XP активности / сутки | 500 | `DAILY_ACTIVITY_XP_MAX` — карточки + личные + привычки | `DAILY_ACTIVITY_XP_MAX` |
+| XP за личную задачу / ежедневную задачу | 100 | `XP_PER_PERSONAL_TODO`, `XP_PER_PERSONAL_DAILY` | `xpRewards.ts` |
+| XP за привычку «+» | 25 | `XP_PER_HABIT_POSITIVE` | `XP_PER_HABIT_POSITIVE` |
+| Чекин + пороги серии | +100 / бонусы | Вне лимита 500; max ~600/день без milestone | — |
+| HP за «−» привычку / пропуск daily | −5 | `HP_HABIT_NEGATIVE_PENALTY`, `HP_MISSED_DAILY_PENALTY` | — |
+| Штраф «−» привычка / сутки | max 1 / привычку | `PersonalHabitNegativeLog` unique `(userId, habitId, dayKey)` | — |
+| Стрик привычки «+» | +1 каждый клик | `personal-reward.service` | UI 🔥 на карточке |
+| Стрик при «−» | сброс в 0 | `personal-reward.service` | — |
+| Cap HP за пропуски dailies / сутки | −15 | `HP_MISSED_DAILIES_DAILY_CAP` | — |
 | HP за XP-событие | +5, max 100 | `HP_GAIN_PER_XP_EVENT` в `addExperience` | — |
 | Мана max | 100 | `MANA_MAX` в `rewards.ts` | `xpRewards.ts` |
 | Мана за XP-карточку | +5 (только с XP, cap) | `MANA_PER_TASK_COMPLETED` | `MANA_PER_TASK_COMPLETED` |
@@ -66,11 +93,13 @@
 | code | HTTP | Когда |
 |------|------|--------|
 | `XP_EVENT_DAY_KEY_REQUIRED` | 400 | `DAILY_CHECKIN` / `CHECKIN_STREAK` без `dayKey` |
-| `DAILY_TASK_XP_LIMIT` | 409 | 6-я карточка с XP за игровые сутки |
+| `DAILY_ACTIVITY_XP_LIMIT` | 409 | Сумма XP за карточки / todo / daily / привычки > 500 за игровые сутки |
+| `PERSONAL_DAILY_ALREADY_DONE` | 409 | Повтор complete daily за тот же `dayKey` |
+| `HABIT_LOG_NOT_ALLOWED` | 400 | «−» на POSITIVE-only или «+» на NEGATIVE-only |
 | `XP_EVENT_ALREADY_RECORDED` | 409 | Повтор XP за ту же карточку (P2002) |
 | `CHECKIN_ALREADY_DONE` | 409 | Повтор серии за тот же `dayKey` (P2002) |
 
-**Фронт:** те же строки `code` в `frontend/src/shared/api/index.ts` → `API_ERROR_CODE_RU`; для «мягких» XP — `isXpGrantErrorCode` / `isXpTaskSoftNoticeCode`. Новый код → `throw` в сервисе + перевод в shared api + `@ApiResponse`.
+**Фронт:** `isXpGrantErrorCode` в `api.ts` — `DAILY_ACTIVITY_XP_LIMIT` (и legacy `DAILY_TASK_XP_LIMIT` / `DAILY_HABIT_XP_LIMIT`) / `XP_EVENT_ALREADY_RECORDED` / `CHARACTER_NOT_FOUND` не откатывают галочку и **без UI-оповещения** на доске. Новый код → `throw` в сервисе + `@ApiResponse`.
 
 ---
 
@@ -100,7 +129,6 @@ questflow/
 │   │   ├── cron/            ← gamification-cron.service
 │   │   └── */tests/*.spec.ts  ← unit-тесты рядом с фичей
 │   ├── src/card/card.service.ts       ← setCardCompletion → XP + recordCardCompleted
-│   ├── src/comment/comment.service.ts ← recordCommentCreated
 │   └── src/card/card.module.ts        ← GamificationModule
 │   ├── src/social/                    ← friends, DM, canMessage (friends | shared WS)
 │   │   ├── social.service.ts
@@ -111,12 +139,24 @@ questflow/
 │   │   ├── party.controller.ts        ← /party/*
 │   │   ├── config/boss-templates.ts
 │   │   └── lib/boss-damage.ts
+│   ├── src/personal/                  ← solo habits (Phase 6)
+│   │   ├── personal.controller.ts     ← /personal/*
+│   │   ├── personal.service.ts
+│   │   ├── personal-reward.service.ts
+│   │   └── config/habit-presets.ts
+│   ├── src/workspace/
+│   │   ├── workspace.controller.ts    ← incl. reorder-user-workspace
+│   │   ├── workspace.service.ts
+│   │   └── lib/member-sort-order.ts
 ├── frontend/
-│   ├── src/ProfileCharacterPage.tsx   ← персонаж, streak, квесты
-│   ├── src/ProfileCharacterQuestsPanel.tsx
-│   ├── src/lib/quests.ts
-│   ├── src/App.tsx                    ← intro-модалка после регистрации (portal, глобально)
-│   ├── src/CharacterSetupPage.tsx     ← создание персонажа (без авто-редиректа)
+│   ├── src/pages/personal/PersonalPage.tsx
+│   ├── src/pages/personal/usePersonalBoard.ts  ← optimistic complete/log
+│   ├── src/pages/workspaces/WorkspacesPage.tsx ← DnD порядка WS
+│   ├── src/pages/profile-character/ProfileCharacterPage.tsx
+│   ├── src/widgets/profile-character-quests/ProfileCharacterQuestsPanel.tsx
+│   ├── src/entities/personal/         ← API + types
+│   ├── src/app/AppRoot.tsx            ← роуты, rail
+│   ├── src/pages/character-setup/CharacterSetupPage.tsx  ← редирект → `/personal` если нет WS
 │   ├── src/GamificationIntroModal.tsx
 │   ├── src/GamificationGuide.tsx       ← полный гайд на профиле
 │   ├── src/CheckinStreakCounter.tsx   ← счётчик серии + анимация roll
@@ -144,7 +184,7 @@ questflow/
 │   ├── src/entities/social/           ← API, useMessagePolling (5 s)
 │   ├── src/widgets/social-friends/    ← FriendsPanel
 │   ├── src/widgets/social-messages/   ← MessagesPanel, ConversationView
-│   └── src/lib/api.ts                 ← isXpGrantErrorCode, isXpTaskSoftNoticeCode
+│   └── src/lib/api.ts                 ← isXpGrantErrorCode
 ```
 
 - `ScheduleModule.forRoot()` в `app.module.ts`; env: `GAME_DAY_TZ` в `backend/.env.example`
@@ -197,6 +237,37 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 
 **Не в v1:** WebSocket, групповые чаты, блокировка, поиск по имени.
 
+### Personal / solo (Phase 6, JWT)
+
+| Method | Path | Назначение |
+|--------|------|------------|
+| GET | `/personal` | Доска: habits + dailies + todos |
+| GET | `/personal/todos/completed?limit=&offset=` | История выполненных задач (пагинация по 10) |
+| POST | `/personal/habits` | Создать (`polarity`: POSITIVE / NEGATIVE / BOTH) |
+| PATCH | `/personal/habits/:id` | Редактировать / архивировать |
+| POST | `/personal/habits/:id/log` | `{ direction: 'positive' \| 'negative' }` → XP/HP |
+| POST | `/personal/habits/reorder` | `{ orderedIds: number[] }` |
+| POST | `/personal/dailies` | Создать ежедневную задачу |
+| POST | `/personal/dailies/:id/complete` | Complete → XP (общий task-like лимит) |
+| POST | `/personal/dailies/reorder` | Сортировка |
+| POST | `/personal/todos` | Создать задачу |
+| PATCH | `/personal/todos/:id` | Обновить / complete / uncomplete |
+| POST | `/personal/todos/reorder` | Сортировка |
+| POST | `/personal/onboarding/apply-presets` | Пресеты при первом входе |
+
+**Поведение привычек:** «+» — `streakCurrent++` всегда; XP (`HABIT_POSITIVE`) — max 1×/привычку/`dayKey`. «−» — `streakCurrent = 0`; HP −5 max 1×/привычку/`dayKey` через `PersonalHabitNegativeLog`.
+
+**UI:** три колонки, оптимистичные обновления (`usePersonalBoard`), история задач (модалка), тип привычки при создании. DnD reorder колонок — backlog.
+
+**Cron:** `processMissedPersonalDailies()` — HP −5 за пропуск, cap −15/сутки. Спека: [solo-habits-roadmap.md](solo-habits-roadmap.md).
+
+### Workspace list (не геймификация, JWT)
+
+| Method | Path | Назначение |
+|--------|------|------------|
+| GET | `/workspace/get-user-workspaces` | Список WS пользователя (`sortOrder` asc) |
+| PATCH | `/workspace/reorder-user-workspace` | `{ memberId, position }` — DnD на `/workspaces` |
+
 ### Party boss (Phase 5.party, JWT)
 
 | Method | Path | Назначение |
@@ -225,12 +296,12 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 3. `xpUserId = card.assigneeId ?? actorUserId`.
 4. `addExperience` → `{ character, rewards }` (`taskXp`, `checkinXp`, `hpGained`, `checkinStreak`, `streakIncreased`); авто `DAILY_CHECKIN` при первом XP за день.
 5. Ответ completion: `{ ok, rewards? }` → `RewardGrantToast` на доске (без кнопки «Отметиться»).
-6. Ошибки XP **не откатывают** `isCompleted` — `isXpGrantErrorCode` / `isXpTaskSoftNoticeCode` в `api.ts`.
+6. Ошибки XP **не откатывают** `isCompleted` — `isXpGrantErrorCode` в `api.ts` (без snackbar/модалки для лимита).
 
 ```typescript
 // Инвариант: без персонажа у user — CHARACTER_NOT_FOUND, карточка уже completed
 // Инвариант: повтор той же карточки — P2002 → XP_EVENT_ALREADY_RECORDED
-// Инвариант: 6-й таск за «сутки» без сброса счётчика — DAILY_TASK_XP_LIMIT
+// Инвариант: XP активности > 500 за «сутки» без сброса — DAILY_ACTIVITY_XP_LIMIT
 ```
 
 ---
@@ -241,7 +312,7 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 2. **Идемпотентность** — unique в Prisma + `ConflictException` с `code`, не silent ignore.
 3. **Транзакция** — XP + связанный прогресс (квест) в одном `prisma.$transaction`.
 4. **Расширять `addExperience`** (или вынести `grantReward`) — не дублировать level-up/HP в card/comment сервисах.
-5. **Ошибки XP** — в `character.service` (`{ code, message }`); фронт для «мягких» XP — `isXpTaskSoftNoticeCode` в `api.ts`.
+5. **Ошибки XP** — в `character.service` (`{ code, message }`); фронт — `isXpGrantErrorCode`, тихий return на доске.
 6. **Миграции** — `npx prisma migrate dev` в `backend/`; клиент: `src/generated/prisma`.
 7. **После изменения чисел** — backend config + `frontend/src/entities/reward/index.ts` (реэкспорт `xpRewards`); пункты гайда — при Phase 4 (до этого достаточно констант в UI).
 
@@ -297,11 +368,13 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 
 | Страница | Роль |
 |----------|------|
-| `ProfileCharacterPage` | Редактирование, streak; **полный гайд** — Phase 4 |
+| `ProfileCharacterPage` | Редактирование, streak, квесты; гайд — Phase 4 |
 | `UserCharacterPage` | Просмотр чужого персонажа |
-| `BoardPage` | XP toast при complete |
+| `BoardPage` | XP toast при complete; DnD карточек и колонок |
+| `PersonalPage` | Solo-доска; toast наград; без счётчика XP в шапке |
+| `WorkspacesPage` | Аккордеон WS; DnD порядка (ручка ⋮⋮) |
 
-Показывать `dailyTaskXpCount` в UI опционально (поле уже в API `Character`). Статус HP=0 «истощён» — опционально, Phase 2+ / polish.
+Показывать `dailyActivityXpEarned` в UI опционально (поле в API `Character`, `/personal` stats). Статус HP=0 «истощён» — опционально, Phase 2+ / polish.
 
 ---
 
@@ -316,7 +389,7 @@ Swagger: `http://localhost:3000/api/docs` → tag `character`.
 7. ~~**2a**~~ — done: квесты, hooks, `GET /character/quests`.
 8. ~~**2b**~~ — done: сундуки, loot, open/inventory/equip, UI на профиле.
 9. ~~**3**~~ — done: пыль, achievements, магазин сундуков.
-10. ~~**4a**~~ — done: полный гайд + `QUEST_MAGE_WOMAN` в луте/БД, валидация квестового образа.
+10. ~~**4a**~~ — done: полный гайд. **2026-06:** `QUEST_MAGE_*` полностью убран (лут, CosmeticItem, инвентарь); enum в БД оставлен для совместимости.
 11. **4b** — E2E + backlog (уведомления, battle pass, …).
 
 После каждой фазы: обновить таблицу «Статус» в **этом файле**, [Known gaps](gamification-roadmap.md#known-gaps-история-phase-1-закрыта) и чеклисты Phase в roadmap.
@@ -377,7 +450,7 @@ cd backend && npx prisma migrate dev
 
 Геймификация **не заменяет** workspace/board/card guards. Закрытие карточки по-прежнему через `CardService` + workspace membership. XP — побочный эффект успешного `setCardCompletion`; отсутствие персонажа у assignee не мешает закрыть карточку (ошибка только на grant XP).
 
-Комментарии дают прогресс квеста `COMMENTS_CREATED`, но не XP. Пыль: `config/dust.ts`, `dust.service.ts`. Дубликат при открытии сундука — `DUST_FOR_DUPLICATE_BY_TIER`. Коды: `CHEST_*`, `COSMETIC_*`, `INSUFFICIENT_DUST` — `API_ERROR_CODE_RU`.
+Пыль: `config/dust.ts`, `dust.service.ts`. Дубликат при открытии сундука — `DUST_FOR_DUPLICATE_BY_TIER`. Коды: `CHEST_*`, `COSMETIC_*`, `INSUFFICIENT_DUST` — `API_ERROR_CODE_RU`.
 
 ---
 

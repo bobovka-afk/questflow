@@ -29,8 +29,8 @@ export function parseSettingsTabFromRoute(route: string): SettingsTab {
   if (route.startsWith('/settings/security')) return 'security';
   if (route.startsWith('/settings/notifications')) return 'notifications';
   if (route.startsWith('/settings/privacy')) return 'privacy';
-  if (route === '/settings' || route.startsWith('/settings/')) return 'security';
-  return 'security';
+  if (route === '/settings' || route.startsWith('/settings/')) return 'account';
+  return 'account';
 }
 
 export function settingsRouteForTab(tab: SettingsTab): string {

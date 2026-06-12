@@ -1,4 +1,4 @@
-import { DAILY_TASK_XP_COMPLETIONS_MAX } from '../config/rewards';
+import { DAILY_ACTIVITY_XP_MAX } from '../config/rewards';
 import { GamificationCronService } from '../cron/gamification-cron.service';
 import { createPrismaMock } from '../../testing/prisma-mock';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -7,7 +7,7 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 
 describe('Gamification regression (Phase 4)', () => {
   it('documents daily XP cap constant', () => {
-    expect(DAILY_TASK_XP_COMPLETIONS_MAX).toBe(5);
+    expect(DAILY_ACTIVITY_XP_MAX).toBe(500);
   });
 
   describe('cron reset', () => {
@@ -21,8 +21,8 @@ describe('Gamification regression (Phase 4)', () => {
       );
       await service.resetDailyTaskXpCounts();
       expect(prisma.character!.updateMany).toHaveBeenCalledWith({
-        where: { dailyTaskXpCount: { gt: 0 } },
-        data: { dailyTaskXpCount: 0 },
+        where: { dailyActivityXpEarned: { gt: 0 } },
+        data: { dailyActivityXpEarned: 0 },
       });
     });
   });
