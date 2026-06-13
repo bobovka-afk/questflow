@@ -21,16 +21,16 @@ export class MailService {
 	}
 
 	async sendEmailVerification(to: string, verificationUrl: string) {
-		const subject = 'Подтвердите email';
-		const text = `Перейдите по ссылке для подтверждения email: ${verificationUrl}`;
+		const subject = 'Confirm your email';
+		const text = `Follow this link to verify your email: ${verificationUrl}`;
 		const html = this.getEmailVerificationHtmlTemplate(verificationUrl);
 
 		return this.sendOutgoing(to, subject, text, html);
 	}
 
 	async sendPasswordReset(to: string, resetUrl: string) {
-		const subject = 'Сброс пароля';
-		const text = `Перейдите по ссылке для сброса пароля: ${resetUrl}`;
+		const subject = 'Reset your password';
+		const text = `Follow this link to reset your password: ${resetUrl}`;
 		const html = this.getResetPasswordHtmlTemplate(resetUrl);
 
 		return this.sendOutgoing(to, subject, text, html);
@@ -41,22 +41,22 @@ export class MailService {
 		confirmUrl: string,
 		newEmail: string,
 	) {
-		const subject = 'Подтвердите смену email';
-		const text = `Запрошена смена email на ${newEmail}. Подтвердите со старого адреса: ${confirmUrl}`;
+		const subject = 'Confirm email change';
+		const text = `An email change to ${newEmail} was requested. Confirm from your current address: ${confirmUrl}`;
 		const html = `
-      <p>Запрошена смена адреса на <strong>${this.escapeHtml(newEmail)}</strong>.</p>
-      <p>Если это вы, подтвердите со <a href="${confirmUrl}">старого email</a>.</p>
-      <p>Если нет — проигнорируйте письмо.</p>
+      <p>A change to <strong>${this.escapeHtml(newEmail)}</strong> was requested.</p>
+      <p>If this was you, confirm from your <a href="${confirmUrl}">current email</a>.</p>
+      <p>Otherwise, ignore this message.</p>
     `;
 		return this.sendOutgoing(to, subject, text, html);
 	}
 
 	async sendEmailChangeConfirmNew(to: string, confirmUrl: string) {
-		const subject = 'Подтвердите новый email';
-		const text = `Подтвердите новый адрес: ${confirmUrl}`;
+		const subject = 'Confirm your new email';
+		const text = `Confirm your new address: ${confirmUrl}`;
 		const html = `
-      <p>Подтвердите новый email: <a href="${confirmUrl}">перейти</a>.</p>
-      <p>Если вы не запрашивали смену, проигнорируйте письмо.</p>
+      <p>Confirm your new email: <a href="${confirmUrl}">continue</a>.</p>
+      <p>If you did not request this change, ignore this message.</p>
     `;
 		return this.sendOutgoing(to, subject, text, html);
 	}
@@ -66,10 +66,10 @@ export class MailService {
 		inviteUrl: string,
 		workspaceName: string,
 	) {
-		const subject = 'Приглашение в рабочее пространство';
-		const namePlain = workspaceName.trim() || 'рабочее пространство';
+		const subject = 'Workspace invitation';
+		const namePlain = workspaceName.trim() || 'workspace';
 		const nameHtml = this.escapeHtml(namePlain);
-		const text = `Вас пригласили присоединиться к рабочему пространству «${namePlain}».\n\nЧтобы принять приглашение, откройте ссылку в браузере:\n${inviteUrl}`;
+		const text = `You were invited to join the workspace "${namePlain}".\n\nTo accept, open this link in your browser:\n${inviteUrl}`;
 		const html = this.getWorkspaceInviteHtmlTemplate(inviteUrl, nameHtml);
 
 		return this.sendOutgoing(to, subject, text, html);
@@ -108,15 +108,15 @@ export class MailService {
 
 	private getEmailVerificationHtmlTemplate(verificationUrl: string): string {
 		return `
-      <p>Для подтверждения email нажмите <a href="${verificationUrl}">сюда</a>.</p>
-      <p>Если вы не запрашивали это письмо, проигнорируйте его.</p>
+      <p>To verify your email, click <a href="${verificationUrl}">here</a>.</p>
+      <p>If you did not request this email, ignore it.</p>
     `;
 	}
 
 	private getResetPasswordHtmlTemplate(resetUrl: string): string {
 		return `
-      <p>Для сброса пароля нажмите <a href="${resetUrl}">сюда</a>.</p>
-      <p>Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>
+      <p>To reset your password, click <a href="${resetUrl}">here</a>.</p>
+      <p>If you did not request a password reset, ignore this message.</p>
     `;
 	}
 
@@ -129,10 +129,10 @@ export class MailService {
 			'text-decoration:none;border-radius:6px;font:600 14px/1.3 system-ui,-apple-system,sans-serif;';
 		return `
       <p style="margin:0 0 16px;font:16px/1.5 system-ui,-apple-system,sans-serif;color:#111;">
-        Вас пригласили присоединиться к рабочему пространству «${workspaceNameEscaped}».
+        You were invited to join the workspace "${workspaceNameEscaped}".
       </p>
       <p style="margin:0;">
-        <a href="${inviteUrl}" style="${btn}">Принять приглашение</a>
+        <a href="${inviteUrl}" style="${btn}">Accept invitation</a>
       </p>
     `;
 	}

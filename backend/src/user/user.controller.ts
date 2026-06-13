@@ -30,8 +30,8 @@ import { DeleteAccountDto } from './dto/delete-account.dto';
 import { clientIpFromForwarded } from '../user-settings/lib/settings-json';
 import * as fs from 'fs';
 import { diskStorage } from 'multer';
-import * as path from 'path';
-import { randomUUID } from 'crypto';
+import { UPLOAD_DIRS, buildUploadFilename, ensureUploadDir } from '../uploads/local-uploads';
+import { commitUpload, stagingPathForUpload } from '../uploads/upload-storage';
 import { RateLimit } from '../common/decorators/rate-limit.decorator';
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 import {
@@ -120,14 +120,11 @@ export class UserController {
     FileInterceptor('file', {
       storage: diskStorage({
         destination: (_req, _file, cb) => {
-          const dir = path.join(process.cwd(), 'uploads', 'user-avatars');
-          fs.mkdirSync(dir, { recursive: true });
-          cb(null, dir);
+          cb(null, ensureUploadDir(UPLOAD_DIRS.userAvatars));
         },
         filename: (req, _file, cb) => {
-          const userId = (req as any).user?.id ?? 'anon';
-          const name = `${userId}-${Date.now()}-${randomUUID()}.upload`;
-          cb(null, name);
+          const userId = (req as AuthedRequest).user?.id ?? 'anon';
+          cb(null, buildUploadFilename(userId, '.upload'));
         },
       }),
       limits: { fileSize: 5 * 1024 * 1024 }, 
@@ -162,9 +159,9 @@ export class UserController {
       });
     }
 
-    const uploadDir = path.join(process.cwd(), 'uploads', 'user-avatars');
-    const finalFilename = `${req.user.id}-${Date.now()}-${randomUUID()}.png`;
-    const finalPath = path.join(uploadDir, finalFilename);
+    const finalFilename = buildUploadFilename(req.user.id, '.png');
+    const relAvatarPath = `${UPLOAD_DIRS.userAvatars}/${finalFilename}`;
+    const finalPath = stagingPathForUpload(relAvatarPath);
     const tempPath = file.path;
 
     try {
@@ -184,8 +181,7 @@ export class UserController {
       }
     }
 
-    const baseUrl = process.env.SERVER_URL ?? 'http://localhost:3000';
-    const avatarUrl = `${baseUrl}/uploads/user-avatars/${finalFilename}`;
+    const avatarUrl = await commitUpload(relAvatarPath, finalPath, 'image/png');
     return this.userService.updateAvatar(req.user.id, avatarUrl);
   }
 

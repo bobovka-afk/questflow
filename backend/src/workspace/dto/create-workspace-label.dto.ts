@@ -3,7 +3,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ListColorPreset } from '../../generated/prisma/enums';
 
 export class CreateWorkspaceLabelDto {
-  @ApiProperty({ example: 'Баг', minLength: 1, maxLength: 24 })
+  @ApiProperty({ example: 'Bug', minLength: 1, maxLength: 24 })
   @IsString()
   @IsNotEmpty()
   @MinLength(1)

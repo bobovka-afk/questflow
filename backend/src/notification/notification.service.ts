@@ -59,24 +59,24 @@ export class NotificationService {
     const p = payload as Record<string, unknown>;
     if (type === UserNotificationType.CARD_ASSIGNED) {
       return {
-        title: 'Назначение',
-        body: `Вас назначили на «${String(p.title ?? 'карточку')}»`,
+        title: 'Assignment',
+        body: `You were assigned to "${String(p.title ?? 'a card')}"`,
       };
     }
     if (type === UserNotificationType.MENTION) {
       return {
-        title: 'Упоминание',
-        body: `${String(p.authorName ?? 'Кто-то')} упомянул(а) вас`,
+        title: 'Mention',
+        body: `${String(p.authorName ?? 'Someone')} mentioned you`,
       };
     }
     if (type === UserNotificationType.FRIEND_REQUEST) {
       return {
-        title: 'Друзья',
-        body: `Заявка от ${String(p.requesterName ?? 'пользователя')}`,
+        title: 'Friends',
+        body: `Friend request from ${String(p.requesterName ?? 'a user')}`,
         url: '/profile/character',
       };
     }
-    return { title: 'Questflow', body: 'Новое уведомление' };
+    return { title: 'Questflow', body: 'New notification' };
   }
 
   private async loadInAppSettings(userId: number) {

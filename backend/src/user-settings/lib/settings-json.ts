@@ -82,11 +82,11 @@ export function parseSecuritySettings(raw: unknown): SecuritySettingsJson {
 
 export function deviceLabelFromUserAgent(userAgent: string | undefined): string | undefined {
   if (!userAgent) return undefined;
-  if (/iPhone|iPad|Android|Mobile/i.test(userAgent)) return 'Мобильное устройство';
+  if (/iPhone|iPad|Android|Mobile/i.test(userAgent)) return 'Mobile device';
   if (/Windows/i.test(userAgent)) return 'Windows';
   if (/Mac OS X|Macintosh/i.test(userAgent)) return 'macOS';
   if (/Linux/i.test(userAgent)) return 'Linux';
-  return 'Браузер';
+  return 'Browser';
 }
 
 export function clientIpFromForwarded(forwarded: string | string[] | undefined): string | undefined {

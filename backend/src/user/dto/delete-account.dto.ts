@@ -10,8 +10,8 @@ export class DeleteAccountDto {
   password?: string;
 
   @ApiPropertyOptional({
-    description: 'Type УДАЛИТЬ to confirm when account has no password',
-    example: 'УДАЛИТЬ',
+    description: 'Type DELETE to confirm when account has no password',
+    example: 'DELETE',
   })
   @IsOptional()
   @IsString()

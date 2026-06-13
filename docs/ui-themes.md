@@ -2,8 +2,6 @@
 
 Спецификация палитр и правил разблокировки для редизайна shell в стиле SNES pixel.
 
-**Превью (локально):** `docs/design-previews/pixel-snes-themes.html`
-
 **Связанные документы:**
 
 - [gamification-agent-context.md](gamification-agent-context.md) — сундуки, loot table, косметика
@@ -214,7 +212,7 @@
 | accent | `#4078a8` |
 | tile1/2/3 | `#6888a0` / `#7898b0` / `#98b0c0` |
 
-Полные значения вторичных токенов (rail-edge, primary, inset) — в `docs/design-previews/pixel-snes-themes.html` → объект `THEMES`.
+Полные значения вторичных токенов (rail-edge, primary, inset) — в `frontend/src/app/styles/pixel-shell.css` и `theme-overrides.css`.
 
 ---
 
@@ -222,4 +220,4 @@
 
 1. ~~**Сейчас:** внедрить layout + default dark/light в `tokens.css` / shell (без сундуков).~~ **Done (v1):** `pixel-shell.css`, `AppShell`, Royal + Parchment, rail: workspaces / character / notifications / messages / settings / theme / logout.
 2. **Потом:** `APP_THEME` в Prisma, seed, loot table, UI инвентаря и settings.
-3. **После стабилизации UI:** удалить `docs/design-previews/` или перенести swatch-иконки в `backend/uploads/ui/themes/`.
+3. **Потом:** swatch-иконки тем в `backend/uploads/ui/themes/` (если понадобятся в инвентаре).

@@ -17,19 +17,19 @@ export const DUST_CHEST_SHOP_OPTIONS: DustChestShopOption[] = [
   {
     tier: ChestTier.COMMON,
     cost: 50,
-    titleRu: 'Обычный сундук',
-    descriptionRu: 'Рамка, значок или фон',
+    titleRu: 'Common chest',
+    descriptionRu: 'Frame, badge, or background',
   },
   {
     tier: ChestTier.RARE,
     cost: 120,
-    titleRu: 'Редкий сундук',
-    descriptionRu: 'Улучшенная косметика или образ',
+    titleRu: 'Rare chest',
+    descriptionRu: 'Improved cosmetic or avatar',
   },
   {
     tier: ChestTier.EPIC,
     cost: 250,
-    titleRu: 'Эпический сундук',
-    descriptionRu: 'Эксклюзивная награда',
+    titleRu: 'Epic chest',
+    descriptionRu: 'Exclusive reward',
   },
 ];

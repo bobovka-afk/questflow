@@ -11,16 +11,15 @@ import { Logger, PinoLogger } from 'nestjs-pino';
 import { requestIdMiddleware } from './common/middleware/request-id.middleware';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { HttpLoggingInterceptor } from './common/interceptors/http-logging.interceptor';
+import { resolveRedisMicroserviceOptions } from './redis/redis-connection';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const logger = app.get(Logger);
   const pinoLogger = await app.resolve(PinoLogger);
-  app.useLogger(app.get(Logger));
+  app.useLogger(logger);
   app.useGlobalFilters(new HttpExceptionFilter(pinoLogger));
   app.useGlobalInterceptors(new HttpLoggingInterceptor(pinoLogger));
-
-  const redisHost = process.env.REDIS_HOST ?? 'localhost';
-  const redisPort = Number(process.env.REDIS_PORT ?? 6379);
 
   app.enableCors({
     origin: true,
@@ -31,7 +30,43 @@ async function bootstrap() {
 
 
   const uploadsPath = path.join(process.cwd(), 'uploads');
-  app.use('/uploads', express.static(uploadsPath));
+  const staticUploadDirs = [
+    'ui',
+    'chests',
+    'character-avatars',
+    'cosmetics',
+  ] as const;
+  const volatileUploadDirs = ['user-avatars', 'card-attachments'] as const;
+
+  for (const dir of staticUploadDirs) {
+    app.use(
+      `/uploads/${dir}`,
+      express.static(path.join(uploadsPath, dir), {
+        maxAge: '30d',
+        immutable: true,
+        etag: true,
+        lastModified: true,
+      }),
+    );
+  }
+  for (const dir of volatileUploadDirs) {
+    app.use(
+      `/uploads/${dir}`,
+      express.static(path.join(uploadsPath, dir), {
+        maxAge: '1h',
+        etag: true,
+        lastModified: true,
+      }),
+    );
+  }
+  app.use(
+    '/uploads',
+    express.static(uploadsPath, {
+      maxAge: '1h',
+      etag: true,
+      lastModified: true,
+    }),
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -48,11 +83,11 @@ async function bootstrap() {
               child.constraints ? Object.values(child.constraints) : [],
             );
           }
-          return [`Лишнее поле: ${error.property}`];
+          return [`Unexpected field: ${error.property}`];
         });
         const message =
           messages.length <= 1
-            ? (messages[0] ?? 'Ошибка проверки данных')
+            ? (messages[0] ?? 'Validation failed')
             : messages;
         return new BadRequestException({
           code: 'VALIDATION_ERROR',
@@ -73,20 +108,19 @@ async function bootstrap() {
 
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.REDIS,
-    options: {
-      host: redisHost,
-      port: redisPort,
-    },
+    options: resolveRedisMicroserviceOptions(),
   });
 
   try {
     await app.startAllMicroservices();
   } catch (e) {
-    // Allow HTTP API to work even if Redis is down in local dev.
-    // eslint-disable-next-line no-console
-    console.warn('[bootstrap] Redis microservice failed to start. Continuing without it.', e);
+    logger.warn(
+      { err: e },
+      'Redis microservice failed to start. Continuing without it.',
+    );
   }
-  await app.listen(3000);
+  const port = Number(process.env.PORT ?? 3000);
+  await app.listen(port, '0.0.0.0');
 }
 
 bootstrap();

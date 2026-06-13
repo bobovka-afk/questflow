@@ -100,7 +100,7 @@ describe('settings-json', () => {
   describe('deviceLabelFromUserAgent', () => {
     it('detects common platforms', () => {
       expect(deviceLabelFromUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)')).toBe(
-        'Мобильное устройство',
+        'Mobile device',
       );
       expect(deviceLabelFromUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe('Windows');
       expect(deviceLabelFromUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')).toBe(

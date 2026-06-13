@@ -69,6 +69,8 @@ backend/src/generated/prisma
 # Local / optional docs (not versioned)
 GAMIFICATION_ROADMAP.md
 
-# User profile avatar uploads (runtime); presets live in uploads/character-avatars/
+# Runtime uploads (not versioned); static presets live under uploads/ui/, character-avatars/, etc.
 backend/uploads/user-avatars/*
 !backend/uploads/user-avatars/.gitkeep
+backend/uploads/card-attachments/*
+!backend/uploads/card-attachments/.gitkeep

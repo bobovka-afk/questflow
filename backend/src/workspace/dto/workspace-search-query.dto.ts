@@ -3,7 +3,7 @@ import { IsInt, IsOptional, IsString, MaxLength, MinLength } from 'class-validat
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class WorkspaceSearchQueryDto {
-  @ApiProperty({ example: 'баг авторизации', minLength: 2, maxLength: 100 })
+  @ApiProperty({ example: 'auth bug', minLength: 2, maxLength: 100 })
   @IsString()
   @MinLength(2)
   @MaxLength(100)

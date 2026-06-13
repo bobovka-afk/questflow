@@ -15,9 +15,8 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import * as fs from 'fs';
-import * as path from 'path';
 import { randomUUID } from 'crypto';
+import { UPLOAD_DIRS, ensureUploadDir } from '../uploads/local-uploads';
 import type { File as MulterFile } from 'multer';
 import { CardService } from './card.service';
 import { JwtAuthGuard } from '../auth/guards/auth.guard';
@@ -165,12 +164,11 @@ export class CardController {
     FileInterceptor('file', {
       storage: diskStorage({
         destination: (_req, _file, cb) => {
-          const dir = path.join(process.cwd(), 'uploads', 'card-attachments', '_tmp');
-          fs.mkdirSync(dir, { recursive: true });
-          cb(null, dir);
+          cb(null, ensureUploadDir(UPLOAD_DIRS.cardAttachments));
         },
-        filename: (_req, _file, cb) => {
-          cb(null, `${Date.now()}-${randomUUID()}.upload`);
+        filename: (req, _file, cb) => {
+          const cardId = (req as { params?: { cardId?: string } }).params?.cardId ?? 'tmp';
+          cb(null, `${cardId}-${Date.now()}-${randomUUID()}.upload`);
         },
       }),
       limits: { fileSize: CARD_ATTACHMENT_MAX_BYTES },

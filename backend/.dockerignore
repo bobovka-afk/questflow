@@ -8,10 +8,9 @@ dist
 .env.*
 !.env.example
 
-# User uploads (mounted at runtime, large / not for image)
-uploads
+uploads/user-avatars
+uploads/card-attachments
 
-# Compose & infra (not part of app image)
 docker-compose.yml
 monitoring
 
@@ -29,7 +28,6 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# Tests & lint (not copied by Dockerfile, shrinks context)
 coverage
 .nyc_output
 **/*.spec.ts

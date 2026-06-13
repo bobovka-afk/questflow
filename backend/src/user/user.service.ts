@@ -290,10 +290,10 @@ export class UserService {
           message: 'Current password is invalid',
         });
       }
-    } else if (confirmPhrase?.trim() !== 'УДАЛИТЬ') {
+    } else if (confirmPhrase?.trim() !== 'DELETE') {
       throw new BadRequestException({
         code: 'CONFIRM_PHRASE_REQUIRED',
-        message: 'Type УДАЛИТЬ to confirm account deletion',
+        message: 'Type DELETE to confirm account deletion',
       });
     }
 

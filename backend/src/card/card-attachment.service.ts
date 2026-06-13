@@ -5,11 +5,17 @@ import {
 } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import { randomUUID } from 'crypto';
 import type { File as MulterFile } from 'multer';
 import sharp from 'sharp';
 import { CardAttachmentKind } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
+import { UPLOAD_DIRS, buildUploadFilename } from '../uploads/local-uploads';
+import {
+  commitUpload,
+  deleteUploadFile,
+  resolvePublicUploadUrl,
+  stagingPathForUpload,
+} from '../uploads/upload-storage';
 import {
   CARD_ATTACHMENT_MAX_BYTES,
   CARD_ATTACHMENTS_MAX_PER_CARD,
@@ -23,14 +29,6 @@ import { isVideoLinkUrl, linkDisplayName } from './lib/card-attachment-url';
 @Injectable()
 export class CardAttachmentService {
   constructor(private readonly prisma: PrismaService) {}
-
-  private serverBaseUrl(): string {
-    return process.env.SERVER_URL ?? 'http://localhost:3000';
-  }
-
-  private uploadsUrl(relPath: string): string {
-    return `${this.serverBaseUrl()}/uploads/${relPath.replace(/\\/g, '/')}`;
-  }
 
   async assertCardInWorkspace(cardId: number, workspaceId: number) {
     const card = await this.prisma.card.findUnique({
@@ -116,20 +114,13 @@ export class CardAttachmentService {
 
     const ext = path.extname(file.originalname) || '';
     const safeExt = ext.slice(0, 12).replace(/[^a-zA-Z0-9.]/g, '') || '.bin';
-    const baseName = randomUUID();
-    const relDir = path.join(
-      'card-attachments',
-      String(workspaceId),
-      String(cardId),
-    );
-    const absDir = path.join(process.cwd(), 'uploads', relDir);
-    fs.mkdirSync(absDir, { recursive: true });
 
-    const storageFile = `${baseName}${safeExt}`;
-    const storagePath = path.join(relDir, storageFile);
-    const absStorage = path.join(process.cwd(), 'uploads', storagePath);
+    const storageFile = buildUploadFilename(cardId, safeExt);
+    const relStoragePath = `${UPLOAD_DIRS.cardAttachments}/${storageFile}`;
+    const absStorage = stagingPathForUpload(relStoragePath);
 
-    let previewPath: string | null = null;
+    let relPreviewPath: string | null = null;
+    let absPreview: string | null = null;
     const tempPath = file.path;
     if (!tempPath) {
       throw new BadRequestException({
@@ -140,9 +131,9 @@ export class CardAttachmentService {
 
     try {
       if (isImageMime(mimeType)) {
-        const previewFile = `${baseName}-preview.webp`;
-        previewPath = path.join(relDir, previewFile);
-        const absPreview = path.join(process.cwd(), 'uploads', previewPath);
+        const previewFile = buildUploadFilename(`${cardId}-preview`, '.webp');
+        relPreviewPath = `${UPLOAD_DIRS.cardAttachments}/${previewFile}`;
+        absPreview = stagingPathForUpload(relPreviewPath);
         try {
           await sharp(tempPath)
             .rotate()
@@ -155,7 +146,7 @@ export class CardAttachmentService {
             .toFile(absStorage);
         } catch {
           fs.copyFileSync(tempPath, absStorage);
-          previewPath = null;
+          relPreviewPath = null;
         }
       } else {
         fs.copyFileSync(tempPath, absStorage);
@@ -163,6 +154,12 @@ export class CardAttachmentService {
     } finally {
       fs.rmSync(tempPath, { force: true });
     }
+
+    const storageUrl = await commitUpload(relStoragePath, absStorage, mimeType);
+    const previewUrl =
+      relPreviewPath != null && absPreview != null
+        ? await commitUpload(relPreviewPath, absPreview, 'image/webp')
+        : null;
 
     const card = await this.prisma.card.findUnique({
       where: { id: cardId },
@@ -177,8 +174,8 @@ export class CardAttachmentService {
         fileName: file.originalname.slice(0, 200) || storageFile,
         mimeType,
         sizeBytes: file.size,
-        storagePath: storagePath.replace(/\\/g, '/'),
-        previewPath: previewPath?.replace(/\\/g, '/') ?? null,
+        storagePath: storageUrl,
+        previewPath: previewUrl,
       },
       include: { uploader: { select: { id: true, name: true, avatarPath: true } } },
     });
@@ -244,14 +241,8 @@ export class CardAttachmentService {
 
     await this.prisma.cardAttachment.delete({ where: { id: attachmentId } });
 
-    if (row.storagePath) {
-      const abs = path.join(process.cwd(), 'uploads', row.storagePath);
-      fs.rmSync(abs, { force: true });
-    }
-    if (row.previewPath) {
-      const abs = path.join(process.cwd(), 'uploads', row.previewPath);
-      fs.rmSync(abs, { force: true });
-    }
+    await deleteUploadFile(row.storagePath);
+    await deleteUploadFile(row.previewPath);
   }
 
   async setCover(
@@ -290,9 +281,10 @@ export class CardAttachmentService {
     } | null,
   ): string | null {
     if (!cover || !isImageMime(cover.mimeType)) return null;
-    if (cover.previewPath) return this.uploadsUrl(cover.previewPath);
-    if (cover.storagePath) return this.uploadsUrl(cover.storagePath);
-    return null;
+    return (
+      resolvePublicUploadUrl(cover.previewPath) ??
+      resolvePublicUploadUrl(cover.storagePath)
+    );
   }
 
   private toView(
@@ -317,10 +309,9 @@ export class CardAttachmentService {
     let url = external;
     let previewUrl: string | null = null;
     if (!isLink && row.storagePath) {
-      url = this.uploadsUrl(row.storagePath);
-      if (row.previewPath) {
-        previewUrl = this.uploadsUrl(row.previewPath);
-      } else if (isImageMime(row.mimeType)) {
+      url = resolvePublicUploadUrl(row.storagePath) ?? url;
+      previewUrl = resolvePublicUploadUrl(row.previewPath);
+      if (!previewUrl && isImageMime(row.mimeType)) {
         previewUrl = url;
       }
     }

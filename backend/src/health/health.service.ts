@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
+import { resolveRedisOptions } from '../redis/redis-connection';
 import type { HealthLiveness, HealthReadiness } from './interface';
 import type { ReadinessProbe } from './type';
 
@@ -48,16 +49,22 @@ export class HealthService {
   }
 
   private async checkRedis(): Promise<ReadinessProbe> {
-    const host = this.configService.get<string>('REDIS_HOST') ?? 'localhost';
-    const port = Number(this.configService.get<string>('REDIS_PORT') ?? 6379);
-
-    const redis = new Redis({
-      host,
-      port,
+    const probeOptions = {
       lazyConnect: true,
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,
+    } as const;
+    const connection = resolveRedisOptions({
+      REDIS_URL: this.configService.get<string>('REDIS_URL'),
+      REDIS_HOST: this.configService.get<string>('REDIS_HOST'),
+      REDIS_PORT: this.configService.get<string>('REDIS_PORT'),
+      REDIS_PASSWORD: this.configService.get<string>('REDIS_PASSWORD'),
+      REDISPASSWORD: this.configService.get<string>('REDISPASSWORD'),
     });
+    const redis =
+      typeof connection === 'string'
+        ? new Redis(connection, probeOptions)
+        : new Redis({ ...connection, ...probeOptions });
 
     try {
       await redis.connect();

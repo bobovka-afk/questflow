@@ -6,8 +6,8 @@ export interface XpGrantRewards {
   checkinStreak: number;
   previousCheckinStreak: number;
   streakIncreased: boolean;
-  /** XP за впервые достигнутые пороги серии 7 / 14 / 30. */
+  /** XP for newly reached streak milestones at 7 / 14 / 30 days. */
   streakMilestoneXp: number;
-  /** Какие пороги серии засчитаны в этой транзакции (для UI / будущих ачивок). */
+  /** Streak milestones credited in this transaction (for UI / future achievements). */
   streakMilestonesReached: number[];
 }

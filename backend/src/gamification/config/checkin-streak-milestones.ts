@@ -3,7 +3,7 @@ export type CheckinStreakMilestoneConfig = {
   readonly xp: number;
 };
 
-/** Пороги серии для CHECKIN_STREAK (позже — ачивки / квесты). */
+/** Streak thresholds for CHECKIN_STREAK (future achievements / quests). */
 export const CHECKIN_STREAK_MILESTONES: readonly CheckinStreakMilestoneConfig[] = [
   { days: 7, xp: 200 },
   { days: 14, xp: 400 },

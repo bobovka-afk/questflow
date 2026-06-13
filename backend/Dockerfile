@@ -3,7 +3,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -
 
 WORKDIR /app
 
-ARG DATABASE_URL
+ARG DATABASE_URL=postgresql://build:build@localhost:5432/build
 ENV DATABASE_URL=$DATABASE_URL
 
 COPY package*.json ./
@@ -31,6 +31,7 @@ COPY --from=builder /app/src/generated/prisma ./src/generated/prisma
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
 COPY package.json ./
+COPY uploads ./uploads
 
 CMD ["sh", "-c", "until npx prisma migrate deploy; do echo 'Waiting for database...'; sleep 2; done && npm run start:prod"]
 

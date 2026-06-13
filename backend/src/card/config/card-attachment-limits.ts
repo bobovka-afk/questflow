@@ -55,7 +55,7 @@ const MIME_BY_EXT: Record<string, string> = {
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 };
 
-/** Браузер часто шлёт application/octet-stream — уточняем по расширению. */
+/** Browsers often send application/octet-stream — infer MIME type from extension. */
 export function resolveCardAttachmentMime(
   mimetype: string | undefined,
   originalname: string,

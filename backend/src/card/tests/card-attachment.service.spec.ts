@@ -163,8 +163,15 @@ describe('CardAttachmentService', () => {
 
     expect(view.kind).toBe('FILE');
     expect(view.previewUrl).toBeNull();
-    expect(view.url).toContain('uuid.pdf');
-    expect(prisma.cardAttachment!.create).toHaveBeenCalled();
+    expect(view.url).toContain('/uploads/card-attachments/');
+    expect(view.url).toContain('.pdf');
+    expect(prisma.cardAttachment!.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          storagePath: expect.stringContaining('http://test.local/uploads/card-attachments/'),
+        }),
+      }),
+    );
   });
 
   it('adds external link with video flag', async () => {

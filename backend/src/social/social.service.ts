@@ -165,7 +165,7 @@ export class SocialService {
         {
           requestId: row.id,
           requesterId,
-          requesterName: row.requester?.name ?? 'Пользователь',
+          requesterName: row.requester?.name ?? 'User',
         },
       );
     }
