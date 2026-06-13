@@ -190,10 +190,10 @@ function EmailVerificationRequestPage() {
 function EmailVerifiedStatusPage() {
   const status = getQueryParam('status') || 'invalid';
 
-  let title = 'Invalid';
-  if (status === 'success') title = 'Success';
-  else if (status === 'expired') title = 'Expired';
-  else if (status === 'missing') title = 'Missing token';
+  let title = 'Недействительно';
+  if (status === 'success') title = 'Успешно';
+  else if (status === 'expired') title = 'Срок истёк';
+  else if (status === 'missing') title = 'Токен отсутствует';
 
   return (
     <div className="trello-app-shell">

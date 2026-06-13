@@ -98,6 +98,10 @@
 
   --qf-card-complete-green: #61bd4f;
   --qf-card-complete-check: #ffffff;
+
+  /** Kanban card hover outline — inset ring (not clipped by list scroll overflow) */
+  --qf-kanban-card-hover-border: #0c66e4;
+  --qf-kanban-card-hover-shadow: inset 0 0 0 2px var(--qf-kanban-card-hover-border);
 }
 
 html.theme-dark {
@@ -144,4 +148,7 @@ html.theme-dark {
 
   --qf-card-complete-green: #4bce97;
   --qf-card-complete-check: #ffffff;
+
+  --qf-kanban-card-hover-border: #579dff;
+  --qf-kanban-card-hover-shadow: inset 0 0 0 2px var(--qf-kanban-card-hover-border);
 }

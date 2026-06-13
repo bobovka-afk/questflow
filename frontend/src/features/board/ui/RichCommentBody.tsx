@@ -10,9 +10,14 @@ type Props = {
   body: string;
   members: MemberLike[];
   className?: string;
+  onImageClick?: (src: string, alt: string) => void;
 };
 
-function renderPart(part: RichBodyPart, key: number) {
+function renderPart(
+  part: RichBodyPart,
+  key: number,
+  onImageClick?: (src: string, alt: string) => void,
+) {
   switch (part.type) {
     case 'text':
       return <span key={key}>{part.value}</span>;
@@ -33,6 +38,19 @@ function renderPart(part: RichBodyPart, key: number) {
         </a>
       );
     case 'image':
+      if (onImageClick) {
+        return (
+          <button
+            key={key}
+            type="button"
+            className="trello-rich-image-wrap"
+            aria-label={part.alt ? `Открыть изображение ${part.alt}` : 'Открыть изображение'}
+            onClick={() => onImageClick(part.src, part.alt)}
+          >
+            <img className="trello-rich-image" src={part.src} alt={part.alt} />
+          </button>
+        );
+      }
       return (
         <a
           key={key}
@@ -55,7 +73,7 @@ function renderPart(part: RichBodyPart, key: number) {
   }
 }
 
-export function RichCommentBody({ body, members, className }: Props) {
+export function RichCommentBody({ body, members, className, onImageClick }: Props) {
   const parts = useMemo(() => {
     const map = buildMentionNameMap(members);
     const segments = parseCommentBodySegments(body, map);
@@ -64,7 +82,7 @@ export function RichCommentBody({ body, members, className }: Props) {
 
   return (
     <div className={className ?? 'trello-card-comment-text trello-rich-comment-body'}>
-      {parts.map((p, i) => renderPart(p, i))}
+      {parts.map((p, i) => renderPart(p, i, onImageClick))}
     </div>
   );
 }

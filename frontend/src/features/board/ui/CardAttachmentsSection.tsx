@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatApiError } from '@shared/api';
 import { ConfirmModal } from '@shared/ui/confirm-modal/ConfirmModal';
+import { IconAttach } from '@shared/ui/icons/IconAttach';
+import { ImageLightbox, type ImageLightboxItem } from '@shared/ui/image-lightbox/ImageLightbox';
 import {
   addCardAttachmentLink,
   deleteCardAttachment,
@@ -23,6 +25,7 @@ type Props = {
   variant?: 'default' | 'modal';
   formatRelativeAgo?: (iso: string, nowMs: number) => string;
   nowMs?: number;
+  onImagePreview?: (src: string, alt: string, gallery: ImageLightboxItem[]) => void;
 };
 
 export function CardAttachmentsSection({
@@ -36,6 +39,7 @@ export function CardAttachmentsSection({
   variant = 'default',
   formatRelativeAgo,
   nowMs = Date.now(),
+  onImagePreview,
 }: Props) {
   const [rows, setRows] = useState<CardAttachmentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,8 +48,35 @@ export function CardAttachmentsSection({
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<CardAttachmentRow | null>(null);
+  const [localLightbox, setLocalLightbox] = useState<{ items: ImageLightboxItem[]; index: number } | null>(
+    null,
+  );
   const fileRef = useRef<HTMLInputElement>(null);
   const isModal = variant === 'modal';
+
+  const imageGallery = useMemo(
+    () =>
+      rows
+        .filter((r) => r.isImage)
+        .map((r) => ({
+          src: r.url,
+          alt: r.fileName,
+          title: r.fileName,
+        })),
+    [rows],
+  );
+
+  function openImagePreview(src: string, alt: string) {
+    if (onImagePreview) {
+      onImagePreview(src, alt, imageGallery);
+      return;
+    }
+    const index = imageGallery.findIndex((item) => item.src === src);
+    setLocalLightbox({
+      items: imageGallery.length > 0 ? imageGallery : [{ src, alt, title: alt }],
+      index: index >= 0 ? index : 0,
+    });
+  }
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -168,9 +199,7 @@ export function CardAttachmentsSection({
 
       <div className="trello-card-attachments-head">
         <span className="trello-card-attachments-icon" aria-hidden>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z" />
-          </svg>
+          <IconAttach size={16} />
         </span>
         <h3 className="trello-card-attachments-title">Вложения</h3>
         {isModal ? (
@@ -219,14 +248,14 @@ export function CardAttachmentsSection({
                   }
                 >
                   {a.isImage && a.previewUrl ? (
-                    <a
-                      href={a.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
                       className="trello-card-attachments-file-thumb"
+                      aria-label={`Открыть ${a.fileName}`}
+                      onClick={() => openImagePreview(a.url, a.fileName)}
                     >
                       <img src={a.previewUrl} alt="" />
-                    </a>
+                    </button>
                   ) : (
                     <span
                       className={`trello-card-attachments-file-icon${a.isVideoLink ? ' trello-card-attachments-file-icon--video' : ''}`}
@@ -340,6 +369,15 @@ export function CardAttachmentsSection({
         onConfirm={() => void confirmDeleteAttachment()}
         onCancel={() => !busy && setDeleteTarget(null)}
       />
+
+      {localLightbox ? (
+        <ImageLightbox
+          items={localLightbox.items}
+          index={localLightbox.index}
+          onClose={() => setLocalLightbox(null)}
+          onIndexChange={(index) => setLocalLightbox((prev) => (prev ? { ...prev, index } : prev))}
+        />
+      ) : null}
     </section>
   );
 }

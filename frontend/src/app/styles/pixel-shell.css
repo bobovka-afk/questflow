@@ -2719,8 +2719,7 @@ html.px-ui .trello-modal.trello-modal-card-detail--trello .trello-input,
 html.px-ui .trello-modal.trello-modal-card-detail--trello select.trello-input,
 html.px-ui .trello-modal.trello-modal-card-detail--trello .trello-textarea,
 html.px-ui .trello-modal.trello-modal-card-detail--trello .trello-card-detail-title-input,
-html.px-ui .trello-modal.trello-modal-card-detail--trello .trello-card-detail-desc,
-html.px-ui .trello-modal.trello-modal-card-detail--trello .trello-card-detail-comment-input {
+html.px-ui .trello-modal.trello-modal-card-detail--trello .trello-card-detail-desc {
   font-family: var(--px-font);
   font-size: 20px;
   border-radius: var(--qf-radius-sm);
@@ -2731,6 +2730,19 @@ html.px-ui .trello-modal.trello-modal-card-detail--trello .trello-card-detail-co
   color: var(--px-text);
   box-shadow: var(--qf-shadow-control);
 
+}
+
+html.px-ui .trello-modal.trello-modal-card-detail--trello .trello-card-detail-comment-input {
+  font-family: var(--px-font);
+  font-size: var(--qf-btn-font-md);
+  line-height: 1.4;
+  padding: 8px 10px;
+  min-height: 32px;
+  border-radius: var(--qf-radius-sm);
+  border: 1px solid var(--qf-control-border);
+  background: var(--px-bg2);
+  color: var(--px-text);
+  box-shadow: var(--qf-shadow-control);
 }
 
 html.px-ui .trello-modal.trello-modal-card-detail--trello .trello-input:focus,
@@ -3119,7 +3131,7 @@ html.px-ui .trello-list-wrap:has(.trello-list-menu) {
   align-items: center;
   justify-content: center;
   min-height: 36px;
-  padding: 0 36px;
+  padding: 0 58px;
   gap: 8px;
 }
 
@@ -3161,10 +3173,8 @@ html.px-ui .trello-list-wrap:has(.trello-list-menu) {
 }
 
 .px-shell .trello-list-menu-wrap {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  position: static;
+  transform: none;
   z-index: 2;
 }
 
@@ -3204,6 +3214,17 @@ html.px-ui .trello-list-wrap:has(.trello-list-menu) {
 .px-shell .trello-board-viewport .trello-cards-droppable {
   width: 100%;
   min-width: 0;
+  /* Room for hover box-shadow ring (2px) so sides aren't clipped by list scroll */
+  padding-inline: 3px;
+  box-sizing: border-box;
+}
+
+.px-shell .trello-board-viewport .trello-cards-droppable [data-rbd-droppable-placeholder] {
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  border-radius: var(--qf-radius-sm);
+  background: color-mix(in srgb, var(--qf-kanban-card-hover-border) 12%, var(--px-bg2));
+  border: 2px dashed color-mix(in srgb, var(--qf-kanban-card-hover-border) 50%, transparent);
 }
 
 html.px-ui .px-shell .trello-list-add-card-footer {
@@ -3232,11 +3253,27 @@ html.px-ui .px-shell .trello-list-add-card-footer {
   font-family: var(--px-font);
   font-size: 15px;
   line-height: 1.45;
+  outline: none;
+}
+
+.px-shell .trello-board-viewport .trello-card:not(.trello-card--dragging):hover {
+  outline: none;
+}
+
+.px-shell .trello-board-viewport .trello-card--has-cover:not(.trello-card--dragging):hover .trello-card-inner {
+  border-color: var(--qf-kanban-card-hover-border);
+  box-shadow: var(--qf-kanban-card-hover-shadow);
+}
+
+.px-shell .trello-board-viewport .trello-card--has-cover:not(.trello-card--dragging):hover .trello-card-title--in-list {
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .px-shell .trello-board-viewport .trello-card--dragging {
   box-shadow: 4px 4px 0 #000;
   outline: none;
+  z-index: 11000 !important;
 }
 
 .px-shell .trello-board-viewport .trello-card--dragging .trello-card-title--in-list {
@@ -3262,8 +3299,61 @@ html.px-ui .px-shell .trello-list-add-card-footer {
   background: var(--px-bg2);
 }
 
-.px-shell .trello-card-body-row {
-  align-items: center;
+.px-shell .trello-card-title-head {
+  align-items: flex-start;
+}
+
+.px-shell .trello-board-viewport .trello-card-title--in-list {
+  --trello-card-complete-gutter: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  background: var(--px-bg2);
+  border: 2px solid var(--px-ghost-border);
+  border-radius: var(--qf-radius-sm);
+
+  box-sizing: border-box;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.px-shell .trello-board-viewport .trello-card:not(.trello-card--dragging):hover .trello-card-title--in-list {
+  border-color: var(--qf-kanban-card-hover-border);
+  box-shadow: var(--qf-kanban-card-hover-shadow);
+}
+
+.px-shell .trello-board-viewport .trello-card--full-color-cover {
+  border-radius: var(--qf-radius-sm);
+  transition: box-shadow 0.12s ease;
+}
+
+.px-shell .trello-board-viewport .trello-card--full-color-cover:not(.trello-card--dragging):hover {
+  box-shadow: var(--qf-kanban-card-hover-shadow);
+}
+
+.px-shell .trello-board-viewport .trello-card--full-color-cover:not(.trello-card--dragging):hover .trello-card-title--in-list,
+.px-shell .trello-board-viewport .trello-card--full-color-cover:not(.trello-card--dragging):hover .trello-card-inner {
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: none;
+}
+
+.px-shell .trello-board-viewport .trello-card-title-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: block;
+  min-height: 1.45em;
+  padding-right: var(--trello-card-complete-gutter, 26px);
+  transition: padding-right 0.15s ease;
+}
+
+.px-shell .trello-board-viewport .trello-card:hover .trello-card-title-main,
+.px-shell .trello-board-viewport .trello-card--completed .trello-card-title-main {
+  padding-right: 0;
 }
 
 .px-shell .trello-card-title--in-list,
@@ -3276,46 +3366,21 @@ html.px-ui .px-shell .trello-list-add-card-footer {
   letter-spacing: 0.01em;
 }
 
-.px-shell .trello-board-viewport .trello-card-title--in-list {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: flex-start;
-  gap: 6px;
-  width: 100%;
-  min-width: 0;
-  padding: 8px 10px;
-  background: var(--px-bg2);
-  border: 2px solid var(--px-ghost-border);
-  border-radius: var(--qf-radius-sm);
-
-  box-sizing: border-box;
-  transition: border-color 0.12s ease;
-}
-
-.px-shell .trello-board-viewport .trello-card-title-main {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  min-height: 1.45em;
-  column-gap: 6px;
-  row-gap: 2px;
-}
-
-.px-shell .trello-board-viewport .trello-card-title--in-list:hover {
-  border-color: var(--px-border);
-}
-
 .px-shell .trello-card-title--done {
   opacity: 0.72;
 }
 
-.px-shell .trello-board-viewport .trello-card-title-meta {
-  margin-left: auto;
-  align-self: center;
+.px-shell .trello-board-viewport .trello-card-badges {
+  gap: 8px;
+  margin-top: 6px;
+  padding: 0;
 }
 
+.px-shell .trello-board-viewport .trello-card--has-cover .trello-card-badges {
+  padding: 0;
+}
+
+.px-shell .trello-board-viewport .trello-card-badge,
 .px-shell .trello-board-viewport .trello-card-meta-indicator {
   line-height: 1;
 }
@@ -3333,15 +3398,21 @@ html.px-ui .px-shell .trello-list-add-card-footer {
   height: 22px;
 }
 
+.px-shell .trello-board-viewport .trello-card-complete-btn:not(.trello-card-complete-btn--done) {
+  background: var(--px-bg2);
+}
+
 .px-shell .trello-board-viewport .trello-card-complete-slot {
+  flex-shrink: 0;
   width: 0;
   min-width: 0;
   opacity: 0;
   overflow: hidden;
   pointer-events: none;
-  height: 1.45em;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
   justify-content: center;
+  padding-top: 1px;
   transition:
     width 0.15s ease,
     min-width 0.15s ease,
@@ -3351,8 +3422,8 @@ html.px-ui .px-shell .trello-list-add-card-footer {
 .px-shell .trello-board-viewport .trello-card:hover .trello-card-complete-slot,
 .px-shell .trello-board-viewport .trello-card--completed .trello-card-complete-slot,
 .px-shell .trello-board-viewport .trello-card-complete-slot:focus-within {
-  width: 22px;
-  min-width: 22px;
+  width: var(--trello-card-complete-gutter, 26px);
+  min-width: var(--trello-card-complete-gutter, 26px);
   opacity: 1;
   overflow: visible;
   pointer-events: auto;
@@ -5000,7 +5071,9 @@ html.px-ui.theme-dark .trello-modal .trello-btn-danger:hover:not(:disabled) {
 
 html.px-ui.theme-dark .trello-banner {
   font-family: var(--px-font);
-  font-size: 18px;
+  font-size: 12px;
+  line-height: 1.35;
+  padding: 7px 10px;
   border-radius: var(--qf-radius-sm);
 
   border: 1px solid var(--qf-control-border);
@@ -5012,7 +5085,7 @@ html.px-ui.theme-dark .trello-banner {
 html.px-ui.theme-dark .trello-banner-error {
   background: color-mix(in srgb, #c03030 16%, var(--px-bg2));
   border-color: var(--px-border);
-  border-left: 6px solid #c03030;
+  border-left: 4px solid #c03030;
   color: #ffd0d0;
 }
 

@@ -219,7 +219,7 @@ export function normalizeValidationMessagePunctuation(message: string): string {
     .trim();
 }
 
-export function joinValidationMessages(messages: string[]): string {
+export function formatValidationMessageList(messages: string[]): string {
   return messages
     .map((m) => normalizeValidationMessagePunctuation(m.trim()))
     .filter(Boolean)
@@ -230,7 +230,7 @@ export function translateValidationMessages(message: string): string {
   const normalized = normalizeValidationMessagePunctuation(message);
   if (isAlreadyRussian(normalized)) {
     const parts = splitValidationParts(normalized);
-    return parts.length > 1 ? joinValidationMessages(parts) : normalized;
+    return parts.length > 1 ? formatValidationMessageList(parts) : normalized;
   }
 
   const parts = splitValidationParts(normalized);
@@ -242,5 +242,13 @@ export function translateValidationMessages(message: string): string {
     const single = translateKnownValidationLine(normalized);
     return single ?? normalized;
   }
-  return joinValidationMessages(translated);
+  return formatValidationMessageList(translated);
+}
+
+export function translateValidationMessageList(messages: string[]): string | string[] {
+  const translated = messages.map((m) => translateValidationMessages(m));
+  if (translated.length <= 1) {
+    return translated[0] ?? 'Проверьте введённые данные.';
+  }
+  return translated;
 }

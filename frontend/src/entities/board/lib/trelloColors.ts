@@ -1,4 +1,4 @@
-/** Matches backend `ListColorPreset` — saturated header bar on neutral column */
+/** Matches backend `ListColorPreset` — saturated header bar on neutral column (dark theme) */
 export const LIST_PRESET_HEX: Record<string, string> = {
   GREEN: '#226D43',
   YELLOW: '#9A7903',
@@ -10,6 +10,11 @@ export const LIST_PRESET_HEX: Record<string, string> = {
   OLIVE: '#526D20',
   BROWN: '#994474',
   GRAY: '#676A6C',
+};
+
+/** Lighter list chrome for light theme — default gray reads like Trello #ebecf0 */
+export const LIST_PRESET_HEX_LIGHT: Record<string, string> = {
+  GRAY: '#DFE1E6',
 };
 
 /** Preset keys in backend enum order for selects */
@@ -41,7 +46,21 @@ export const LIST_COLOR_LABELS: Record<string, string> = {
   BROWN: 'Коричневый',
 };
 
+function normalizePreset(preset: string | null | undefined): string {
+  return (preset || 'GRAY').toUpperCase();
+}
+
+export function isDarkTheme(): boolean {
+  if (typeof document === 'undefined') return false;
+  return document.documentElement.classList.contains('theme-dark');
+}
+
+/** Gray columns use pale chrome in light theme (CSS override), dark hex inline otherwise. */
+export function listUsesLightChrome(preset: string | null | undefined): boolean {
+  return normalizePreset(preset) === 'GRAY';
+}
+
 export function listHeaderColor(preset: string | null | undefined): string {
-  if (!preset) return LIST_PRESET_HEX.GRAY;
-  return LIST_PRESET_HEX[preset] ?? LIST_PRESET_HEX.GRAY;
+  const key = normalizePreset(preset);
+  return LIST_PRESET_HEX[key] ?? LIST_PRESET_HEX.GRAY;
 }

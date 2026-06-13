@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
+import { formatValidationMessageList } from '../validation/translate-validation-messages';
 
 type RequestWithContext = Request & {
   id?: string;
@@ -84,26 +85,30 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
       if (isGateway) {
         if (typeof raw === 'string') return raw;
-        if (Array.isArray(raw)) return raw.join(', ');
+        if (Array.isArray(raw)) {
+          return formatValidationMessageList(raw.map((m) => String(m)));
+        }
       }
 
       if (statusCode >= 500) {
-        return 'Internal server error';
+        return 'Внутренняя ошибка сервера';
       }
 
       if (typeof raw === 'string') return raw;
-      if (Array.isArray(raw)) return raw.join(', ');
-      return raw ?? 'Request failed';
+      if (Array.isArray(raw)) {
+        return formatValidationMessageList(raw.map((m) => String(m)));
+      }
+      return raw ?? 'Ошибка запроса';
     }
 
     if (statusCode >= 500) {
-      return 'Internal server error';
+      return 'Внутренняя ошибка сервера';
     }
 
     if (typeof exceptionResponse === 'string') {
       return exceptionResponse;
     }
 
-    return 'Request failed';
+    return 'Ошибка запроса';
   }
 }

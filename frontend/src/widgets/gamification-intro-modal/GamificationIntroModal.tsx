@@ -82,7 +82,7 @@ export function GamificationIntroModal(props: Props) {
                 Награды за дела
               </h3>
               <p className="trello-gamification-intro-lead">
-                Создайте персонажа — и получайте XP за задачи на досках и в «Привычках», квесты и
+                Создайте персонажа — и получайте опыт за задачи на досках и в «Привычках», квесты и
                 косметику в профиле.
               </p>
               <div className="trello-gamification-intro-steps">
@@ -93,7 +93,7 @@ export function GamificationIntroModal(props: Props) {
                   <div>
                     <div className="trello-gamification-intro-step-title">Делайте</div>
                     <p className="trello-gamification-intro-step-text">
-                      Карточки, личные задачи, ежедневные, привычки «+». До{' '}
+                      Карточки, личные задачи, ежедневные, привычки. До{' '}
                       <strong>{DAILY_ACTIVITY_XP_MAX} XP</strong>/сутки, активность{' '}
                       <strong>+{XP_DAILY_CHECKIN} XP</strong>.
                     </p>

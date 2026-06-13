@@ -55,7 +55,7 @@ describe('HttpExceptionFilter', () => {
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         statusCode: 500,
-        message: 'Internal server error',
+        message: 'Внутренняя ошибка сервера',
       }),
     );
   });
@@ -67,7 +67,7 @@ describe('HttpExceptionFilter', () => {
     );
     filter.catch(exception, host({}));
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'a, b' }),
+      expect.objectContaining({ message: 'a\nb' }),
     );
   });
 

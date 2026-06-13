@@ -73,7 +73,7 @@ export async function subscribeWebPush(accessToken: string): Promise<WebPushSubs
 
     const json = sub.toJSON();
     if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
-      return { ok: false, reason: 'error', message: 'Invalid push subscription' };
+      return { ok: false, reason: 'error', message: 'Некорректная push-подписка' };
     }
 
     await api('/notifications/push/subscribe', {

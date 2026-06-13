@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   LIST_COLOR_PRESET_KEYS,
   LIST_PRESET_HEX,
@@ -48,6 +48,12 @@ export function CardColorCoverPopover({
   onRemoveCover,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const [preferredMode, setPreferredMode] = useState<CardCoverDisplayMode>('BANNER');
+
+  useEffect(() => {
+    if (!open) return;
+    setPreferredMode(displayMode === 'FULL' ? 'FULL' : 'BANNER');
+  }, [open, displayMode]);
 
   useEffect(() => {
     if (!open) return;
@@ -63,7 +69,11 @@ export function CardColorCoverPopover({
   if (!open) return null;
 
   const activePreset = colorPreset ?? null;
-  const activeMode = displayMode === 'FULL' ? 'FULL' : 'BANNER';
+  const activeMode = activePreset
+    ? displayMode === 'FULL'
+      ? 'FULL'
+      : 'BANNER'
+    : preferredMode;
 
   return (
     <div
@@ -98,7 +108,11 @@ export function CardColorCoverPopover({
           aria-label="Только шапка"
           title="Только шапка"
           onClick={() => {
-            if (activePreset) onSelectColor(activePreset as ListColorPresetKey, 'BANNER');
+            if (activePreset) {
+              onSelectColor(activePreset as ListColorPresetKey, 'BANNER');
+            } else {
+              setPreferredMode('BANNER');
+            }
           }}
         >
           <IconCoverBanner />
@@ -114,7 +128,11 @@ export function CardColorCoverPopover({
           aria-label="Вся карточка"
           title="Вся карточка"
           onClick={() => {
-            if (activePreset) onSelectColor(activePreset as ListColorPresetKey, 'FULL');
+            if (activePreset) {
+              onSelectColor(activePreset as ListColorPresetKey, 'FULL');
+            } else {
+              setPreferredMode('FULL');
+            }
           }}
         >
           <IconCoverFull />

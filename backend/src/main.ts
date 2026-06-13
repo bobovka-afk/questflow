@@ -12,6 +12,7 @@ import { requestIdMiddleware } from './common/middleware/request-id.middleware';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { HttpLoggingInterceptor } from './common/interceptors/http-logging.interceptor';
 import { resolveRedisMicroserviceOptions } from './redis/redis-connection';
+import { translateValidationMessageList } from './common/validation/translate-validation-messages';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -85,10 +86,9 @@ async function bootstrap() {
           }
           return [`Unexpected field: ${error.property}`];
         });
-        const message =
-          messages.length <= 1
-            ? (messages[0] ?? 'Validation failed')
-            : messages;
+        const message = translateValidationMessageList(
+          messages.length > 0 ? messages : ['Validation failed'],
+        );
         return new BadRequestException({
           code: 'VALIDATION_ERROR',
           message,

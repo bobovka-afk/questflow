@@ -1,4 +1,8 @@
-import { translateValidationMessages } from '@shared/lib/validationMessagesRu';
+import {
+  joinValidationMessages,
+  normalizeValidationMessagePunctuation,
+  translateValidationMessages,
+} from '@shared/lib/validationMessagesRu';
 
 export const API_URL =
   import.meta.env.VITE_API_URL?.toString() || 'http://localhost:3000';
@@ -99,6 +103,52 @@ const API_ERROR_CODE_RU: Record<string, string> = {
   PARTY_INVITE_NOT_PENDING: 'Приглашение уже обработано.',
   PARTY_MEMBER_NOT_FOUND: 'Вы не участник этого рейда.',
   PARTY_TARGET_NOT_ACTIVE: 'Игрок не в активном составе.',
+  WORKSPACE_ID_REQUIRED: 'Не указано рабочее пространство.',
+  WORKSPACE_NOT_FOUND: 'Рабочее пространство не найдено.',
+  WORKSPACE_MEMBER_REQUIRED: 'Вы не состоите в этом рабочем пространстве.',
+  WORKSPACE_MEMBER_NOT_FOUND: 'Участник рабочего пространства не найден.',
+  WORKSPACE_UPDATE_FIELDS_REQUIRED: 'Укажите хотя бы одно поле для изменения.',
+  RESOURCE_WORKSPACE_MISMATCH: 'Ресурс не принадлежит этому рабочему пространству.',
+  LIST_ID_REQUIRED: 'Не указан список.',
+  BOARD_ID_REQUIRED: 'Не указана доска.',
+  CARD_ID_REQUIRED: 'Не указана карточка.',
+  COMMENT_ID_REQUIRED: 'Не указан комментарий.',
+  CARD_NOT_FOUND: 'Карточка не найдена.',
+  LIST_NOT_FOUND: 'Список не найден.',
+  BOARD_NOT_FOUND: 'Доска не найдена.',
+  COMMENT_NOT_FOUND: 'Комментарий не найден.',
+  CARD_UPDATE_FIELDS_REQUIRED: 'Укажите хотя бы одно поле для изменения карточки.',
+  CARD_MOVE_CROSS_BOARD: 'Нельзя перенести карточку на доску другого workspace.',
+  LIST_UPDATE_FIELDS_REQUIRED: 'Укажите хотя бы одно поле для изменения списка.',
+  BOARD_UPDATE_FIELDS_REQUIRED: 'Укажите хотя бы одно поле для изменения доски.',
+  FILE_NOT_PROVIDED: 'Файл не выбран.',
+  FILE_TOO_LARGE: 'Файл слишком большой.',
+  MIME_NOT_ALLOWED: 'Тип файла не поддерживается. Видео прикрепляйте ссылкой.',
+  ATTACHMENT_LIMIT: 'Слишком много вложений на этой карточке.',
+  ATTACHMENT_NOT_FOUND: 'Вложение не найдено.',
+  COVER_NOT_IMAGE: 'Обложкой может быть только изображение.',
+  INVALID_COVER: 'Некорректное вложение для обложки.',
+  IMAGE_FILE_REQUIRED: 'Выберите изображение.',
+  IMAGE_FILE_INVALID: 'Файл изображения повреждён или формат не поддерживается.',
+  USER_BLOCKED: 'Взаимодействие с этим пользователем недоступно.',
+  USER_BLOCK_SELF: 'Нельзя заблокировать самого себя.',
+  PERSONAL_HABIT_NOT_FOUND: 'Привычка не найдена.',
+  PERSONAL_DAILY_NOT_FOUND: 'Ежедневная задача не найдена.',
+  PERSONAL_TODO_NOT_FOUND: 'Задача не найдена.',
+  PERSONAL_REORDER_INVALID: 'Некорректный порядок элементов.',
+  COMMENT_EDIT_FORBIDDEN: 'Можно редактировать только свои комментарии.',
+  COMMENT_DELETE_FORBIDDEN: 'Можно удалять только свои комментарии.',
+  LABEL_NAME_TAKEN: 'Метка с таким названием уже есть в workspace.',
+  LABEL_UPDATE_FIELDS_REQUIRED: 'Укажите название или цвет метки.',
+  CARD_LABEL_LIMIT: 'На карточке не больше 6 меток.',
+  LABEL_WORKSPACE_MISMATCH: 'Некоторые метки не принадлежат этому workspace.',
+  USERNAME_NOT_FOUND: 'Пользователь с таким именем не найден.',
+  USERNAME_INVALID: 'Имя: 3–32 символа, только a-z, 0-9 и подчёркивание.',
+  USERNAME_TAKEN: 'Это имя пользователя уже занято.',
+  SESSION_CONTEXT_REQUIRED: 'Не удалось определить текущую сессию.',
+  WORKSPACE_OWNER_PERMISSIONS_LOCKED: 'Права владельца изменить нельзя.',
+  WORKSPACE_OWNER_CANNOT_BE_REMOVED: 'Владельца нельзя удалить из workspace.',
+  SERVICE_NOT_READY: 'Сервис временно недоступен. Попробуйте позже.',
 };
 
 function translateCommonEnglishError(message: string): string | null {
@@ -135,6 +185,39 @@ function translateCommonEnglishError(message: string): string | null {
   if (normalized.includes('user not found')) {
     return 'Пользователь не найден.';
   }
+  if (normalized.includes('too many requests')) {
+    return `${RATE_LIMIT_MESSAGE_PREFIX} Подождите немного и повторите действие.`;
+  }
+  if (normalized.includes('workspace not found')) {
+    return 'Рабочее пространство не найдено.';
+  }
+  if (normalized.includes('card not found')) {
+    return 'Карточка не найдена.';
+  }
+  if (normalized.includes('board not found')) {
+    return 'Доска не найдена.';
+  }
+  if (normalized.includes('list not found')) {
+    return 'Список не найден.';
+  }
+  if (normalized.includes('comment not found')) {
+    return 'Комментарий не найден.';
+  }
+  if (normalized.includes('habit not found')) {
+    return 'Привычка не найдена.';
+  }
+  if (normalized.includes('file is not provided') || normalized.includes('file not provided')) {
+    return 'Файл не выбран.';
+  }
+  if (normalized.includes('only image files are allowed')) {
+    return 'Допустимы только файлы изображений.';
+  }
+  if (normalized.includes('request failed')) {
+    return 'Ошибка запроса.';
+  }
+  if (normalized.includes('internal server error')) {
+    return 'Внутренняя ошибка сервера. Попробуйте позже.';
+  }
 
   return null;
 }
@@ -148,8 +231,14 @@ function extractMessage(data: unknown): string {
   const payload = data as
     | { message?: unknown; code?: unknown }
     | undefined;
-  if (typeof payload?.message === 'string') return payload.message;
-  if (Array.isArray(payload?.message)) return payload.message.join(', ');
+  if (typeof payload?.message === 'string') {
+    return normalizeValidationMessagePunctuation(payload.message);
+  }
+  if (Array.isArray(payload?.message)) {
+    return joinValidationMessages(
+      payload.message.filter((m): m is string => typeof m === 'string'),
+    );
+  }
   if (
     payload?.message &&
     typeof payload.message === 'object' &&
@@ -174,7 +263,7 @@ async function readErrorPayload(res: Response): Promise<{ raw: unknown; message:
       const text = await res.text();
       return { raw: text, message: text };
     } catch {
-      const fallback = res.statusText || 'Request failed';
+      const fallback = res.statusText || 'Ошибка запроса';
       return { raw: fallback, message: fallback };
     }
   }

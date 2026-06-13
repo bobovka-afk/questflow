@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { uploadCardAttachment, type CardAttachmentRow } from '@features/board/api/cardAttachmentsApi';
 import { validateAttachmentFile, getImageFileFromClipboardEvent } from '@features/board/lib/attachmentFile';
 import { formatApiError } from '@shared/api';
+import { ImageLightbox, type ImageLightboxItem } from '@shared/ui/image-lightbox/ImageLightbox';
 import { CardAttachmentsSection } from '@features/board/ui/CardAttachmentsSection';
 import { CardPasteAttachmentPrompt } from '@features/board/ui/CardPasteAttachmentPrompt';
 import { CardLabelStrip } from '@features/board/ui/CardLabelStrip';
@@ -18,7 +19,7 @@ import { CardColorCoverPopover } from '@features/board/ui/CardColorCoverPopover'
 import { CardMembersPopover } from '@features/board/ui/CardMembersPopover';
 import { CardMembersStrip } from '@features/board/ui/CardMembersStrip';
 import { CardDetailIconTooltip } from '@features/board/ui/CardDetailIconTooltip';
-import { CARD_TITLE_MAX_LENGTH } from '@entities/card/lib/cardLimits';
+import { CARD_TITLE_MAX_LENGTH, CARD_TITLE_MIN_LENGTH } from '@entities/card/lib/cardLimits';
 import { listHeaderColor } from '@entities/board';
 import type { ListColorPresetKey } from '@entities/board';
 import { characterPortraitUrl } from '@entities/character';
@@ -328,6 +329,32 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const coverRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const titleEditRef = useRef<HTMLDivElement>(null);
+  const [imageLightbox, setImageLightbox] = useState<{ items: ImageLightboxItem[]; index: number } | null>(
+    null,
+  );
+
+  const attachmentImageGallery = useMemo(
+    () =>
+      cardAttachments
+        .filter((row) => row.isImage)
+        .map((row) => ({
+          src: row.url,
+          alt: row.fileName,
+          title: row.fileName,
+        })),
+    [cardAttachments],
+  );
+
+  function openImagePreview(src: string, alt: string, gallery: ImageLightboxItem[] = attachmentImageGallery) {
+    const items =
+      gallery.length > 0 ? gallery : [{ src, alt, title: alt }];
+    const index = items.findIndex((item) => item.src === src);
+    setImageLightbox({
+      items,
+      index: index >= 0 ? index : 0,
+    });
+  }
 
   const coverDisplayMode = props.card.coverDisplayMode ?? 'NONE';
   const coverColor = props.card.coverColorPreset
@@ -387,6 +414,31 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
     });
     clearPendingCommentAttachments();
   }, [props.card.id]);
+
+  useEffect(() => {
+    if (!props.titleEditing) return;
+
+    function handlePointerDown(e: PointerEvent) {
+      const root = titleEditRef.current;
+      if (!root || root.contains(e.target as Node)) return;
+      if (props.busy) return;
+
+      if (props.title.trim().length >= CARD_TITLE_MIN_LENGTH) {
+        props.onTitleSave();
+      } else {
+        props.onTitleCancel();
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    return () => document.removeEventListener('pointerdown', handlePointerDown, true);
+  }, [
+    props.titleEditing,
+    props.title,
+    props.busy,
+    props.onTitleSave,
+    props.onTitleCancel,
+  ]);
 
   function clearPendingCommentAttachments() {
     setPendingCommentAttachments((prev) => {
@@ -745,25 +797,25 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {isBannerCover ? (
-          <div
-            className={[
-              'trello-card-detail-cover-band',
-              props.card.coverImageUrl
-                ? 'trello-card-detail-cover-band--image'
-                : 'trello-card-detail-cover-band--color',
-            ].join(' ')}
-            style={
-              hasColorCover && coverColor ? { backgroundColor: coverColor } : undefined
-            }
-          >
-            {props.card.coverImageUrl ? (
+          props.card.coverImageUrl ? (
+            <button
+              type="button"
+              className="trello-card-detail-cover-band trello-card-detail-cover-band--image"
+              aria-label="Открыть обложку"
+              onClick={() => openImagePreview(props.card.coverImageUrl!, 'Обложка карточки')}
+            >
               <img
                 className="trello-card-detail-cover-band-img"
                 src={props.card.coverImageUrl}
                 alt=""
               />
-            ) : null}
-          </div>
+            </button>
+          ) : (
+            <div
+              className="trello-card-detail-cover-band trello-card-detail-cover-band--color"
+              style={hasColorCover && coverColor ? { backgroundColor: coverColor } : undefined}
+            />
+          )
         ) : null}
 
         <div
@@ -898,7 +950,7 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
               </button>
               <div className="trello-card-detail-title-block">
                 {props.titleEditing ? (
-                  <div className="trello-card-detail-title-edit">
+                  <div ref={titleEditRef} className="trello-card-detail-title-edit">
                     <textarea
                       ref={props.titleInputRef}
                       className="trello-card-detail-title-input"
@@ -1090,6 +1142,7 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                 formatRelativeAgo={props.formatCommentRelativeAgo}
                 onCoverChange={notifyAttachmentsChanged}
                 onAttachmentsLoaded={setCardAttachments}
+                onImagePreview={openImagePreview}
                 onRegisterFilePicker={(open) => {
                   openAttachmentPickerRef.current = open;
                 }}
@@ -1269,14 +1322,14 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                             {props.formatCommentRelativeAgo(item.at, props.nowTick)}
                           </time>
                           {a.isImage && (a.previewUrl ?? a.url) ? (
-                            <a
+                            <button
+                              type="button"
                               className="trello-activity-attachment-preview"
-                              href={a.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                              aria-label={`Открыть ${a.fileName}`}
+                              onClick={() => openImagePreview(a.url, a.fileName)}
                             >
                               <img src={a.previewUrl ?? a.url} alt="" />
-                            </a>
+                            </button>
                           ) : null}
                         </div>
                       </li>
@@ -1342,7 +1395,11 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
                               >
                                 <strong>{c.user.name}</strong>
                               </button>
-                              <RichCommentBody body={c.body} members={props.members} />
+                              <RichCommentBody
+                                body={c.body}
+                                members={props.members}
+                                onImageClick={(src, alt) => openImagePreview(src, alt)}
+                              />
                             </div>
                             <div className="trello-card-detail-activity-meta">
                               <time
@@ -1391,6 +1448,17 @@ export function CardDetailModalTrello(props: CardDetailModalTrelloProps) {
           busy={attachUploadBusy}
           onConfirm={() => void confirmPastePreview()}
           onCancel={clearPastePreview}
+        />
+      ) : null}
+
+      {imageLightbox ? (
+        <ImageLightbox
+          items={imageLightbox.items}
+          index={imageLightbox.index}
+          onClose={() => setImageLightbox(null)}
+          onIndexChange={(index) =>
+            setImageLightbox((prev) => (prev ? { ...prev, index } : prev))
+          }
         />
       ) : null}
     </>

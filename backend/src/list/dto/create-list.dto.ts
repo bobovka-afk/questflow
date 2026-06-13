@@ -10,18 +10,19 @@ import {
   MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { LIST_NAME_MAX_LENGTH, LIST_NAME_MIN_LENGTH } from '../constants';
 
 export class CreateListDto {
   @ApiProperty({
     example: 'In Progress',
     description: 'List name',
-    minLength: 3,
-    maxLength: 50,
+    minLength: LIST_NAME_MIN_LENGTH,
+    maxLength: LIST_NAME_MAX_LENGTH,
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(3)
-  @MaxLength(50)
+  @MinLength(LIST_NAME_MIN_LENGTH)
+  @MaxLength(LIST_NAME_MAX_LENGTH)
   name: string;
 
   @ApiPropertyOptional({
